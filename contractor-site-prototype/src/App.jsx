@@ -23,7 +23,7 @@ const phoneNumber = "(310) 505-6581";
 const emailAddress = "clarencegloss@gmail.com";
 const licenseNumber = "987643";
 const licenseUrl = `https://www.cslb.ca.gov/${licenseNumber}`;
-const inspectionUrl = "https://sadmanbob.github.io/inspections/";
+const inspectionUrl = "/";
 const appBase = import.meta.env.BASE_URL;
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
 const pageUrl = (path) => path === "/" ? appBase : `${appBase}${path.replace(/^\//, "")}`;

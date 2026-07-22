@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const inspector = resolve(root, "inspector-site-prototype");
 const contractor = resolve(root, "contractor-site-prototype");
+const output = resolve(root, "_site");
 
 const read = (path) => readFile(path, "utf8");
 const inspectorSource = await read(resolve(inspector, "src/App.jsx"));
@@ -42,6 +43,45 @@ for (const [site, routes] of routeSets) {
   for (const route of routes) await stat(resolve(site, `dist/${route}/index.html`));
 }
 
+const assembledRoutes = [
+  "index.html",
+  "services/index.html",
+  "about/index.html",
+  "areas/index.html",
+  "faq/index.html",
+  "resources/index.html",
+  "contact/index.html",
+  "contracting/index.html",
+  "contracting/services/index.html",
+  "contracting/process/index.html",
+  "contracting/about/index.html",
+  "contracting/estimate/index.html",
+  "property-services/index.html",
+  "property-services/styles.css",
+  "robots.txt",
+  "sitemap.xml",
+  "contracting/robots.txt",
+  "contracting/sitemap.xml",
+];
+
+for (const route of assembledRoutes) await stat(resolve(output, route));
+
+const assembledInspector = await read(resolve(output, "index.html"));
+const assembledContractor = await read(resolve(output, "contracting/index.html"));
+const assembledPortal = await read(resolve(output, "property-services/index.html"));
+assert.match(assembledInspector, /Know what you’re buying/, "Inspector is not mounted at the site root");
+assert.match(assembledContractor, /Practical repairs\. Built to last\./, "Contractor is not mounted at /contracting/");
+assert.match(assembledPortal, /C&amp;G Property Services/, "Property-services chooser is missing");
+
+for (const route of ["", "services", "about", "areas", "faq", "resources", "contact"]) {
+  const redirect = await read(resolve(output, "inspections", route, "index.html"));
+  assert.match(redirect, /Inspection page moved/, `Legacy /inspections/${route} redirect is missing`);
+  assert.match(redirect, /location\.replace/, `Legacy /inspections/${route} redirect is not functional`);
+}
+
+const expectedOrigin = (process.env.SITE_ORIGIN || "https://sadmanbob.github.io").replace(/\/+$/, "");
+assert.match(await read(resolve(output, "sitemap.xml")), new RegExp(`${expectedOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/property-services/`));
+
 const imageBudgets = [
   resolve(inspector, "public/assets/hero-inspector.jpg"),
   resolve(inspector, "public/assets/report-laptop.jpg"),
@@ -57,4 +97,4 @@ for (const image of imageBudgets) {
   assert.ok(size < 450_000, `${image} exceeds the 450 KB editorial image budget`);
 }
 
-console.log("PASS: routes, trust guards, compliance copy, estimate safeguard, metadata files, and image budgets verified.");
+console.log("PASS: root inspection routes, contractor routes, chooser, legacy redirects, trust guards, compliance copy, metadata files, and image budgets verified.");
