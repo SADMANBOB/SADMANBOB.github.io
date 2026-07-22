@@ -1,0 +1,12 @@
+{
+  "name": "cg-websites",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:inspector && npm run build:contractor",
+    "build:inspector": "cd inspector-site-prototype && VITE_BASE_PATH=/inspections/ npm run build",
+    "build:contractor": "cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ npm run build",
+    "verify": "node scripts/verify-sites.mjs"
+  }
+}

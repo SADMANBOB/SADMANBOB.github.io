@@ -1,0 +1,62 @@
+name: Deploy C&G websites
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            inspector-site-prototype/package-lock.json
+            contractor-site-prototype/package-lock.json
+      - name: Install inspector dependencies
+        run: npm ci
+        working-directory: inspector-site-prototype
+      - name: Build inspector site
+        run: npm run build
+        working-directory: inspector-site-prototype
+        env:
+          VITE_BASE_PATH: /inspections/
+      - name: Install contractor dependencies
+        run: npm ci
+        working-directory: contractor-site-prototype
+      - name: Build contractor site
+        run: npm run build
+        working-directory: contractor-site-prototype
+        env:
+          VITE_BASE_PATH: /contracting/
+      - name: Assemble Pages artifact
+        run: |
+          mkdir -p _site/inspections _site/contracting
+          cp -R inspector-site-prototype/dist/. _site/inspections/
+          cp -R contractor-site-prototype/dist/. _site/contracting/
+          cp portal/index.html portal/styles.css _site/
+          cp portal/index.html _site/404.html
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

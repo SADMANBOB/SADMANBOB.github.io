@@ -1,0 +1,19 @@
+.DS_Store
+**/node_modules/
+**/.npm-cache/
+**/dist/
+_site/
+
+# Local audit and browser evidence stay in the workspace, not the public source repo.
+cg-sites-launch-audit-2026-07-21/
+
+# Keep the optimized production JPEGs; omit unused full-size PNG sources.
+inspector-site-prototype/public/assets/hero-inspector.png
+inspector-site-prototype/public/assets/report-laptop.png
+inspector-site-prototype/public/assets/attic-inspection.png
+inspector-site-prototype/public/assets/contracting-review.png
+inspector-site-prototype/public/assets/cg-logo.png
+contractor-site-prototype/public/assets/contractor-hero.png
+contractor-site-prototype/public/assets/finish-work.png
+contractor-site-prototype/public/assets/project-planning.png
+inspector-site-prototype/AGENTS.md
