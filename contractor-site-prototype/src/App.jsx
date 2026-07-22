@@ -112,6 +112,13 @@ const processSteps = [
   ["04", "Schedule and complete", "Coordinate access, complete the agreed work, and finish with a clear walkthrough."],
 ];
 
+const projectQuickFacts = [
+  ["Project focus", "Residential repairs, finish work, punch lists, and maintenance"],
+  ["Start with", "A short repair list, project location, timing, and useful photos"],
+  ["Scope standard", "Written scope and project assumptions reviewed before scheduling"],
+  ["Service area", "Los Angeles County and nearby communities"],
+];
+
 function routeKey(pathname = window.location.pathname) {
   const basePath = appBase.replace(/\/+$/, "");
   const relativePath = basePath && pathname.startsWith(basePath)
@@ -228,6 +235,21 @@ function ProcessList({ compact = false }) {
   );
 }
 
+function ProjectQuickFacts() {
+  return (
+    <section className="project-summary-band" aria-label="Contracting services at a glance">
+      <div className="container project-summary-grid">
+        {projectQuickFacts.map(([label, value], index) => (
+          <div className="project-summary-item" key={label}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <div><strong>{label}</strong><p>{value}</p></div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function EstimateCta({ onNavigate }) {
   return (
     <section className="estimate-cta">
@@ -276,6 +298,8 @@ function HomePage({ onNavigate }) {
           </figure>
         </div>
       </section>
+
+      <ProjectQuickFacts />
 
       <section className="services-section">
         <div className="container">
@@ -452,7 +476,15 @@ function EstimatePage() {
           <div className="estimate-form-wrap"><h2>Project request</h2><EstimateForm /></div>
           <aside className="estimate-sidebar">
             <div><span>Prefer to talk?</span><a href="tel:+13105056581"><Phone size={18} /> {phoneNumber}</a><a href={`mailto:${emailAddress}`}><Mail size={18} /> {emailAddress}</a></div>
-            <div><span>Helpful to include</span><ul><li><Check size={15} /> A short repair list</li><li><Check size={15} /> Room or area of the home</li><li><Check size={15} /> Approximate timing</li><li><Check size={15} /> Photos by reply, if useful</li></ul></div>
+            <div><span>A stronger request includes</span><ul><li><Check size={15} /> A short repair or improvement list</li><li><Check size={15} /> Exact room, area, or exterior location</li><li><Check size={15} /> Access limits or occupied spaces</li><li><Check size={15} /> Approximate timing or a flexible window</li><li><Check size={15} /> Photos available by reply, if useful</li></ul></div>
+            <div className="estimate-next-steps">
+              <span>After you send</span>
+              <ol>
+                <li><b>01</b><div><strong>Fit review</strong><p>Location, scope, access, and licensing fit are reviewed first.</p></div></li>
+                <li><b>02</b><div><strong>Clarify the work</strong><p>C&amp;G follows up on missing details and confirms whether an estimate visit is the right next step.</p></div></li>
+                <li><b>03</b><div><strong>Written scope</strong><p>Accepted work is defined in writing before scheduling begins.</p></div></li>
+              </ol>
+            </div>
             <div className="estimate-policy"><ShieldCheck size={20} /><p>If C&amp;G inspected the property during the previous 12 months, the contracting service cannot offer or perform repairs there.</p></div>
           </aside>
         </div>
