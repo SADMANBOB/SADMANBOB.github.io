@@ -26,7 +26,10 @@ const licenseUrl = `https://www.cslb.ca.gov/${licenseNumber}`;
 const inspectionUrl = "/";
 const appBase = import.meta.env.BASE_URL;
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
-const pageUrl = (path) => path === "/" ? appBase : `${appBase}${path.replace(/^\//, "")}`;
+const pageUrl = (path) => {
+  const relativePath = path.replace(/^\/+|\/+$/g, "");
+  return relativePath ? `${appBase}${relativePath}/` : appBase;
+};
 
 const navItems = [
   ["Home", "/"],
@@ -493,6 +496,8 @@ export function App() {
 
   useEffect(() => {
     const metadata = pageMeta[currentPage] || pageMeta.notFound;
+    const routePath = Object.entries(pageByPath).find(([, key]) => key === currentPage)?.[0] || "/";
+    const canonicalUrl = `${window.location.origin}${pageUrl(routePath)}`;
     document.title = metadata.title;
     const setMeta = (attribute, key, content) => {
       let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
@@ -506,6 +511,7 @@ export function App() {
     setMeta("name", "description", metadata.description);
     setMeta("property", "og:title", metadata.title);
     setMeta("property", "og:description", metadata.description);
+    setMeta("property", "og:url", canonicalUrl);
     setMeta("name", "twitter:title", metadata.title);
     setMeta("name", "twitter:description", metadata.description);
 
@@ -515,7 +521,7 @@ export function App() {
       canonical.rel = "canonical";
       document.head.appendChild(canonical);
     }
-    canonical.href = `${window.location.origin}${pageUrl(Object.entries(pageByPath).find(([, key]) => key === currentPage)?.[0] || "/")}`;
+    canonical.href = canonicalUrl;
 
     let schema = document.getElementById("cg-contractor-schema");
     if (!schema) {
