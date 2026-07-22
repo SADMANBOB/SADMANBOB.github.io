@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    env:
+      SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://sadmanbob.github.io' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -36,7 +38,8 @@ jobs:
         run: npm run build
         working-directory: inspector-site-prototype
         env:
-          VITE_BASE_PATH: /inspections/
+          VITE_BASE_PATH: /
+          VITE_SITE_ORIGIN: ${{ env.SITE_ORIGIN }}
       - name: Install contractor dependencies
         run: npm ci
         working-directory: contractor-site-prototype
@@ -45,14 +48,9 @@ jobs:
         working-directory: contractor-site-prototype
         env:
           VITE_BASE_PATH: /contracting/
+          VITE_SITE_ORIGIN: ${{ env.SITE_ORIGIN }}
       - name: Assemble Pages artifact
-        run: |
-          mkdir -p _site/inspections _site/contracting
-          cp -R inspector-site-prototype/dist/. _site/inspections/
-          cp -R contractor-site-prototype/dist/. _site/contracting/
-          cp portal/index.html portal/styles.css _site/
-          cp portal/index.html _site/404.html
-          touch _site/.nojekyll
+        run: node scripts/assemble-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

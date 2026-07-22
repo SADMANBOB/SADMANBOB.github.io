@@ -18,7 +18,7 @@ import {
 
 const bookingUrl =
   "https://docs.google.com/forms/d/e/1FAIpQLSc4O-SjvnZyKU7dTZoinpogjsNcC6NxJHNhDP1Lxp-1WYYCTw/viewform";
-const contractorUrl = "https://sadmanbob.github.io/contracting/";
+const contractorUrl = "/contracting/";
 const phoneNumber = "(310) 505-6581";
 const appBase = import.meta.env.BASE_URL;
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;

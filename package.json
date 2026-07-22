@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run build:inspector && npm run build:contractor",
-    "build:inspector": "cd inspector-site-prototype && VITE_BASE_PATH=/inspections/ npm run build",
-    "build:contractor": "cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ npm run build",
+    "build": "npm run build:inspector && npm run build:contractor && npm run assemble",
+    "build:inspector": "cd inspector-site-prototype && VITE_BASE_PATH=/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://sadmanbob.github.io} npm run build",
+    "build:contractor": "cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://sadmanbob.github.io} npm run build",
+    "assemble": "node scripts/assemble-site.mjs",
     "verify": "node scripts/verify-sites.mjs"
   }
 }
