@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const inspector = resolve(root, "inspector-site-prototype");
 const contractor = resolve(root, "contractor-site-prototype");
 const output = resolve(root, "_site");
+const expectedOrigin = (process.env.SITE_ORIGIN || "https://sadmanbob.github.io").replace(/\/+$/, "");
 
 const read = (path) => readFile(path, "utf8");
 const inspectorSource = await read(resolve(inspector, "src/App.jsx"));
@@ -66,6 +67,41 @@ const assembledRoutes = [
 
 for (const route of assembledRoutes) await stat(resolve(output, route));
 
+const metadataRoutes = [
+  ["index.html", "/", "inspector-home"],
+  ["services/index.html", "/services/", "inspector"],
+  ["about/index.html", "/about/", "inspector"],
+  ["areas/index.html", "/areas/", "inspector"],
+  ["faq/index.html", "/faq/", "inspector"],
+  ["resources/index.html", "/resources/", "inspector"],
+  ["contact/index.html", "/contact/", "inspector"],
+  ["contracting/index.html", "/contracting/", "contractor-home"],
+  ["contracting/services/index.html", "/contracting/services/", "contractor"],
+  ["contracting/process/index.html", "/contracting/process/", "contractor"],
+  ["contracting/about/index.html", "/contracting/about/", "contractor"],
+  ["contracting/estimate/index.html", "/contracting/estimate/", "contractor"],
+  ["property-services/index.html", "/property-services/", "portal"],
+];
+
+const inspectorHomeTitle = (await read(resolve(output, "index.html"))).match(/<title>([^<]+)<\/title>/)?.[1];
+const contractorHomeTitle = (await read(resolve(output, "contracting/index.html"))).match(/<title>([^<]+)<\/title>/)?.[1];
+
+for (const [file, route, section] of metadataRoutes) {
+  const html = await read(resolve(output, file));
+  const expectedUrl = `${expectedOrigin}${route}`;
+  const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
+  assert.ok(title, `${file} is missing a static title`);
+  assert.ok(html.includes(`<link rel="canonical" href="${expectedUrl}"`), `${file} has the wrong canonical URL`);
+  assert.ok(html.includes(`<meta property="og:url" content="${expectedUrl}"`), `${file} has the wrong Open Graph URL`);
+  assert.match(html, /<meta name="description" content="[^"]+"/, `${file} is missing a static description`);
+  if (section !== "portal") {
+    assert.match(html, /<meta name="twitter:title" content="[^"]+"/, `${file} is missing a Twitter title`);
+    assert.match(html, /<meta name="twitter:description" content="[^"]+"/, `${file} is missing a Twitter description`);
+  }
+  if (section === "inspector") assert.notEqual(title, inspectorHomeTitle, `${file} repeats the inspector homepage title`);
+  if (section === "contractor") assert.notEqual(title, contractorHomeTitle, `${file} repeats the contractor homepage title`);
+}
+
 const assembledInspector = await read(resolve(output, "index.html"));
 const assembledContractor = await read(resolve(output, "contracting/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
@@ -79,7 +115,6 @@ for (const route of ["", "services", "about", "areas", "faq", "resources", "cont
   assert.match(redirect, /location\.replace/, `Legacy /inspections/${route} redirect is not functional`);
 }
 
-const expectedOrigin = (process.env.SITE_ORIGIN || "https://sadmanbob.github.io").replace(/\/+$/, "");
 assert.match(await read(resolve(output, "sitemap.xml")), new RegExp(`${expectedOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/property-services/`));
 
 const imageBudgets = [
