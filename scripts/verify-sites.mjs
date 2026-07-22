@@ -26,10 +26,12 @@ for (const pattern of inspectorForbidden) {
 }
 
 assert.match(inspectorSource, /previous 12 months/i, "Inspector separation policy is missing");
+assert.match(inspectorSource, /setMeta\("property", "og:url", canonicalUrl\)/, "Inspector runtime Open Graph URL sync is missing");
 assert.match(contractorSource, /CSLB #\$\{licenseNumber\}/, "Contractor license display is missing");
 assert.match(contractorSource, /Coastal Construction Services/, "Contractor of record is missing");
 assert.match(contractorSource, /previous 12 months/i, "Contractor separation policy is missing");
 assert.match(contractorSource, /inspected === "yes"/, "Estimate eligibility safeguard is missing");
+assert.match(contractorSource, /setMeta\("property", "og:url", canonicalUrl\)/, "Contractor runtime Open Graph URL sync is missing");
 
 const routeSets = [
   [inspector, ["services", "about", "areas", "faq", "resources", "contact"]],
