@@ -94,6 +94,13 @@ const contactPathSteps = [
   ["03", "Use the report", "Review photos, context, and priorities so the next conversation starts with better information."],
 ];
 
+const contactPrepItems = [
+  ["01", "Property address", "Share the address or city so service area and access can be discussed."],
+  ["02", "Reason for the inspection", "Buying, selling, maintaining, or planning work gives the conversation useful context."],
+  ["03", "Access and timing", "Note occupancy, gates, utility spaces, or decision dates that may affect scheduling."],
+  ["04", "Your questions", "Bring known concerns, recent repairs, or areas you want to understand more clearly."],
+];
+
 function routeKey(pathname = window.location.pathname) {
   const basePath = appBase.replace(/\/+$/, "");
   const relativePath = basePath && pathname.startsWith(basePath)
@@ -292,6 +299,13 @@ const inspectionAreas = [
   ["04", "Interior & safety", "We document the rooms, components, and visible safety concerns that matter to your decision."],
 ];
 
+const inspectionQuickFacts = [
+  ["Property decisions", "Buying, selling, maintaining, or planning repairs"],
+  ["Inspection focus", "Major visible and accessible systems"],
+  ["Your report", "Photos, context, and prioritized next steps"],
+  ["Service area", "Los Angeles County and surrounding communities"],
+];
+
 function InspectionAreaGrid() {
   return (
     <div className="inspection-area-grid">
@@ -306,6 +320,21 @@ function InspectionAreaGrid() {
         </details>
       ))}
     </div>
+  );
+}
+
+function InspectionQuickFacts() {
+  return (
+    <section className="quick-facts-band" aria-label="Inspection at a glance">
+      <div className="container quick-facts-grid">
+        {inspectionQuickFacts.map(([label, value], index) => (
+          <div className="quick-fact" key={label}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <div><strong>{label}</strong><p>{value}</p></div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -342,6 +371,8 @@ function HomePage({ onNavigate }) {
           </div>
         </div>
       </section>
+
+      <InspectionQuickFacts />
 
       <section className="proof-band">
         <div className="container">
@@ -435,6 +466,33 @@ function ServicesPage({ onNavigate }) {
             <p>Visible and accessible conditions are documented in the report. Final scope depends on the property and inspection agreement.</p>
           </div>
           <InspectionAreaGrid />
+        </div>
+      </section>
+      <section className="scope-explainer-section">
+        <div className="container scope-explainer-grid">
+          <div className="scope-explainer-heading">
+            <p className="eyebrow eyebrow-dark">Understanding the scope</p>
+            <h2>A useful inspection is clear about its limits.</h2>
+            <p>A home inspection is a visual, non-invasive review of visible and accessible conditions. It informs the decision in front of you without pretending every condition can be seen or predicted.</p>
+          </div>
+          <div className="scope-panel-grid">
+            <article>
+              <span>What it helps answer</span>
+              <ul>
+                <li><Check size={17} /> What visible conditions deserve attention?</li>
+                <li><Check size={17} /> Which questions should be raised next?</li>
+                <li><Check size={17} /> What belongs in maintenance or longer-term planning?</li>
+              </ul>
+            </article>
+            <article>
+              <span>Where follow-up may help</span>
+              <ul>
+                <li><Check size={17} /> Conditions hidden behind finishes or in inaccessible areas</li>
+                <li><Check size={17} /> Engineering, code, environmental, or specialty-trade questions</li>
+                <li><Check size={17} /> Items excluded by the property-specific inspection agreement</li>
+              </ul>
+            </article>
+          </div>
         </div>
       </section>
       <section className="page-section page-section-cream page-section-tight-top">
@@ -647,6 +705,23 @@ function ContactPage({ onNavigate }) {
             <div><span className="footer-label">Email</span><a href="mailto:clarencegloss@gmail.com">clarencegloss@gmail.com</a></div>
             <div><span className="footer-label">Service area</span><p>Los Angeles County &amp; surrounding communities</p></div>
           </div>
+        </div>
+      </section>
+      <section className="contact-prep-section">
+        <div className="container contact-prep-grid">
+          <div>
+            <p className="eyebrow eyebrow-dark">Before you reach out</p>
+            <h2>Four details make scheduling easier.</h2>
+            <p>Start with what you know. These details help C&amp;G understand the property and the decision you are working toward.</p>
+          </div>
+          <ol className="contact-prep-list">
+            {contactPrepItems.map(([number, title, description]) => (
+              <li key={number}>
+                <span>{number}</span>
+                <div><h3>{title}</h3><p>{description}</p></div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
       <section className="process-section contact-process-section">
