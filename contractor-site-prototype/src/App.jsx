@@ -119,6 +119,27 @@ const projectQuickFacts = [
   ["Service area", "Los Angeles County and nearby communities"],
 ];
 
+const representativeProjects = [
+  {
+    title: "Interior surface repair",
+    description: "Contained patch preparation and finish work that respects the surrounding room.",
+    image: assetUrl("assets/illustrative-drywall-repair.jpg"),
+    alt: "Repair professional smoothing a small drywall patch in a protected living space",
+  },
+  {
+    title: "Exterior trim maintenance",
+    description: "Measured review of weathered exterior details before repair or replacement scope is confirmed.",
+    image: assetUrl("assets/illustrative-exterior-trim.jpg"),
+    alt: "Contractor measuring weathered wood trim beneath an exterior window",
+  },
+  {
+    title: "Finish carpentry details",
+    description: "Careful fitting and alignment for baseboard, casing, and the details that complete a room.",
+    image: assetUrl("assets/illustrative-finish-carpentry.jpg"),
+    alt: "Finish carpenter checking trim alignment beside an interior doorway",
+  },
+];
+
 function routeKey(pathname = window.location.pathname) {
   const basePath = appBase.replace(/\/+$/, "");
   const relativePath = basePath && pathname.startsWith(basePath)
@@ -250,6 +271,39 @@ function ProjectQuickFacts() {
   );
 }
 
+function RepresentativeWork({ sectionLabel = "Representative project types" }) {
+  return (
+    <section className="representative-work" aria-labelledby="representative-work-title">
+      <div className="container">
+        <div className="section-heading split-heading representative-heading">
+          <div>
+            <span>{sectionLabel}</span>
+            <h2 id="representative-work-title">A closer look at the details C&amp;G is built for.</h2>
+          </div>
+          <div className="representative-intro">
+            <p>From a focused repair to a coordinated punch list, the finish begins with a clear understanding of the condition and the expected result.</p>
+            <p className="illustrative-disclosure"><strong>Illustrative imagery</strong> These images show representative project types, not completed C&amp;G client projects. Client photography can replace them as the portfolio grows.</p>
+          </div>
+        </div>
+        <div className="representative-grid">
+          {representativeProjects.map((project) => (
+            <figure className="representative-card" key={project.title}>
+              <div className="representative-media">
+                <img src={project.image} alt={project.alt} width="1536" height="1024" loading="lazy" decoding="async" />
+              </div>
+              <figcaption>
+                <span>Illustrative image</span>
+                <h3>{project.title}</h3>
+                <p>{project.description}</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function EstimateCta({ onNavigate }) {
   return (
     <section className="estimate-cta">
@@ -319,11 +373,13 @@ function HomePage({ onNavigate }) {
         </div>
       </section>
 
+      <RepresentativeWork sectionLabel="03 / Representative work" />
+
       <section className="about-preview">
         <div className="container about-preview-grid">
           <div className="about-image"><img src={assetUrl("assets/project-planning.jpg")} alt="Construction professionals reviewing a residential project plan" width="1536" height="1024" loading="lazy" decoding="async" /></div>
           <div className="about-copy">
-            <span>03 / About</span>
+            <span>04 / About</span>
             <h2>Practical experience. Straight answers.</h2>
             <p>C&amp;G approaches residential repair work with a construction-informed eye, careful communication, and respect for the property.</p>
             <div className="credential-line"><ShieldCheck size={20} /><div><strong>California General Building contractor</strong><a href={licenseUrl} target="_blank" rel="noreferrer">Verify CSLB #{licenseNumber} <ExternalLink size={13} /></a></div></div>
@@ -350,6 +406,7 @@ function ServicesPage({ onNavigate }) {
           <ServiceList detailed />
         </div>
       </section>
+      <RepresentativeWork />
       <section className="scope-section">
         <div className="container scope-grid">
           <div><span>Project fit</span><h2>The right scope matters as much as the finish.</h2></div>

@@ -16,11 +16,23 @@ cd contractor-site-prototype && npm install && npm run dev
 ## Production builds
 
 ```sh
-cd inspector-site-prototype && VITE_BASE_PATH=/inspections/ npm run build
-cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ npm run build
+SITE_ORIGIN=https://www.cginspection.net npm run build
+SITE_ORIGIN=https://www.cginspection.net npm run verify
 ```
 
 Pushing `main` deploys the portal and both sites to GitHub Pages.
+
+## Temporary editorial photography
+
+The current people-focused photography is a generated editorial placeholder set chosen to represent Black inspectors, contractors, craftspeople, and homeowners. It must not be described as employee, customer, or completed-project photography.
+
+Replacement-ready image slots:
+
+- Inspector: `hero-inspector.jpg`, `attic-inspection.jpg`, and `contracting-review.jpg`
+- Contractor: `contractor-hero.jpg`, `finish-work.jpg`, and `project-planning.jpg`
+- Illustrative contractor gallery: `illustrative-drywall-repair.jpg`, `illustrative-exterior-trim.jpg`, and `illustrative-finish-carpentry.jpg`
+
+The three gallery cards include a public illustrative-imagery disclosure. Keep that disclosure until every gallery image has been replaced with verified C&amp;G project photography. Preserve the existing filenames and dimensions when swapping assets, and keep each editorial JPG below 450 KB.
 
 ## Public facts and boundaries
 

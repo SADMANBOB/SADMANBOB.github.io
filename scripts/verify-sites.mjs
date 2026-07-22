@@ -35,6 +35,7 @@ assert.match(contractorSource, /previous 12 months/i, "Contractor separation pol
 assert.match(contractorSource, /inspected === "yes"/, "Estimate eligibility safeguard is missing");
 assert.match(contractorSource, /Written scope and project assumptions reviewed before scheduling/i, "Contractor scope summary is missing");
 assert.match(contractorSource, /After you send/i, "Contractor estimate follow-up guidance is missing");
+assert.match(contractorSource, /representative project types, not completed C&amp;G client projects/i, "Contractor illustrative gallery disclosure is missing");
 assert.match(contractorSource, /setMeta\("property", "og:url", canonicalUrl\)/, "Contractor runtime Open Graph URL sync is missing");
 
 const routeSets = [
@@ -131,6 +132,9 @@ const imageBudgets = [
   resolve(contractor, "public/assets/contractor-hero.jpg"),
   resolve(contractor, "public/assets/finish-work.jpg"),
   resolve(contractor, "public/assets/project-planning.jpg"),
+  resolve(contractor, "public/assets/illustrative-drywall-repair.jpg"),
+  resolve(contractor, "public/assets/illustrative-exterior-trim.jpg"),
+  resolve(contractor, "public/assets/illustrative-finish-carpentry.jpg"),
 ];
 
 for (const image of imageBudgets) {
