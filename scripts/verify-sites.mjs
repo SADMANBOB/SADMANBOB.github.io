@@ -222,6 +222,7 @@ for (const route of legacyInspectorRoutes) {
 
 const assembledInspector = await read(resolve(output, "index.html"));
 const assembledInspectorServices = await read(resolve(output, "services/index.html"));
+const assembledInspectorContact = await read(resolve(output, "contact/index.html"));
 const assembledContractor = await read(resolve(output, "contracting/index.html"));
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
@@ -233,6 +234,19 @@ assert.match(assembledEstimate, /Nothing is uploaded or sent while you use this 
 assert.match(assembledInspector, /Know what you’re/, "Inspector is not mounted at the site root");
 assert.match(assembledContractor, /Practical repairs\. <em>Built to last\.<\/em>/, "Contractor is not mounted at /contracting/");
 assert.match(assembledPortal, /Which service are/, "Property-services chooser is missing its single decision question");
+
+const inspectorRequestActionIndex = assembledInspectorContact.indexOf('href="#inspection-request"');
+const inspectorRequestTargetIndex = assembledInspectorContact.indexOf('id="inspection-request"');
+assert.ok(inspectorRequestActionIndex >= 0 && inspectorRequestActionIndex < inspectorRequestTargetIndex, "Inspector Contact does not present Start request before the form target");
+assert.equal([...assembledInspectorContact.matchAll(/id="inspection-request"/g)].length, 1, "Inspector Contact must render exactly one request target");
+assert.match(assembledInspectorContact, /<form[^>]*aria-labelledby="inspection-request"/, "Inspector Contact form is not labeled by its visible request heading");
+for (const legend of ["Contact", "Property", "Timing and context"]) assert.match(assembledInspectorContact, new RegExp(`<legend>${escapeRegex(legend)}<\\/legend>`), `Inspector Contact lacks the ${legend} form group`);
+assert.equal(/<form[^>]*\saction=/i.test(assembledInspectorContact), false, "Inspector Contact unexpectedly posts to a server action");
+assert.match(inspectorSource, /Nothing has been sent yet/, "Inspector Contact lacks truthful mailto preparation copy");
+assert.match(inspectorSource, /errorSummaryRef\.current\?\.focus\(\)/, "Inspector Contact error summary no longer receives focus");
+assert.match(inspectorSource, /href=\{`#inspection-\$\{field\}`\}/, "Inspector Contact error summary no longer links to invalid fields");
+assert.match(inspectorSource, /onChange=\{handleChange\}/, "Inspector Contact does not clear stale prepared state after edits");
+assert.match(inspectorSource, /name === "phone" && preferredContact === "phone"/, "Inspector Contact does not expose phone as conditionally required");
 
 assert.match(assembledInspectorServices, /data-scope-atlas="true"/, "Inspector Services lacks the visual scope atlas");
 assert.match(assembledInspectorServices, /Representative editorial imagery; not C&amp;G client or project photography\./, "Inspector Services lacks the editorial-image disclosure");

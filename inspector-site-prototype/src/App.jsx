@@ -162,9 +162,9 @@ function SiteHeader({ currentRoute, mobileMenuOpen, setMobileMenuOpen, onNavigat
   );
 }
 
-function PageHero({ route, onNavigate, eyebrow, title, children, actions }) {
+function PageHero({ route, onNavigate, eyebrow, title, children, actions, compact = false }) {
   return (
-    <section className="page-hero">
+    <section className={`page-hero${compact ? " page-hero-compact" : ""}`}>
       <div className="container page-hero-inner">
         <Breadcrumbs items={route.breadcrumbs} linkFor={pageUrl} onNavigate={onNavigate} />
         {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
@@ -541,11 +541,45 @@ function ResourceArticlePage({ route, onNavigate }) {
   );
 }
 
+const contactPreparationItems = [
+  ["01", "Property address", "Use the full address so travel and property context can be reviewed."],
+  ["02", "Property basics", "Share the residential property type and approximate size when known."],
+  ["03", "Inspection purpose", "Tell C&G whether this supports a purchase, sale, or homeowner decision."],
+  ["04", "Timing", "Include preferred dates and any true transaction or access deadline."],
+];
+
+const focusInspectionRequest = () => {
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => document.getElementById("inspection-request")?.focus({ preventScroll: true }));
+};
+
 function ContactPage({ route, onNavigate }) {
   return (
     <>
-      <PageHero route={route} onNavigate={onNavigate} eyebrow="Contact and scheduling" title="Start with the property and the decision in front of you."><p className="page-hero-lede">A few details make it easier to confirm scope, price, travel, and availability. A submitted request is not an appointment until C&amp;G confirms it.</p></PageHero>
-      <section className="page-section page-section-cream contact-page-section"><div className="container contact-form-layout"><div className="contact-form-intro"><p className="eyebrow eyebrow-dark">Four details make scheduling easier</p><h2>Address, property, purpose, and timing.</h2><ol><li>Full property address</li><li>Property type and approximate size</li><li>Reason for the inspection</li><li>Preferred dates and transaction timing</li></ol><div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a></div></div><ContactRequestForm /></div></section>
+      <PageHero
+        route={route}
+        onNavigate={onNavigate}
+        eyebrow="Contact and scheduling"
+        title="Start with the property and the decision in front of you."
+        compact
+        actions={<><a className="button button-gold" href="#inspection-request" onClick={focusInspectionRequest}>Start request <ArrowRight size={17} aria-hidden="true" /></a><a className="button button-outline-light" href={business.inspection.phoneHref}><Phone size={17} aria-hidden="true" /> Call C&amp;G</a></>}
+      >
+        <p className="page-hero-lede">A few details make it easier to confirm scope, price, travel, and availability. A submitted request is not an appointment until C&amp;G confirms it.</p>
+      </PageHero>
+      <section className="page-section page-section-cream contact-page-section">
+        <div className="container contact-form-layout">
+          <aside className="contact-form-intro" aria-labelledby="contact-preflight-title">
+            <div>
+              <p className="eyebrow eyebrow-dark">Before you start</p>
+              <h2 id="contact-preflight-title">Have four details ready.</h2>
+              <p>These details help C&amp;G review the request before discussing availability or price.</p>
+              <div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a></div>
+            </div>
+            <ol className="contact-preflight-list">{contactPreparationItems.map(([number, title, description]) => <li key={title}><span>{number}</span><div><strong>{title}</strong><p>{description}</p></div></li>)}</ol>
+          </aside>
+          <ContactRequestForm />
+        </div>
+      </section>
     </>
   );
 }
@@ -608,7 +642,7 @@ function SiteFooter({ onNavigate }) {
   );
 }
 
-function MobileQuickActions({ onNavigate }) {
+function MobileQuickActions({ onNavigate, currentRoute }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const handleScroll = () => setVisible(window.scrollY > 260);
@@ -617,7 +651,10 @@ function MobileQuickActions({ onNavigate }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   if (!visible) return null;
-  return <div className="mobile-quick-actions" aria-label="Quick contact actions"><InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Schedule</InternalLink><a className="button button-dark" href={business.inspection.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a></div>;
+  const requestAction = currentRoute.key === "contact"
+    ? <a className="button button-gold" href="#inspection-request" onClick={focusInspectionRequest}><ArrowRight size={15} aria-hidden="true" /> Start request</a>
+    : <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Schedule</InternalLink>;
+  return <div className="mobile-quick-actions" aria-label="Quick contact actions">{requestAction}<a className="button button-dark" href={business.inspection.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a></div>;
 }
 
 export function App({ initialPath = null }) {
@@ -675,7 +712,7 @@ export function App({ initialPath = null }) {
       <SiteHeader currentRoute={route} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} onNavigate={onNavigate} onOpenSearch={() => setSearchOpen(true)} />
       <main id="page-content" tabIndex="-1" data-pagefind-body>{page}</main>
       <SiteFooter onNavigate={onNavigate} />
-      <MobileQuickActions onNavigate={onNavigate} />
+      <MobileQuickActions onNavigate={onNavigate} currentRoute={route} />
       <SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
