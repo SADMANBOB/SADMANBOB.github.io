@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 20
     env:
       CI: true
+      HOME: /root
       SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://www.cginspection.net' }}
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +46,7 @@ jobs:
       - name: Refresh pinned Linux visual baselines
         run: npm run test:browsers -- --update-snapshots=all
       - name: Preserve refreshed visual baselines
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: visual-baselines-linux-refresh
