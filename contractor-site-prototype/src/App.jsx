@@ -58,12 +58,21 @@ function SeparationNotice({ onNavigate, compact = false }) {
   return <section className={`separation-notice ${compact ? "is-compact" : ""}`} aria-labelledby="separation-title"><div className="container separation-inner"><ShieldCheck aria-hidden="true" /><div><h2 id="separation-title">Inspection and construction stay separate.</h2><p>{separationPolicy.notice}</p></div><InternalLink href="/estimate/" onNavigate={onNavigate}>Review eligibility <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></section>;
 }
 
-function PageHero({ title, lead, route, onNavigate, actions }) {
-  return <><div className="container"><Breadcrumbs currentLabel={route.label} /></div><section className="page-hero"><div className="container"><h1>{title}</h1><p>{lead}</p>{actions ? <div className="page-hero-actions">{actions}</div> : null}</div></section></>;
+function PageHero({ title, lead, route, onNavigate, actions, compact = false }) {
+  return <><div className="container"><Breadcrumbs currentLabel={route.label} /></div><section className={`page-hero ${compact ? "page-hero-compact" : ""}`}><div className="container"><h1>{title}</h1><p>{lead}</p>{actions ? <div className="page-hero-actions">{actions}</div> : null}</div></section></>;
 }
 
 function ServiceList({ onNavigate, detailed = false, limit }) {
-  return <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>{contractorServices.slice(0, limit || contractorServices.length).map((service, index) => <article className="service-row" id={service.id} key={service.id}><span className="service-number">{String(index + 1).padStart(2, "0")}</span><span className="service-icon"><Wrench size={20} aria-hidden="true" /></span><div className="service-copy"><h2>{service.title}</h2><p>{service.summary}</p>{detailed ? <><div className="service-detail-grid"><div><h3>Potentially eligible examples</h3><ul>{service.examples.map((item) => <li key={item}><Check size={13} aria-hidden="true" />{item}</li>)}</ul></div><div><h3>Boundaries</h3><ul>{service.boundaries.map((item) => <li key={item}>{item}</li>)}</ul></div></div><InternalLink className="button button-graphite service-request-link" href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></> : <InternalLink className="text-link service-section-link" href={`/services/#${service.id}`} onNavigate={onNavigate}>Review category <ArrowRight size={14} aria-hidden="true" /></InternalLink>}</div></article>)}</div>;
+  return <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>{contractorServices.slice(0, limit || contractorServices.length).map((service, index) => <article className="service-row" id={service.id} key={service.id} tabIndex={detailed ? -1 : undefined} aria-labelledby={`${service.id}-title`}><span className="service-number">{String(index + 1).padStart(2, "0")}</span><span className="service-icon"><Wrench size={20} aria-hidden="true" /></span><div className="service-copy"><h2 id={`${service.id}-title`}>{service.title}</h2><p>{service.summary}</p>{detailed ? <><div className="service-detail-grid"><div><h3>Potentially eligible examples</h3><ul>{service.examples.map((item) => <li key={item}><Check size={13} aria-hidden="true" />{item}</li>)}</ul></div><div><h3>Boundaries</h3><ul>{service.boundaries.map((item) => <li key={item}>{item}</li>)}</ul></div></div><InternalLink className="button button-graphite service-request-link" href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></> : <InternalLink className="text-link service-section-link" href={`/services/#${service.id}`} onNavigate={onNavigate}>Review category <ArrowRight size={14} aria-hidden="true" /></InternalLink>}</div></article>)}</div>;
+}
+
+function ServiceDirectory({ onNavigate }) {
+  const navigateAndFocus = (event, href, targetId) => {
+    onNavigate(event, href);
+    if (!event.defaultPrevented) return;
+    requestAnimationFrame(() => document.getElementById(targetId)?.focus({ preventScroll: true }));
+  };
+  return <section className="service-directory-section" aria-labelledby="service-directory"><div className="container"><div className="service-directory-heading"><div><span>Project categories</span><h2 id="service-directory" tabIndex="-1">Choose the closest starting point.</h2></div><div><p>A category organizes the first conversation. It does not accept the work or replace property-specific review.</p><InternalLink className="text-link text-link-dark" href="/projects/" onNavigate={onNavigate}>See illustrated project types <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></div><nav className="service-directory-grid" aria-labelledby="service-directory">{contractorServices.map((service, index) => <InternalLink className="service-directory-link" href={`/services/#${service.id}`} onNavigate={(event, href) => navigateAndFocus(event, href, service.id)} key={service.id}><span>{String(index + 1).padStart(2, "0")}</span><span><strong>{service.title}</strong><small>{service.summary}</small></span><ArrowRight size={16} aria-hidden="true" /></InternalLink>)}</nav><div className="service-directory-uncertain"><p><strong>Not sure which category fits?</strong> Choose “Other or not sure” and describe the condition in plain language. Eligibility is still reviewed first.</p><InternalLink href="/estimate/?category=other-or-not-sure" onNavigate={onNavigate}>Start without choosing a category <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></div></section>;
 }
 
 const processSteps = [
@@ -114,7 +123,12 @@ function Home({ onNavigate }) {
 }
 
 function Services({ route, onNavigate }) {
-  return <><PageHero route={route} title="Residential work with a clear, practical scope." lead="Service categories help start the conversation. Final acceptance depends on the property, inspection eligibility, required trades, permits, access, materials, schedule, and the contractor's license and capabilities." /><section className="services-section services-page-section"><div className="container"><ServiceList detailed onNavigate={onNavigate} /></div></section><section className="third-party-report"><div className="container"><h2>Eligible work based on a third-party inspection report</h2><p>A report prepared by an independent inspector may help describe a requested project. C&amp;G still performs its own scope review and does not adopt the inspector's conclusions, guarantee that every related condition is visible, or treat the report as construction drawings. Remove confidential client information or confirm that you are authorized to share it.</p></div></section><SeparationNotice onNavigate={onNavigate} /><section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Ready to describe the scope?</h2><p>Choose a category and review the eligibility guard before preparing an email.</p></div><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request review</InternalLink></div></section></>;
+  const navigateToDirectory = (event, href) => {
+    onNavigate(event, href);
+    if (!event.defaultPrevented) return;
+    requestAnimationFrame(() => document.getElementById("service-directory")?.focus({ preventScroll: true }));
+  };
+  return <><PageHero route={route} compact title="Residential work with a clear, practical scope." lead="Service categories help start the conversation. Final acceptance depends on the property, inspection eligibility, required trades, permits, access, materials, schedule, and the contractor's license and capabilities." actions={<><InternalLink className="button button-copper" href="/services/#service-directory" onNavigate={navigateToDirectory}>Choose a category <ArrowRight size={15} aria-hidden="true" /></InternalLink><InternalLink className="button button-outline" href="/estimate/" onNavigate={onNavigate}>Review eligibility</InternalLink></>} /><ServiceDirectory onNavigate={onNavigate} /><section className="services-section services-page-section" aria-label="Detailed service scopes and boundaries"><div className="container"><ServiceList detailed onNavigate={onNavigate} /></div></section><section className="third-party-report"><div className="container"><h2>Eligible work based on a third-party inspection report</h2><p>A report prepared by an independent inspector may help describe a requested project. C&amp;G still performs its own scope review and does not adopt the inspector's conclusions, guarantee that every related condition is visible, or treat the report as construction drawings. Remove confidential client information or confirm that you are authorized to share it.</p></div></section><SeparationNotice onNavigate={onNavigate} /><section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Ready to describe the scope?</h2><p>Choose a category and review the eligibility guard before preparing an email.</p></div><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request review</InternalLink></div></section></>;
 }
 
 function Process({ route, onNavigate }) {
@@ -158,12 +172,29 @@ export function App({ initialPath }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const route = findContractorRoute(path);
   useEffect(() => {
-    const pop = () => { setPath(normalizePath(window.location.pathname)); setSearch(window.location.search); window.scrollTo(0, 0); };
+    const pop = () => {
+      setPath(normalizePath(window.location.pathname));
+      setSearch(window.location.search);
+      const fragment = window.location.hash.slice(1);
+      if (fragment) requestAnimationFrame(() => {
+        const target = document.getElementById(fragment);
+        target?.scrollIntoView();
+        target?.focus({ preventScroll: true });
+      });
+      else window.scrollTo(0, 0);
+    };
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => document.getElementById("main-content")?.focus({ preventScroll: true }));
+    const frame = window.requestAnimationFrame(() => {
+      const fragment = window.location.hash.slice(1);
+      const target = fragment ? document.getElementById(fragment) : null;
+      if (target) {
+        target.scrollIntoView();
+        target.focus({ preventScroll: true });
+      } else document.getElementById("main-content")?.focus({ preventScroll: true });
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [path]);
   const navigate = (event, nextPath) => {

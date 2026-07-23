@@ -225,6 +225,7 @@ const assembledInspectorServices = await read(resolve(output, "services/index.ht
 const assembledInspectorAbout = await read(resolve(output, "about/index.html"));
 const assembledInspectorContact = await read(resolve(output, "contact/index.html"));
 const assembledContractor = await read(resolve(output, "contracting/index.html"));
+const assembledContractorServices = await read(resolve(output, "contracting/services/index.html"));
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
@@ -255,6 +256,27 @@ assert.match(assembledInspectorAbout, /What clients can expect/, "Inspector Abou
 for (const expectation of ["Confirm the scope", "Inspect what is visible and accessible", "Make the report useful", "Review the next questions"]) assert.ok(assembledInspectorAbout.includes(expectation), `Inspector About lacks the ${expectation} expectation`);
 assert.match(assembledInspectorAbout, /href="\/services\/"[^>]*>See What the Inspection Covers/, "Inspector About lacks its Services pathway");
 assert.match(assembledInspectorAbout, /href="\/ethics\/"[^>]*>Read the independence policy/, "Inspector About lacks its Ethics pathway");
+
+const contractorDirectoryActionIndex = assembledContractorServices.indexOf('href="/contracting/services/#service-directory"');
+const contractorDirectoryTargetIndex = assembledContractorServices.indexOf('id="service-directory"');
+assert.ok(contractorDirectoryActionIndex >= 0 && contractorDirectoryActionIndex < contractorDirectoryTargetIndex, "Contractor Services does not present Choose a category before the directory target");
+assert.equal([...assembledContractorServices.matchAll(/id="service-directory"/g)].length, 1, "Contractor Services must render exactly one directory target");
+assert.match(assembledContractorServices, /<nav[^>]*class="service-directory-grid"[^>]*aria-labelledby="service-directory"/, "Contractor Services category directory lacks its accessible label");
+assert.match(assembledContractorServices, /href="\/contracting\/projects\/"[^>]*>See illustrated project types/, "Contractor Services lacks its Project Types pathway");
+assert.match(assembledContractorServices, /href="\/contracting\/estimate\/\?category=other-or-not-sure"[^>]*>Start without choosing a category/, "Contractor Services lacks its uncertain-category estimate pathway");
+assert.match(assembledContractorServices, /href="\/contracting\/estimate\/"[^>]*>Review eligibility/, "Contractor Services hero lacks its eligibility pathway");
+assert.match(contractorSource, /window\.location\.hash\.slice\(1\)/, "Contractor router does not restore fragment targets from browser history");
+assert.match(contractorSource, /target\?\.scrollIntoView\(\)/, "Contractor router does not scroll restored fragment targets into view");
+assert.match(contractorSource, /target\?\.focus\(\{ preventScroll: true \}\)/, "Contractor router does not restore focus to fragment targets");
+assert.match(contractorSource, /if \(target\) \{\s*target\.scrollIntoView\(\);\s*target\.focus\(\{ preventScroll: true \}\);\s*\} else document\.getElementById\("main-content"\)/, "Contractor route focus can override a restored fragment target");
+for (const service of contractorServices) {
+  const directoryLinks = [...assembledContractorServices.matchAll(new RegExp(`href="/contracting/services/#${escapeRegex(service.id)}"`, "g"))];
+  const detailTargets = [...assembledContractorServices.matchAll(new RegExp(`id="${escapeRegex(service.id)}"`, "g"))];
+  assert.equal(directoryLinks.length, 1, `Contractor Services must render exactly one directory link for ${service.title}`);
+  assert.equal(detailTargets.length, 1, `Contractor Services must render exactly one detail target for ${service.title}`);
+  assert.ok(directoryLinks[0].index < detailTargets[0].index, `Contractor Services directory link must precede the ${service.title} detail target`);
+  assert.match(assembledContractorServices, new RegExp(`aria-labelledby="${escapeRegex(service.id)}-title"`), `${service.title} detail target lacks an accessible label`);
+}
 
 assert.match(assembledInspectorServices, /data-scope-atlas="true"/, "Inspector Services lacks the visual scope atlas");
 assert.match(assembledInspectorServices, /Representative editorial imagery; not C&amp;G client or project photography\./, "Inspector Services lacks the editorial-image disclosure");
