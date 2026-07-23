@@ -1,184 +1,160 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  Bath,
+  BedDouble,
   BookOpen,
   Camera,
   Check,
-  ClipboardCheck,
   ChevronRight,
-  Clock3,
-  FileCheck2,
+  CircleOff,
+  ClipboardCheck,
+  CookingPot,
+  Droplets,
+  Flame,
+  Gauge,
   Hammer,
+  House,
+  Layers,
   Menu,
+  Mountain,
   Phone,
   Printer,
+  ScanLine,
+  Search,
   ShieldCheck,
+  Snowflake,
+  ThermometerSun,
+  Trees,
+  Triangle,
+  WashingMachine,
+  Warehouse,
   X,
+  Zap,
 } from "lucide-react";
+import {
+  approvedServiceAreas,
+  business,
+  separationPolicy,
+} from "../../shared/siteData.js";
+import { Breadcrumbs } from "./components/Breadcrumbs.jsx";
+import { ContactRequestForm } from "./components/ContactRequestForm.jsx";
+import { DisclosureGroup } from "./components/DisclosureGroup.jsx";
+import { Seo } from "./components/Seo.jsx";
+import { SiteSearchDialog } from "./components/SiteSearchDialog.jsx";
+import { inspectorFaqGroups } from "./content/faqs.js";
+import { enabledInspectionScope } from "./content/inspectionScope.js";
+import {
+  enabledInspectorRoutes,
+  findInspectorRoute,
+  inspectorFooterRoutes,
+  inspectorNavigation,
+  inspectorNotFoundRoute,
+} from "./content/routes.js";
+import { readingMinutes, resourceBySlug, resourceGroups } from "./content/resources.js";
 
-const bookingUrl =
-  "https://docs.google.com/forms/d/e/1FAIpQLSc4O-SjvnZyKU7dTZoinpogjsNcC6NxJHNhDP1Lxp-1WYYCTw/viewform";
 const contractorUrl = "/contracting/";
-const phoneNumber = "(310) 505-6581";
+const propertyServicesUrl = "/property-services/";
 const appBase = import.meta.env.BASE_URL;
+const siteOrigin = (import.meta.env.VITE_SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
+
 const pageUrl = (path) => {
   const relativePath = path.replace(/^\/+|\/+$/g, "");
   return relativePath ? `${appBase}${relativePath}/` : appBase;
 };
 
-const navItems = [
-  ["Home", "/"],
-  ["Services", "/services"],
-  ["About", "/about"],
-  ["Areas We Serve", "/areas"],
-  ["FAQ", "/faq"],
-  ["Resources", "/resources"],
-  ["Contact", "/contact"],
-];
-
-const pageByPath = {
-  "/": "home",
-  "/services": "services",
-  "/about": "about",
-  "/areas": "areas",
-  "/faq": "faq",
-  "/resources": "resources",
-  "/contact": "contact",
-};
-
-const pageMeta = {
-  home: {
-    title: "C&G Certified Home Inspector | Know what you’re buying.",
-    description: "Construction-informed home inspections across Los Angeles County with clear answers, detailed photos, and practical next steps.",
-  },
-  services: {
-    title: "Inspection Services | C&G Certified Home Inspector",
-    description: "Explore C&G inspection services, typical inspection areas, photo-rich reports, and practical recommendations.",
-  },
-  about: {
-    title: "About C&G | Certified Home Inspector",
-    description: "Meet C&G Certified Home Inspector and learn about the construction-informed approach behind every inspection.",
-  },
-  areas: {
-    title: "Areas We Serve | C&G Certified Home Inspector",
-    description: "C&G Certified Home Inspector serves Los Angeles County, the San Gabriel Valley, the South Bay, and surrounding communities.",
-  },
-  faq: {
-    title: "FAQ | C&G Certified Home Inspector",
-    description: "Straightforward answers about C&G home inspections, reports, scheduling, and what to expect.",
-  },
-  resources: {
-    title: "Home Inspection Resources | C&G Certified Home Inspector",
-    description: "Practical home inspection guidance for preparing, reviewing a report, and planning next steps.",
-  },
-  notFound: {
-    title: "Page Not Found | C&G Certified Home Inspector",
-    description: "The page you were looking for is not available. Return to C&G Certified Home Inspector for clear answers and practical next steps.",
-  },
-  contact: {
-    title: "Contact C&G | Schedule a Home Inspection",
-    description: "Schedule a C&G home inspection or contact the team about a property in Los Angeles County and surrounding communities.",
-  },
-};
-
-const resourcePlanSteps = [
-  ["01", "Before the visit", "Confirm access, gather the questions already on your mind, and share any property context that will help the inspection start with the right focus."],
-  ["02", "During the inspection", "Use the time on site to ask questions, understand what is visible, and separate a current priority from a condition that simply needs watching."],
-  ["03", "After the report", "Review the priorities first, then decide which questions need a qualified trade follow-up, a repair conversation, or no immediate action."],
-];
-
-const contactPathSteps = [
-  ["01", "Start with a property question", "Use the scheduling form or call C&G directly if you want to talk through the property first."],
-  ["02", "Choose a time that works", "Pick an inspection window that fits the decision in front of you and the access the property allows."],
-  ["03", "Use the report", "Review photos, context, and priorities so the next conversation starts with better information."],
-];
-
-const contactPrepItems = [
-  ["01", "Property address", "Share the address or city so service area and access can be discussed."],
-  ["02", "Reason for the inspection", "Buying, selling, maintaining, or planning work gives the conversation useful context."],
-  ["03", "Access and timing", "Note occupancy, gates, utility spaces, or decision dates that may affect scheduling."],
-  ["04", "Your questions", "Bring known concerns, recent repairs, or areas you want to understand more clearly."],
-];
-
-function routeKey(pathname = window.location.pathname) {
+const normalizeRoutePath = (pathname = "/") => {
   const basePath = appBase.replace(/\/+$/, "");
   const relativePath = basePath && pathname.startsWith(basePath)
     ? pathname.slice(basePath.length) || "/"
     : pathname;
-  const cleanPath = relativePath.replace(/\/+$/, "") || "/";
-  return pageByPath[cleanPath] || "notFound";
+  const pathOnly = relativePath.split(/[?#]/, 1)[0] || "/";
+  return pathOnly === "/" ? "/" : `/${pathOnly.replace(/^\/+|\/+$/g, "")}/`;
+};
+
+function InternalLink({ href, onNavigate, children, className = "", ...props }) {
+  const handleClick = (event) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    onNavigate(event, href);
+  };
+  return <a className={className} href={pageUrl(href)} onClick={handleClick} {...props}>{children}</a>;
 }
 
 function BrandMark({ onNavigate }) {
   return (
-    <a className="brand" href={pageUrl("/")} onClick={(event) => onNavigate(event, "/")} aria-label="C&G Certified Home Inspector home">
-      <span className="brand-mark-wrap">
-        <img src={assetUrl("assets/cg-logo-mark.png")} alt="" className="brand-mark" />
-      </span>
-      <span className="brand-copy">
-        <strong>C&amp;G Certified</strong>
-        <span>Home Inspector</span>
-      </span>
-    </a>
+    <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.inspection.publicName} home`}>
+      <span className="brand-mark-wrap"><img src={assetUrl("assets/cg-logo-mark.png")} alt="" className="brand-mark" width="54" height="54" /></span>
+      <span className="brand-copy"><strong>C&amp;G Certified</strong><span>Home Inspector</span></span>
+    </InternalLink>
   );
 }
 
-function InternalLink({ href, onNavigate, children, className = "" }) {
+function ServiceSwitcher({ onNavigate }) {
   return (
-    <a className={className} href={pageUrl(href)} onClick={(event) => onNavigate(event, href)}>
-      {children}
-    </a>
+    <div className="service-switcher" aria-label="C&G property services">
+      <div className="container service-switcher-inner">
+        <span className="service-switcher-label">Choose a service</span>
+        <InternalLink className="service-switcher-link is-current" href="/" onNavigate={onNavigate} aria-current="true"><House size={14} aria-hidden="true" /> Home Inspection</InternalLink>
+        <a className="service-switcher-link" href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Contracting <span>Separate service</span></a>
+        <InternalLink className="service-switcher-policy" href="/ethics/" onNavigate={onNavigate}>12-month separation policy</InternalLink>
+      </div>
+    </div>
   );
 }
 
-function SiteHeader({ mobileMenuOpen, setMobileMenuOpen, currentPage, onNavigate }) {
-  const closeMenu = () => setMobileMenuOpen(false);
+function SiteHeader({ currentRoute, mobileMenuOpen, setMobileMenuOpen, onNavigate, onOpenSearch }) {
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    menuRef.current?.querySelector("a")?.focus();
+    const handleEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setMobileMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [mobileMenuOpen, setMobileMenuOpen]);
 
   return (
     <header className="site-header">
       <div className="container header-inner">
         <BrandMark onNavigate={onNavigate} />
-
-        <nav className={`desktop-nav ${mobileMenuOpen ? "is-open" : ""}`} aria-label="Main navigation">
-          {navItems.map(([label, href]) => (
-            <a
-              className={currentPage === routeKey(href) ? "is-active" : ""}
-              key={href}
-              href={pageUrl(href)}
-              aria-current={currentPage === routeKey(href) ? "page" : undefined}
-              onClick={(event) => {
+        <nav id="inspector-navigation" ref={menuRef} className={`desktop-nav ${mobileMenuOpen ? "is-open" : ""}`} aria-label="Main navigation">
+          {inspectorNavigation.map((route) => (
+            <InternalLink
+              key={route.path}
+              href={route.path}
+              onNavigate={(event, href) => {
                 onNavigate(event, href);
-                closeMenu();
+                setMobileMenuOpen(false);
               }}
+              className={currentRoute.key === route.key ? "is-active" : ""}
+              aria-current={currentRoute.key === route.key ? "page" : undefined}
             >
-              {label}
-            </a>
+              {route.label}
+            </InternalLink>
           ))}
-          <a className="mobile-menu-cta button button-gold" href={bookingUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>
-            Schedule an Inspection <ArrowRight size={16} />
-          </a>
-          <a className="mobile-menu-sister" href={contractorUrl} target="_blank" rel="noreferrer" onClick={closeMenu}>
-            Visit C&amp;G Contracting Services <ArrowRight size={14} />
-          </a>
+          <InternalLink className="mobile-menu-cta button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={16} aria-hidden="true" /></InternalLink>
+          <a className="mobile-menu-sister" href={contractorUrl}>Separate contracting service · 12-month rule applies <ArrowRight size={14} aria-hidden="true" /></a>
         </nav>
-
         <div className="header-actions">
-          <a className="phone-link" href="tel:+13105056581" aria-label={`Call C&G at ${phoneNumber}`}>
-            <Phone size={16} strokeWidth={1.8} />
-            <span>{phoneNumber}</span>
-          </a>
-          <a className="button button-small button-gold" href={bookingUrl} target="_blank" rel="noreferrer">
-            Schedule an Inspection
-          </a>
+          <a className="phone-link" href={business.inspection.phoneHref} aria-label={`Call C&G at ${business.inspection.phoneDisplay}`}><Phone size={16} aria-hidden="true" /><span>{business.inspection.phoneDisplay}</span></a>
+          <button className="header-search" type="button" onClick={onOpenSearch} aria-label="Search inspection guidance"><Search size={18} aria-hidden="true" /><span>Search</span></button>
+          <InternalLink className="button button-small button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection</InternalLink>
           <button
+            ref={menuButtonRef}
             className="menu-toggle"
             type="button"
             aria-expanded={mobileMenuOpen}
+            aria-controls="inspector-navigation"
             aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
             onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -186,11 +162,12 @@ function SiteHeader({ mobileMenuOpen, setMobileMenuOpen, currentPage, onNavigate
   );
 }
 
-function PageHero({ eyebrow, title, children, actions }) {
+function PageHero({ route, onNavigate, eyebrow, title, children, actions }) {
   return (
     <section className="page-hero">
       <div className="container page-hero-inner">
-        <p className="eyebrow">{eyebrow}</p>
+        <Breadcrumbs items={route.breadcrumbs} linkFor={pageUrl} onNavigate={onNavigate} />
+        {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {children}
         {actions ? <div className="page-hero-actions">{actions}</div> : null}
@@ -199,726 +176,459 @@ function PageHero({ eyebrow, title, children, actions }) {
   );
 }
 
-function BookingCallout({ onNavigate, eyebrow = "Ready to know more?", title = "Make the next decision with better information." }) {
+function BookingCallout({ onNavigate, eyebrow = "Have a property in mind?", title = "Start with the address, property type, and timing." }) {
   return (
     <section className="contact-section">
       <div className="container contact-card">
-        <div>
-          <p className="eyebrow">{eyebrow}</p>
-          <h2>{title}</h2>
-        </div>
+        <div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>
         <div className="contact-actions">
-          <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">
-            Schedule an Inspection <ArrowRight size={17} />
-          </a>
-          <a className="button button-outline-light" href="tel:+13105056581">
-            <Phone size={17} /> Call {phoneNumber}
-          </a>
+          <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+          <a className="button button-outline-light" href={business.inspection.phoneHref}><Phone size={17} aria-hidden="true" /> Call C&amp;G</a>
         </div>
       </div>
     </section>
   );
 }
 
-const featureCards = [
-  {
-    number: "01",
-    title: "Photo-rich reports",
-    description: "See the condition, understand the context, and keep a clear record for the next conversation.",
-    image: assetUrl("assets/report-laptop.jpg"),
-    alt: "Home inspection report and tools on a desk",
-  },
-  {
-    number: "02",
-    title: "Practical recommendations",
-    description: "Construction perspective without the pressure—just a useful read on what deserves attention.",
-    image: assetUrl("assets/attic-inspection.jpg"),
-    alt: "Inspector measuring attic framing with a flashlight",
-  },
-  {
-    number: "03",
-    title: "Clear next steps",
-    description: "Findings are organized so you can separate timely follow-up from routine maintenance and longer-term planning.",
-    icon: <ClipboardCheck size={28} strokeWidth={1.5} />,
-  },
+const homeScope = [
+  "Site, exterior, roof, and drainage",
+  "Structure, foundation, crawlspace, and attic",
+  "Electrical, plumbing, gas, and water heating",
+  "Heating, cooling, insulation, and ventilation",
+  "Kitchen, bathrooms, laundry, and interior rooms",
+  "Garage, fireplace, chimney, and approved optional systems",
 ];
 
-function FeatureGrid() {
-  return (
-    <div className="feature-grid">
-      {featureCards.map((card) => (
-        <article className={`feature-card ${card.icon ? "feature-card-icon" : "feature-card-image"}`} key={card.number}>
-          {card.image ? (
-            <div className="feature-image"><img src={card.image} alt={card.alt} width="1536" height="1024" loading="lazy" decoding="async" /></div>
-          ) : (
-            <div className="feature-icon">{card.icon}</div>
-          )}
-          <div className="feature-card-body">
-            <span className="feature-number">{card.number}</span>
-            <h3>{card.title}</h3>
-            <p>{card.description}</p>
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-}
+function HomePage({ route, onNavigate }) {
+  const audiences = [
+    ["Buyers", "Understand visible and accessible conditions before completing the purchase, then separate material concerns, specialist follow-up, and maintenance planning."],
+    ["Sellers", "Learn what may deserve attention before listing without assuming another inspector or buyer will reach the same conclusion."],
+    ["Homeowners", "Build a clearer maintenance and planning conversation around the home you already own."],
+    ["Property professionals", "Support clients with plain language, documented observations, and an independent conclusion."],
+  ];
+  const process = [
+    ["01", "Share the property", "Provide the address, property type, approximate size, desired timing, and reason for the inspection."],
+    ["02", "Confirm the scope", "C&G confirms availability, access needs, price, agreement, and any approved optional service before the appointment."],
+    ["03", "Inspect and document", "Visible and accessible conditions are reviewed and observations are supported with photographs where useful."],
+    ["04", "Review the report", "Read the complete report, note recommended follow-up, and contact C&G with questions."],
+  ];
+  const reasons = [
+    ["01", "The home stays connected", "Exterior water, roof, attic, structure, utilities, and interior finishes are considered as related systems—not isolated checklist items."],
+    ["02", "The language stays useful", "Observations are written to help you locate the condition, understand the visible context, and identify the next sensible question."],
+    ["03", "The limits stay visible", "Unsafe, obstructed, concealed, or out-of-scope conditions are stated so the report does not imply more certainty than the inspection supports."],
+    ["04", "The advice stays independent", "Specialist follow-up is described by the expertise needed. Inspection findings are not used to create prohibited repair work."],
+  ];
 
-const claritySteps = [
-  ["01", "Observe", "Review the major visible and accessible systems without destructive testing or guesswork."],
-  ["02", "Explain", "Connect photos and plain-language notes so each finding has useful context."],
-  ["03", "Prioritize", "Separate timely qualified follow-up from routine maintenance and longer-term planning."],
-];
-
-function ClaritySection() {
-  return (
-    <section className="clarity-section">
-      <div className="container clarity-grid">
-        <div className="clarity-heading">
-          <p className="eyebrow">How clarity is built</p>
-          <h2>Useful information beats a wall of findings.</h2>
-          <p>The goal is a calm, property-focused record you can review with the people helping you make the decision.</p>
-        </div>
-        <ol className="clarity-list">
-          {claritySteps.map(([number, title, description]) => (
-            <li key={number}>
-              <span>{number}</span>
-              <div><h3>{title}</h3><p>{description}</p></div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-const inspectionAreas = [
-  ["01", "Exterior & roofline", "A practical look at the visible exterior conditions that shape how the home performs and what deserves follow-up."],
-  ["02", "Structure, attic & crawlspaces", "Accessible areas are documented with photos and context so you can understand the condition without guessing."],
-  ["03", "Plumbing, electrical & HVAC", "Major visible and accessible systems are reviewed with an emphasis on clear priorities and useful next steps."],
-  ["04", "Interior & safety", "We document the rooms, components, and visible safety concerns that matter to your decision."],
-];
-
-const inspectionQuickFacts = [
-  ["Property decisions", "Buying, selling, maintaining, or planning repairs"],
-  ["Inspection focus", "Major visible and accessible systems"],
-  ["Your report", "Photos, context, and prioritized next steps"],
-  ["Service area", "Los Angeles County and surrounding communities"],
-];
-
-function InspectionAreaGrid() {
-  return (
-    <div className="inspection-area-grid">
-      {inspectionAreas.map(([number, title, description]) => (
-        <details className="inspection-area-card" key={number}>
-          <summary>
-            <span className="inspection-area-number">{number}</span>
-            <span className="inspection-area-title">{title}</span>
-            <ChevronRight size={18} />
-          </summary>
-          <p>{description}</p>
-        </details>
-      ))}
-    </div>
-  );
-}
-
-function InspectionQuickFacts() {
-  return (
-    <section className="quick-facts-band" aria-label="Inspection at a glance">
-      <div className="container quick-facts-grid">
-        {inspectionQuickFacts.map(([label, value], index) => (
-          <div className="quick-fact" key={label}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <div><strong>{label}</strong><p>{value}</p></div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function HomePage({ onNavigate }) {
   return (
     <>
       <section className="hero">
         <div className="container hero-grid">
           <div className="hero-copy">
-            <p className="eyebrow">Serving Los Angeles County &amp; surrounding communities</p>
+            <p className="eyebrow">C&amp;G Certified Home Inspector</p>
             <h1>Know what you’re <em>buying.</em></h1>
-            <p className="hero-lede">
-              Construction-informed home inspections with clear answers, detailed photos, and no scare tactics.
-            </p>
+            <p className="hero-lede">A clear home inspection helps you understand the visible condition of the property, focus on the findings that matter, and move into the next conversation with better questions.</p>
             <div className="hero-actions">
-              <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">
-                Schedule an Inspection <ArrowRight size={17} />
-              </a>
-              <InternalLink className="text-link text-link-light" href="/services" onNavigate={onNavigate}>
-                See What We Inspect <ChevronRight size={16} />
-              </InternalLink>
+              <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+              <InternalLink className="text-link text-link-light" href="/services/" onNavigate={onNavigate}>Explore What We Inspect <ChevronRight size={16} aria-hidden="true" /></InternalLink>
             </div>
-            <div className="hero-trust">
-              <span><ShieldCheck size={16} /> Independent, property-focused guidance</span>
-              <span><Camera size={16} /> Photo-rich digital reporting</span>
-            </div>
+            <div className="hero-trust"><span><ShieldCheck size={16} aria-hidden="true" /> Clear explanations</span><span><Camera size={16} aria-hidden="true" /> Detailed photos</span><span>No scare tactics</span></div>
           </div>
-          <div className="hero-visual">
+          <figure className="hero-visual">
             <img src={assetUrl("assets/hero-inspector.jpg")} alt="Home inspector using a diagnostic meter beside a stucco home" width="1731" height="909" fetchPriority="high" decoding="async" />
-            <div className="hero-caption">
-              <span className="caption-rule" />
-              <span>Clear answers for your next move.</span>
-            </div>
-          </div>
+            <figcaption className="hero-caption"><span className="caption-rule" /><span>Editorial illustration of the inspection process.</span></figcaption>
+          </figure>
         </div>
       </section>
 
-      <InspectionQuickFacts />
+      <section className="page-section page-section-cream">
+        <div className="container">
+          <div className="section-intro section-intro-row"><div><p className="eyebrow eyebrow-dark">Who the inspection helps</p><h2>Useful guidance for the decision in front of you.</h2></div><p>The same property can raise different questions depending on the client’s role and timing.</p></div>
+          <div className="audience-cards audience-cards-four">{audiences.map(([title, copy], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{copy}</p></article>)}</div>
+        </div>
+      </section>
+
+      <section className="why-cg-section">
+        <div className="container">
+          <div className="section-intro section-intro-row"><div><p className="eyebrow">Why C&amp;G</p><h2>Clarity comes from the way the whole inspection is handled.</h2></div><p>No badge, rating, or sales promise replaces a careful scope, readable documentation, honest limitations, and independent next-step guidance.</p></div>
+          <div className="why-cg-grid">{reasons.map(([number, title, copy]) => <article key={number}><span>{number}</span><ShieldCheck size={22} aria-hidden="true" /><h3>{title}</h3><p>{copy}</p></article>)}</div>
+        </div>
+      </section>
+
+      <section className="scope-explainer-section">
+        <div className="container scope-explainer-grid">
+          <div className="scope-explainer-heading"><p className="eyebrow eyebrow-dark">What the inspection covers</p><h2>A careful look at the home’s major visible systems.</h2><p>The signed agreement and conditions at the property control the final scope.</p></div>
+          <div className="scope-card-grid">{homeScope.map((title, index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3></article>)}</div>
+          <InternalLink className="section-link" href="/services/" onNavigate={onNavigate}>See the complete inspection scope <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+        </div>
+      </section>
 
       <section className="proof-band">
         <div className="container">
-          <div className="section-intro section-intro-row">
-            <div>
-              <p className="eyebrow eyebrow-dark">What you get</p>
-              <h2>A report you can actually use.</h2>
-            </div>
-            <p>Every inspection is built to help you understand the home, prioritize what matters, and move forward with confidence.</p>
+          <div className="section-intro section-intro-row"><div><p className="eyebrow eyebrow-dark">The report</p><h2>A report you can actually use.</h2></div><p>Observations, photographs, location context, and practical recommendations make the property easier to discuss.</p></div>
+          <div className="feature-grid">
+            <article className="feature-card feature-card-image"><div className="feature-image"><img src={assetUrl("assets/report-laptop.jpg")} alt="Home inspection report and tools on a desk" width="1536" height="1024" loading="lazy" decoding="async" /></div><div className="feature-card-body"><span className="feature-number">01</span><h3>Visible condition documented</h3><p>Photographs are tied to the relevant observation and location where useful.</p></div></article>
+            <article className="feature-card feature-card-image"><div className="feature-image"><img src={assetUrl("assets/attic-inspection.jpg")} alt="Inspector measuring visible attic framing with a flashlight" width="1536" height="1024" loading="lazy" decoding="async" /></div><div className="feature-card-body"><span className="feature-number">02</span><h3>Context that stays connected</h3><p>System, location, limitation, and next-step language remain together.</p></div></article>
+            <article className="feature-card feature-card-icon"><div className="feature-icon"><ClipboardCheck size={28} aria-hidden="true" /></div><div className="feature-card-body"><span className="feature-number">03</span><h3>Practical follow-up</h3><p>Questions are welcomed after delivery; timing is confirmed when the inspection is scheduled.</p></div></article>
           </div>
-          <FeatureGrid />
-          <InternalLink className="section-link" href="/services" onNavigate={onNavigate}>
-            See every inspection service <ArrowRight size={17} />
-          </InternalLink>
         </div>
       </section>
 
       <section className="home-process-section">
-        <div className="container home-process-grid">
-          <div>
-            <p className="eyebrow eyebrow-dark">The C&amp;G approach</p>
-            <h2>From first question to confident decision.</h2>
-          </div>
-          <div className="home-process-copy">
-            <p>C&amp;G brings a construction-informed perspective to the inspection process—so you get a thoughtful look at the home and a straightforward conversation about what comes next.</p>
-            <InternalLink className="button button-dark" href="/about" onNavigate={onNavigate}>
-              Meet C&amp;G <ArrowRight size={17} />
-            </InternalLink>
-          </div>
-        </div>
+        <div className="container home-process-grid"><div><p className="eyebrow eyebrow-dark">Meet Clarence Gloss</p><h2>Careful observations, explained calmly.</h2></div><div className="home-process-copy"><p>Clarence brings a construction-informed perspective and a calm communication style to the inspection process. The goal is to document visible conditions carefully, explain what they may mean, and help identify the next useful question.</p><InternalLink className="button button-dark" href="/about/" onNavigate={onNavigate}>Meet Clarence <ArrowRight size={17} aria-hidden="true" /></InternalLink></div></div>
       </section>
 
-      <ClaritySection />
+      <section className="clarity-section">
+        <div className="container clarity-grid"><div className="clarity-heading"><p className="eyebrow">The process</p><h2>A clear path from scheduling to follow-up.</h2><p>A submitted request is only the beginning; scope, access, price, and timing are confirmed before the appointment.</p></div><ol className="clarity-list">{process.map(([number, title, copy]) => <li key={number}><span>{number}</span><div><h3>{title}</h3><p>{copy}</p></div></li>)}</ol></div>
+      </section>
 
-      <section className="sister-section sister-section-home">
+      <section className="sister-section">
         <div className="container sister-grid">
-          <div className="sister-image-wrap">
-            <img src={assetUrl("assets/contracting-review.jpg")} alt="Construction professionals reviewing plans in a kitchen" width="1536" height="1024" loading="lazy" decoding="async" />
-            <span className="sister-image-label">The C&amp;G family of services</span>
-          </div>
-          <div className="sister-copy">
-            <p className="eyebrow eyebrow-dark">A related C&amp;G service</p>
-            <h2>Inspection and construction stay separate.</h2>
-            <p>C&amp;G Contracting Services is part of the broader C&amp;G family. It does not offer or perform repairs on a property for which C&amp;G prepared a home inspection report during the previous 12 months.</p>
-            <a className="button button-gold" href={contractorUrl} target="_blank" rel="noreferrer">
-              Explore C&amp;G Contracting Services <ArrowRight size={17} />
-            </a>
-          </div>
+          <div className="sister-image-wrap"><img src={assetUrl("assets/contracting-review.jpg")} alt="Construction professionals reviewing plans in a kitchen" width="1536" height="1024" loading="lazy" decoding="async" /><span className="sister-image-label">Editorial illustration</span></div>
+          <div className="sister-copy"><p className="eyebrow eyebrow-dark">Inspection independence</p><h2>Inspection conclusions should stand on their own.</h2><p>{separationPolicy.notice}</p><InternalLink className="button button-gold" href="/ethics/" onNavigate={onNavigate}>Read the Inspection Ethics Policy <ArrowRight size={17} aria-hidden="true" /></InternalLink></div>
         </div>
       </section>
-
       <BookingCallout onNavigate={onNavigate} />
     </>
   );
 }
 
-function ServicesPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero
-        eyebrow="What we inspect"
-        title="A closer look at the home, with a clearer report."
-        actions={(
-          <>
-            <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">Schedule an Inspection <ArrowRight size={17} /></a>
-            <InternalLink className="text-link text-link-light" href="/contact" onNavigate={onNavigate}>Ask a question <ChevronRight size={16} /></InternalLink>
-          </>
-        )}
-      >
-        <p className="page-hero-lede">A practical inspection helps you understand the property before the next decision—whether you are buying, selling, maintaining, or planning repairs.</p>
-      </PageHero>
-      <section className="page-section page-section-cream">
-        <div className="container">
-          <div className="section-intro section-intro-row">
-            <div>
-              <p className="eyebrow eyebrow-dark">Inspection services</p>
-              <h2>Useful detail without the overwhelm.</h2>
-            </div>
-            <p>We focus on the major visible and accessible systems that shape your understanding of the property.</p>
-          </div>
-          <FeatureGrid />
-        </div>
-      </section>
-      <section className="page-section page-section-cream page-section-tight-top">
-        <div className="container">
-          <div className="section-intro section-intro-row">
-            <div>
-              <p className="eyebrow eyebrow-dark">Typical inspection areas</p>
-              <h2>Open the details that matter to your property.</h2>
-            </div>
-            <p>Visible and accessible conditions are documented in the report. Final scope depends on the property and inspection agreement.</p>
-          </div>
-          <InspectionAreaGrid />
-        </div>
-      </section>
-      <section className="scope-explainer-section">
-        <div className="container scope-explainer-grid">
-          <div className="scope-explainer-heading">
-            <p className="eyebrow eyebrow-dark">Understanding the scope</p>
-            <h2>A useful inspection is clear about its limits.</h2>
-            <p>A home inspection is a visual, non-invasive review of visible and accessible conditions. It informs the decision in front of you without pretending every condition can be seen or predicted.</p>
-          </div>
-          <div className="scope-panel-grid">
-            <article>
-              <span>What it helps answer</span>
-              <ul>
-                <li><Check size={17} /> What visible conditions deserve attention?</li>
-                <li><Check size={17} /> Which questions should be raised next?</li>
-                <li><Check size={17} /> What belongs in maintenance or longer-term planning?</li>
-              </ul>
-            </article>
-            <article>
-              <span>Where follow-up may help</span>
-              <ul>
-                <li><Check size={17} /> Conditions hidden behind finishes or in inaccessible areas</li>
-                <li><Check size={17} /> Engineering, code, environmental, or specialty-trade questions</li>
-                <li><Check size={17} /> Items excluded by the property-specific inspection agreement</li>
-              </ul>
-            </article>
-          </div>
-        </div>
-      </section>
-      <section className="page-section page-section-cream page-section-tight-top">
-        <div className="container resource-checklist-grid">
-          <div>
-            <p className="eyebrow">Before we arrive</p>
-            <h2>A smoother inspection starts with a little access.</h2>
-          </div>
-          <div className="resource-checklist resource-checklist-light">
-            <div><Check size={18} /><span>Make sure the inspector can reach the major systems and accessible areas.</span></div>
-            <div><Check size={18} /><span>Unlock gates, garages, utility spaces, and other areas included in the inspection.</span></div>
-            <div><Check size={18} /><span>Bring the questions or concerns you want answered while we are on site.</span></div>
-            <div><Check size={18} /><span>Share any known repairs, permits, or recent work that may add useful context.</span></div>
-          </div>
-        </div>
-      </section>
-      <section className="page-section page-section-deep">
-        <div className="container page-split-grid">
-          <div>
-            <p className="eyebrow">A construction-informed perspective</p>
-            <h2>Know what deserves attention now—and what can wait.</h2>
-          </div>
-          <div className="page-copy-light">
-            <p>Every finding is documented with context so you can have a more useful conversation with your agent, contractor, seller, or family.</p>
-            <ul className="service-list">
-              <li><Camera size={18} /> Detailed photos and visible conditions</li>
-              <li><FileCheck2 size={18} /> Clear reporting with prioritized recommendations</li>
-              <li><ShieldCheck size={18} /> A straightforward, no-pressure inspection experience</li>
-              <li><Clock3 size={18} /> Report timing confirmed when you schedule</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-      <BookingCallout onNavigate={onNavigate} eyebrow="Have a property in mind?" title="Schedule a clear, practical inspection." />
-    </>
-  );
-}
-
-function AboutPage({ onNavigate }) {
-  const steps = [
-    ["01", "Schedule", "Choose a time that works for your inspection window."],
-    ["02", "On-site inspection", "We look closely, document clearly, and answer questions as we go."],
-    ["03", "Clear reporting", "Your report arrives with photos, context, and practical next steps."],
-    ["04", "Confident decisions", "Use the information to buy, negotiate, maintain, or plan."],
+function ServicesPage({ route, onNavigate }) {
+  const [scopeRequest, setScopeRequest] = useState(null);
+  const items = useMemo(() => enabledInspectionScope.map((section, index) => ({
+    ...section,
+    number: String(index + 1).padStart(2, "0"),
+    content: (
+      <div className="scope-disclosure-content">
+        <p>{section.summary}</p>
+        <h4>Commonly reviewed</h4>
+        <ul>{section.reviewed.map((item) => <li key={item}><Check size={16} aria-hidden="true" /> {item}</li>)}</ul>
+        <p className="scope-limit"><strong>Scope boundary:</strong> {section.limitation}</p>
+      </div>
+    ),
+  })), []);
+  const handleScopeRequest = (event, id) => {
+    if (window.location.hash === `#${id}`) {
+      event.preventDefault();
+      document.getElementById(id)?.scrollIntoView({ block: "start" });
+    }
+    setScopeRequest({ id });
+  };
+  const educationalScenarios = [
+    ["A ceiling stain near an exterior wall", "The useful question is not only whether a stain exists. Roof exposure, attic access, drainage, interior finish condition, and visible moisture context may all matter.", "The report can document what was visible and identify the appropriate independent evaluation without claiming a concealed source."],
+    ["Soil or hardscape directing water toward the home", "Grading, roof runoff, foundation adjacency, crawlspace access, and visible interior effects can help explain why a site observation deserves context.", "Conditions at the inspection control what can be seen; drainage design and concealed damage remain outside a standard visual inspection."],
+    ["An electrical panel concern", "Panel access, visible components, representative devices, occupant safety, and specialist scope are kept connected rather than reduced to a single label.", "The inspection is not a code, engineering, or load analysis. When appropriate, the next step is evaluation by the relevant qualified professional."],
   ];
 
   return (
     <>
-      <PageHero
-        eyebrow="About C&G"
-        title="Experience you can understand, delivered with integrity."
-        actions={(
-          <>
-            <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">Schedule an Inspection <ArrowRight size={17} /></a>
-            <InternalLink className="text-link text-link-light" href="/services" onNavigate={onNavigate}>See our services <ChevronRight size={16} /></InternalLink>
-          </>
-        )}
-      >
-        <p className="page-hero-lede">C&amp;G Certified Home Inspector brings a builder’s eye and a calm, clear communication style to every inspection.</p>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Home inspection services" title="A practical inspection for a clearer property decision." actions={<InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>}>
+        <p className="page-hero-lede">Whether you are buying, selling, maintaining, or planning work, the inspection documents visible conditions, explains important context, and identifies appropriate next steps.</p>
       </PageHero>
-      <section className="process-section page-process-section">
-        <div className="container process-grid">
-          <div className="process-lede">
-            <p className="eyebrow eyebrow-dark">A better inspection experience</p>
-            <h2>From first question to confident decision.</h2>
-            <p>C&amp;G brings a construction-informed perspective to the inspection process. You get a thoughtful look at the home and a straightforward conversation about what comes next.</p>
-            <InternalLink className="button button-dark" href="/contact" onNavigate={onNavigate}>
-              Talk with C&amp;G <ArrowRight size={17} />
-            </InternalLink>
-          </div>
-          <div className="process-list">
-            {steps.map(([number, title, description]) => (
-              <div className="process-item" key={number}>
-                <span className="process-number">{number}</span>
-                <div><h3>{title}</h3><p>{description}</p></div>
-                <Check size={18} className="process-check" />
-              </div>
-            ))}
-          </div>
+      <ScopeAtlas sections={enabledInspectionScope} onScopeRequest={handleScopeRequest} />
+      <section className="inspection-scenarios-section">
+        <div className="container">
+          <div className="section-intro section-intro-row"><div><p className="eyebrow eyebrow-dark">How observations become useful</p><h2>Connected thinking, shown through educational scenarios.</h2></div><p>These are illustrative learning examples—not customer stories, actual C&amp;G findings, or promises about a specific property.</p></div>
+          <div className="inspection-scenario-grid">{educationalScenarios.map(([title, context, boundary], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{title}</h3><p>{context}</p><div><strong>Honest boundary</strong><p>{boundary}</p></div></article>)}</div>
         </div>
       </section>
       <section className="page-section page-section-cream">
-        <div className="container values-grid">
-          <div>
-            <p className="eyebrow eyebrow-dark">What guides the work</p>
-            <h2>Professional, practical, and respectful of your time.</h2>
-          </div>
-          <div className="values-list">
-            <div><ShieldCheck size={19} /><span><strong>Integrity first</strong><small>Clear findings and honest context, without the scare tactics.</small></span></div>
-            <div><Camera size={19} /><span><strong>Show the work</strong><small>Photo-rich documentation that makes the report easier to use.</small></span></div>
-            <div><Hammer size={19} /><span><strong>Construction perspective</strong><small>Experience that helps separate urgent issues from future planning.</small></span></div>
-          </div>
-        </div>
+        <div className="container"><div className="section-intro"><p className="eyebrow eyebrow-dark">Complete inspection scope</p><h2>System-by-system review and limitations.</h2></div><div className="scope-intro-note"><ShieldCheck size={22} aria-hidden="true" /><p>The list below describes areas commonly included in a residential inspection. It is not a promise that every item will be present, accessible, safe to operate, or included in every agreement.</p></div><DisclosureGroup items={items} className="disclosure-list scope-disclosures" firstOpen expandOnHash expandRequest={scopeRequest} /></div>
       </section>
-      <BookingCallout onNavigate={onNavigate} eyebrow="Start a conversation" title="Get a clearer read on your next property." />
+      <section className="page-section page-section-deep"><div className="container page-split-grid"><div><p className="eyebrow">Scope honesty</p><h2>A useful inspection is honest about what could and could not be seen.</h2></div><div className="page-copy-light"><p>Access limitations and systems that were not operated should be documented. When specialist input is useful, the recommendation should identify the kind of evaluation needed without turning the inspection into a repair sale.</p><div className="related-inline-links"><InternalLink href="/resources/visible-and-accessible-conditions/" onNavigate={onNavigate}>Understand visible and accessible conditions</InternalLink><InternalLink href="/resources/preparing-for-a-home-inspection/" onNavigate={onNavigate}>Prepare for the inspection</InternalLink></div></div></div></section>
+      <BookingCallout onNavigate={onNavigate} title="Schedule a clear, practical inspection." />
     </>
   );
 }
 
-function AreasPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero
-        eyebrow="Areas we serve"
-        title="Local perspective for Southern California homes."
-        actions={<a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">Schedule an Inspection <ArrowRight size={17} /></a>}
-      >
-        <p className="page-hero-lede">Serving Los Angeles County and surrounding communities for buyers, sellers, homeowners, and real estate professionals.</p>
-      </PageHero>
-      <section className="experience-section areas-main-section">
-        <div className="container experience-grid">
-          <div>
-            <p className="eyebrow">Built for local homes</p>
-            <h2>A clear read, wherever you are in the process.</h2>
-          </div>
-          <div className="experience-copy">
-            <p>Whether you are preparing to buy, planning a sale, maintaining a home, or deciding what to repair, the inspection is designed to give you useful context for the next conversation.</p>
-            <div className="area-list">
-              <span>Los Angeles County</span>
-              <span>San Gabriel Valley</span>
-              <span>South Bay</span>
-              <span>Surrounding communities</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="page-section page-section-cream">
-        <div className="container page-audience-grid">
-          <div><p className="eyebrow eyebrow-dark">Who we help</p><h2>One inspection. A lot more clarity.</h2></div>
-          <div className="audience-cards">
-            <article><span>01</span><h3>Home buyers</h3><p>Understand the condition before you commit and keep the negotiation grounded in facts.</p></article>
-            <article><span>02</span><h3>Homeowners</h3><p>Build a practical maintenance plan from a clear look at the home’s visible systems.</p></article>
-            <article><span>03</span><h3>Sellers &amp; agents</h3><p>Surface the important details early so the next conversation starts with better information.</p></article>
-          </div>
-        </div>
-      </section>
-      <BookingCallout onNavigate={onNavigate} eyebrow="Serving your next move" title="Let’s get a practical inspection on the calendar." />
-    </>
-  );
-}
-
-const faqItems = [
-  ["What does a home inspection cover?", "We look at the major visible and accessible systems of the home, document findings with photos, and explain what deserves attention."],
-  ["When will I receive my report?", "Report timing is confirmed when you schedule so you know what to expect before the inspection begins."],
-  ["Do you work with buyers and homeowners?", "Yes. The inspection experience is designed for buyers, sellers, homeowners, and the professionals helping them make a decision."],
-  ["How do I schedule an inspection?", "Use the scheduling link to choose a time, or call C&G directly if you would rather talk through the property first."],
-  ["What should I have ready before the inspection?", "Make sure accessible areas are reachable, bring the questions you already have, and share any known repairs or recent work that adds useful context."],
-  ["How should I use the report afterward?", "Start with the overall context and priority findings, then decide which questions need qualified follow-up, a repair conversation, or no immediate action."],
+const scopeAtlasGroups = [
+  {
+    id: "site-envelope",
+    number: "01",
+    title: "Site & envelope",
+    copy: "Follow visible water, weather, access, and enclosure conditions toward the home.",
+    sectionIds: ["site-and-drainage", "exterior", "roof", "garage"],
+  },
+  {
+    id: "structure-access",
+    number: "02",
+    title: "Structure & access",
+    copy: "Connect support, moisture, ventilation, and safe-access observations across concealed-adjacent spaces.",
+    sectionIds: ["structure", "crawlspace", "attic", "fireplace"],
+  },
+  {
+    id: "core-systems",
+    number: "03",
+    title: "Core systems",
+    copy: "Review installed utility and comfort systems using normal controls when conditions permit.",
+    sectionIds: ["electrical", "plumbing", "gas", "water-heater", "heating", "cooling"],
+  },
+  {
+    id: "interior-living",
+    number: "04",
+    title: "Interior living areas",
+    copy: "Document representative finishes, fixtures, openings, safeguards, and visible room conditions.",
+    sectionIds: ["kitchen", "bathrooms", "laundry", "interior"],
+  },
 ];
 
-function FaqPage({ onNavigate }) {
+const scopeAtlasIconById = {
+  "site-and-drainage": Trees,
+  exterior: House,
+  roof: Triangle,
+  garage: Warehouse,
+  structure: Layers,
+  crawlspace: ScanLine,
+  attic: Mountain,
+  fireplace: Flame,
+  electrical: Zap,
+  plumbing: Droplets,
+  gas: Gauge,
+  "water-heater": ThermometerSun,
+  heating: Flame,
+  cooling: Snowflake,
+  kitchen: CookingPot,
+  bathrooms: Bath,
+  laundry: WashingMachine,
+  interior: BedDouble,
+};
+
+function ScopeAtlas({ sections, onScopeRequest }) {
+  const sectionById = new Map(sections.map((section, index) => [section.id, { ...section, displayNumber: String(index + 1).padStart(2, "0") }]));
+  const outsideScope = sectionById.get("outside-scope");
+
   return (
-    <>
-      <PageHero
-        eyebrow="Common questions"
-        title="Good information should feel straightforward."
-        actions={<InternalLink className="text-link text-link-light" href="/contact" onNavigate={onNavigate}>Talk with C&amp;G <ArrowRight size={16} /></InternalLink>}
-      >
-        <p className="page-hero-lede">A few answers to help you know what to expect before, during, and after your inspection.</p>
-      </PageHero>
-      <section className="faq-section faq-page-section">
-        <div className="container faq-grid">
+    <section className="scope-atlas-section" aria-labelledby="scope-atlas-title" data-scope-atlas>
+      <div className="container">
+        <div className="scope-atlas-header">
           <div>
-            <p className="eyebrow eyebrow-dark">Still have a question?</p>
-            <h2>Call C&amp;G directly and get a real answer.</h2>
-            <p className="faq-intro">The right inspection should leave you with fewer unknowns and a clearer next step.</p>
-            <a className="text-link text-link-dark" href="tel:+13105056581">Call {phoneNumber} <ChevronRight size={16} /></a>
-            <div className="faq-next-links">
-              <span className="footer-label">Keep going</span>
-              <InternalLink className="text-link text-link-dark" href="/resources" onNavigate={onNavigate}>Prepare for the inspection <ChevronRight size={16} /></InternalLink>
-              <InternalLink className="text-link text-link-dark" href="/services" onNavigate={onNavigate}>See what we inspect <ChevronRight size={16} /></InternalLink>
-              <InternalLink className="text-link text-link-dark" href="/contact" onNavigate={onNavigate}>Open scheduling and contact options <ChevronRight size={16} /></InternalLink>
-            </div>
+            <p className="eyebrow eyebrow-dark">Visual inspection guide</p>
+            <h2 id="scope-atlas-title">A careful look at the home’s major visible systems.</h2>
           </div>
-          <div className="faq-list">
-            {faqItems.map(([question, answer], index) => (
-              <details open={index === 0} key={question}>
-                <summary>{question}</summary>
-                <p>{answer}</p>
-              </details>
-            ))}
-          </div>
+          <p>Start with the overview, then choose any category to open its complete commonly reviewed list and property-specific limitations.</p>
         </div>
-      </section>
-      <BookingCallout eyebrow="Ready when you are" title="Turn the unknowns into a clearer decision." />
-    </>
+
+        <div className="scope-atlas-media" role="group" aria-label="Representative inspection imagery">
+          <figure className="scope-atlas-figure scope-atlas-figure-wide">
+            <img src={assetUrl("assets/attic-inspection.jpg")} alt="Inspector measuring visible attic framing with a flashlight" width="1536" height="1024" loading="lazy" decoding="async" />
+            <figcaption><span>Structure in context</span><small>Editorial illustration</small></figcaption>
+          </figure>
+          <figure className="scope-atlas-figure">
+            <img src={assetUrl("assets/report-laptop.jpg")} alt="Home inspection report and tools on a desk" width="1536" height="1024" loading="lazy" decoding="async" />
+            <figcaption><span>Observations documented</span><small>Editorial illustration</small></figcaption>
+          </figure>
+        </div>
+        <p className="scope-atlas-media-note">Representative editorial imagery; not C&amp;G client or project photography.</p>
+
+        <div className="scope-atlas-groups">
+          {scopeAtlasGroups.map((group) => {
+            const groupSections = group.sectionIds.map((id) => sectionById.get(id)).filter(Boolean);
+            return (
+              <section className="scope-atlas-group" aria-labelledby={`scope-atlas-${group.id}`} key={group.id}>
+                <header className="scope-atlas-group-header">
+                  <span>{group.number}</span>
+                  <h3 id={`scope-atlas-${group.id}`}>{group.title}</h3>
+                  <p>{group.copy}</p>
+                </header>
+                <div className="scope-atlas-grid">
+                  {groupSections.map((section) => {
+                    const Icon = scopeAtlasIconById[section.id] || House;
+                    return (
+                      <a className="scope-atlas-card" href={`#${section.id}`} aria-label={`Open ${section.title} scope details`} onClick={(event) => onScopeRequest?.(event, section.id)} key={section.id}>
+                        <span className="scope-atlas-card-top">
+                          <span className="scope-atlas-icon"><Icon size={25} strokeWidth={1.6} aria-hidden="true" /></span>
+                          <span className="scope-atlas-card-number">{section.displayNumber}</span>
+                        </span>
+                        <h4>{section.title}</h4>
+                        <ul>{section.reviewed.slice(0, 2).map((item) => <li key={item}>{item}</li>)}</ul>
+                        <span className="scope-atlas-card-action">Open scope <ChevronRight size={15} aria-hidden="true" /></span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        {outsideScope ? (
+          <a className="scope-atlas-boundary" href={`#${outsideScope.id}`} aria-label={`Open ${outsideScope.title} details`} onClick={(event) => onScopeRequest?.(event, outsideScope.id)}>
+            <span className="scope-atlas-boundary-icon"><CircleOff size={26} strokeWidth={1.6} aria-hidden="true" /></span>
+            <span><small>Scope boundary</small><strong>{outsideScope.title}</strong><span>{outsideScope.summary}</span></span>
+            <span className="scope-atlas-boundary-action">Review boundaries <ChevronRight size={16} aria-hidden="true" /></span>
+          </a>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
-function ContactPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero
-        eyebrow="Contact C&G"
-        title="Let’s get your next inspection moving."
-        actions={<InternalLink className="text-link text-link-light" href="/services" onNavigate={onNavigate}>Review inspection services <ChevronRight size={16} /></InternalLink>}
-      >
-        <p className="page-hero-lede">Choose a time online, call directly, or send a note if you want to talk through the property before scheduling.</p>
-      </PageHero>
-      <section className="page-section page-section-cream contact-page-section">
-        <div className="container contact-page-grid">
-          <div>
-            <p className="eyebrow eyebrow-dark">The easiest next step</p>
-            <h2>Pick a time that works for you.</h2>
-            <p className="page-copy">The scheduling form is the fastest way to request an inspection. If you prefer a conversation first, C&amp;G is available by phone or email.</p>
-            <a className="button button-dark" href={bookingUrl} target="_blank" rel="noreferrer">Open the scheduling form <ArrowRight size={17} /></a>
-          </div>
-          <div className="contact-details">
-            <div><span className="footer-label">Call</span><a href="tel:+13105056581">{phoneNumber}</a></div>
-            <div><span className="footer-label">Email</span><a href="mailto:clarencegloss@gmail.com">clarencegloss@gmail.com</a></div>
-            <div><span className="footer-label">Service area</span><p>Los Angeles County &amp; surrounding communities</p></div>
-          </div>
-        </div>
-      </section>
-      <section className="contact-prep-section">
-        <div className="container contact-prep-grid">
-          <div>
-            <p className="eyebrow eyebrow-dark">Before you reach out</p>
-            <h2>Four details make scheduling easier.</h2>
-            <p>Start with what you know. These details help C&amp;G understand the property and the decision you are working toward.</p>
-          </div>
-          <ol className="contact-prep-list">
-            {contactPrepItems.map(([number, title, description]) => (
-              <li key={number}>
-                <span>{number}</span>
-                <div><h3>{title}</h3><p>{description}</p></div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-      <section className="process-section contact-process-section">
-        <div className="container process-grid">
-          <div className="process-lede">
-            <p className="eyebrow eyebrow-dark">What happens next</p>
-            <h2>From scheduling to a clearer decision.</h2>
-            <p>There is no need to have every question figured out before you reach out. Start with what you know, and use the inspection to build a more useful next step.</p>
-            <InternalLink className="button button-dark" href="/resources" onNavigate={onNavigate}>
-              Prepare for the inspection <ArrowRight size={17} />
-            </InternalLink>
-          </div>
-          <div className="process-list">
-            {contactPathSteps.map(([number, title, description]) => (
-              <div className="process-item" key={number}>
-                <span className="process-number">{number}</span>
-                <div><h3>{title}</h3><p>{description}</p></div>
-                <Check size={18} className="process-check" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="sister-section">
-        <div className="container sister-grid">
-          <div className="sister-image-wrap"><img src={assetUrl("assets/contracting-review.jpg")} alt="Construction professionals reviewing plans in a kitchen" width="1536" height="1024" loading="lazy" decoding="async" /></div>
-          <div className="sister-copy">
-            <p className="eyebrow eyebrow-dark">A separate service path</p>
-            <h2>Meet the other side of the C&amp;G family.</h2>
-            <p>C&amp;G Contracting Services maintains a strict separation from inspected properties: no repair offer or work on a property inspected by C&amp;G during the previous 12 months.</p>
-            <a className="button button-gold" href={contractorUrl} target="_blank" rel="noreferrer">Explore the contractor site <ArrowRight size={17} /></a>
-          </div>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function ResourcesPage({ onNavigate }) {
-  const resources = [
-    ["01", "Before the inspection", "Make sure the property is accessible, bring your questions, and use the inspection to understand the home—not just to collect a checklist.", ClipboardCheck],
-    ["02", "Reading your report", "Start with the overall context, then focus on findings that affect safety, function, maintenance, or your next conversation.", BookOpen],
-    ["03", "Planning next steps", "Use the report to prioritize questions, request qualified follow-up when needed, and make a decision that fits your plans.", FileCheck2],
+function AboutPage({ route, onNavigate }) {
+  const values = [
+    ["Observe carefully", "Follow visible evidence across connected systems."],
+    ["Explain plainly", "Use direct language instead of alarm or jargon."],
+    ["Document honestly", "State limitations instead of pretending concealed conditions were inspected."],
+    ["Stay independent", "Do not turn inspection conclusions into prohibited repair work."],
+    ["Remain available for questions", "Help the client understand the report without making the decision for them."],
   ];
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="About Clarence" title="Experience matters most when it can be explained clearly."><p className="page-hero-lede">C&amp;G is built around a straightforward idea: the client should leave the inspection with more clarity, not more confusion.</p></PageHero>
+      <section className="process-section page-process-section"><div className="container process-grid"><div className="process-lede"><p className="eyebrow eyebrow-dark">A connected view of the home</p><h2>Follow the evidence from one system to the next.</h2><p>Clarence approaches the home as a connected set of systems. An exterior drainage condition may affect a crawlspace. An attic stain may need context from the roof. A recommendation is most useful when the client understands where it came from and what kind of follow-up makes sense.</p><InternalLink className="button button-dark" href="/services/" onNavigate={onNavigate}>See What the Inspection Covers <ArrowRight size={17} aria-hidden="true" /></InternalLink></div><div className="about-philosophy"><blockquote>“The inspector's job is not to tell a client whether to buy a home. It is to document visible conditions, identify material concerns, explain uncertainty, and help the client ask the next right question.”</blockquote><p>Pending biography, credential, insurance, and years-of-experience modules remain hidden until their evidence is approved.</p></div></div></section>
+      <section className="page-section page-section-cream"><div className="container values-grid"><div><p className="eyebrow eyebrow-dark">What guides the work</p><h2>Careful, plain-spoken, and independent.</h2></div><div className="values-list">{values.map(([title, copy]) => <div key={title}><ShieldCheck size={19} aria-hidden="true" /><span><strong>{title}</strong><small>{copy}</small></span></div>)}</div></div></section>
+      <BookingCallout onNavigate={onNavigate} />
+    </>
+  );
+}
 
+function AreasPage({ route, onNavigate }) {
+  const areas = approvedServiceAreas("Inspector");
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Areas we serve" title="Local scheduling, confirmed one property at a time."><p className="page-hero-lede">Service availability depends on the property location, inspection type, access, current schedule, and travel requirements.</p></PageHero>
+      <section className="experience-section areas-main-section"><div className="container experience-grid"><div><p className="eyebrow">Address-first confirmation</p><h2>Share the full property address before relying on an appointment.</h2></div><div className="experience-copy"><p>C&amp;G confirms coverage, travel, scope, and availability for each request. County and city claims remain unpublished until the owner approves the service-area registry.</p>{areas.length ? <div className="area-list">{areas.map((area) => <span key={area.id}>{area.label}</span>)}</div> : <p className="registry-empty-state">No specific county or city is currently approved for public listing. Contact C&amp;G to confirm the property.</p>}</div></div></section>
+      <section className="page-section page-section-cream"><div className="container page-split-grid"><div><p className="eyebrow eyebrow-dark">What to send</p><h2>One address, a little context, and your timing.</h2></div><div className="values-list"><div><MapItem number="01" title="Full property address" copy="Coverage and travel are confirmed from the actual location." /></div><div><MapItem number="02" title="Property and inspection type" copy="Scope can vary with the property and request." /></div><div><MapItem number="03" title="Preferred timing" copy="A request is not confirmed until C&G accepts it." /></div></div></div></section>
+      <BookingCallout onNavigate={onNavigate} eyebrow="Ask about your property" title="Start with the complete address." />
+    </>
+  );
+}
+
+function MapItem({ number, title, copy }) {
+  return <><span className="map-item-number">{number}</span><span><strong>{title}</strong><small>{copy}</small></span></>;
+}
+
+function FaqPage({ route, onNavigate }) {
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Home inspection FAQ" title="Straight answers about scope, access, reports, and follow-up."><p className="page-hero-lede">These answers describe the safe baseline. The signed agreement and property-specific conditions control the inspection.</p></PageHero>
+      <section className="faq-section faq-page-section"><div className="container faq-content-grid"><aside><p className="eyebrow eyebrow-dark">Need property-specific context?</p><h2>Ask C&amp;G about the address and the decision in front of you.</h2><InternalLink className="button button-dark" href="/contact/" onNavigate={onNavigate}>Contact C&amp;G <ArrowRight size={17} aria-hidden="true" /></InternalLink></aside><div className="faq-groups">{inspectorFaqGroups.map((group) => <section key={group.title}><h2>{group.title}</h2><DisclosureGroup items={group.items} firstOpen={group.title === inspectorFaqGroups[0].title} /></section>)}</div></div></section>
+      <BookingCallout onNavigate={onNavigate} />
+    </>
+  );
+}
+
+function ResourcesPage({ route, onNavigate }) {
   return (
     <div className="resources-page">
-      <PageHero
-        eyebrow="Resources"
-        title="A little more clarity before the next decision."
-        actions={(
-          <>
-            <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer">Schedule an Inspection <ArrowRight size={17} /></a>
-            <InternalLink className="text-link text-link-light" href="/faq" onNavigate={onNavigate}>Read common questions <ChevronRight size={16} /></InternalLink>
-          </>
-        )}
-      >
-        <p className="page-hero-lede">Simple guidance for preparing for an inspection, reading the report, and deciding what comes next.</p>
-      </PageHero>
-      <section className="page-section page-section-cream">
-        <div className="container">
-          <div className="section-intro section-intro-row">
-            <div>
-              <p className="eyebrow eyebrow-dark">Practical guidance</p>
-              <h2>Use the inspection as a better conversation starter.</h2>
-            </div>
-            <p>The goal is not to create more anxiety. It is to give you enough context to ask better questions and choose the right next step.</p>
-          </div>
-          <div className="resource-grid">
-            {resources.map(([number, title, description, Icon]) => (
-              <article className="resource-card" key={number}>
-                <div className="resource-card-icon"><Icon size={24} strokeWidth={1.5} /></div>
-                <span className="feature-number">{number}</span>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="page-section resource-plan-section">
-        <div className="container">
-          <div className="section-intro section-intro-row">
-            <div>
-              <p className="eyebrow eyebrow-dark">A useful rhythm</p>
-              <h2>Three moments that make the inspection easier to use.</h2>
-            </div>
-            <p>Good inspection work is more than the visit itself. A little preparation and a calm follow-up make the information more useful.</p>
-          </div>
-          <ol className="resource-plan-list">
-            {resourcePlanSteps.map(([number, title, description]) => (
-              <li key={number}>
-                <span className="resource-plan-number">{number}</span>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-      <section className="page-section page-section-deep printable-resource">
-        <div className="container resource-checklist-grid">
-          <div>
-            <p className="eyebrow">Before you schedule</p>
-            <h2>Bring the questions you already have.</h2>
-          </div>
-          <div className="resource-checklist">
-            <div><Check size={18} /><span>Property context: buying, selling, maintenance, or planning</span></div>
-            <div><Check size={18} /><span>Known concerns you want documented clearly</span></div>
-            <div><Check size={18} /><span>Time to review the findings and ask questions</span></div>
-            <div><Check size={18} /><span>A plan for qualified follow-up when a finding needs more detail</span></div>
-          </div>
-          <button className="button button-outline-light resource-print-button" type="button" onClick={() => window.print()}>
-            <Printer size={16} /> Print this checklist
-          </button>
-        </div>
-      </section>
-      <section className="page-section page-section-cream page-section-tight-top">
-        <div className="container resource-glossary-grid">
-          <div>
-            <p className="eyebrow eyebrow-dark">Inspection language</p>
-            <h2>A few terms worth knowing before the report arrives.</h2>
-          </div>
-          <div className="resource-glossary">
-            <details>
-              <summary>Accessible areas</summary>
-              <p>Areas that can be reached safely and reasonably at the time of inspection. Final scope depends on the property and inspection agreement.</p>
-            </details>
-            <details>
-              <summary>Visible condition</summary>
-              <p>A condition that can be observed without destructive testing, dismantling, or moving stored belongings.</p>
-            </details>
-            <details>
-              <summary>Qualified follow-up</summary>
-              <p>A closer evaluation by the appropriate licensed or qualified trade professional when a finding needs more detail.</p>
-            </details>
-            <details>
-              <summary>Priority finding</summary>
-              <p>An item that deserves timely attention because it may affect safety, function, active damage, or the next decision.</p>
-            </details>
-          </div>
-        </div>
-      </section>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Home inspection resources" title="Better questions before, during, and after the inspection."><p className="page-hero-lede">These educational guides do not replace the property-specific agreement, complete report, or advice from the appropriate licensed or qualified professional.</p></PageHero>
+      {resourceGroups.map((group, groupIndex) => (
+        <section className={groupIndex % 2 ? "page-section resource-group-section" : "page-section page-section-cream resource-group-section"} key={group.category}>
+          <div className="container"><div className="section-intro section-intro-row"><div><p className="eyebrow eyebrow-dark">{String(groupIndex + 1).padStart(2, "0")}</p><h2>{group.category}</h2></div><p>Choose the guide that matches the next question in your inspection process.</p></div><div className="resource-article-grid">{group.resources.map((resource) => <article className="resource-article-card" key={resource.slug}><BookOpen size={22} aria-hidden="true" /><p className="resource-reading-time">{readingMinutes(resource)} min read</p><h3>{resource.title}</h3><p>{resource.summary}</p><InternalLink href={`/resources/${resource.slug}/`} onNavigate={onNavigate}>Read {resource.title} <ArrowRight size={15} aria-hidden="true" /></InternalLink></article>)}</div></div>
+        </section>
+      ))}
       <BookingCallout onNavigate={onNavigate} eyebrow="Still deciding?" title="Call C&G and talk through the property first." />
     </div>
   );
 }
 
-function NotFoundPage({ onNavigate }) {
+function ResourceArticlePage({ route, onNavigate }) {
+  const resource = resourceBySlug.get(route.slug);
+  const related = resource.related.map((slug) => resourceBySlug.get(slug)).filter(Boolean);
+  return (
+    <article className="article-page">
+      <PageHero route={route} onNavigate={onNavigate} eyebrow={resource.category} title={resource.title}><p className="page-hero-lede">{resource.intro}</p><p className="article-byline">By {resource.author} · {readingMinutes(resource)} minute read</p></PageHero>
+      <div className="container article-layout">
+        <aside className="article-aside"><strong>In this guide</strong><ol>{resource.sections.map((section) => <li key={section.heading}><a href={`#${section.heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`}>{section.heading}</a></li>)}</ol>{resource.checklist ? <button className="button button-dark" type="button" onClick={() => window.print()}><Printer size={16} aria-hidden="true" /> Print checklist</button> : null}</aside>
+        <div className="article-content printable-resource">
+          {resource.sections.map((section) => { const id = section.heading.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); return <section id={id} key={section.heading}><h2>{section.heading}</h2><p>{section.body}</p></section>; })}
+          {resource.checklist ? <section className="article-checklist"><h2>Printable checklist</h2><ul>{resource.checklist.map((item) => <li key={item}><Check size={17} aria-hidden="true" /> {item}</li>)}</ul></section> : null}
+          <section className="article-takeaway"><h2>Takeaway</h2><p>{resource.takeaway}</p></section>
+          <p className="article-disclaimer"><strong>Educational-use notice:</strong> {resource.disclaimer}</p>
+          <InternalLink className="button button-gold" href={resource.cta.path} onNavigate={onNavigate}>{resource.cta.label} <ArrowRight size={16} aria-hidden="true" /></InternalLink>
+        </div>
+      </div>
+      <section className="related-resources"><div className="container"><p className="eyebrow eyebrow-dark">Related resources</p><div className="related-resource-grid">{related.map((item) => <InternalLink key={item.slug} href={`/resources/${item.slug}/`} onNavigate={onNavigate}><span>{item.category}</span><strong>{item.title}</strong><ArrowRight size={16} aria-hidden="true" /></InternalLink>)}</div></div></section>
+    </article>
+  );
+}
+
+function ContactPage({ route, onNavigate }) {
   return (
     <>
-      <PageHero
-        eyebrow="Page not found"
-        title="Let’s get you back to clear answers."
-        actions={<InternalLink className="button button-gold" href="/" onNavigate={onNavigate}>Return to Home <ArrowRight size={17} /></InternalLink>}
-      >
-        <p className="page-hero-lede">That page is not available in this version of the site. The inspection, resources, and contact paths are still right here.</p>
-      </PageHero>
-      <BookingCallout onNavigate={onNavigate} eyebrow="Need a hand?" title="Call C&G or schedule an inspection directly." />
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Contact and scheduling" title="Start with the property and the decision in front of you."><p className="page-hero-lede">A few details make it easier to confirm scope, price, travel, and availability. A submitted request is not an appointment until C&amp;G confirms it.</p></PageHero>
+      <section className="page-section page-section-cream contact-page-section"><div className="container contact-form-layout"><div className="contact-form-intro"><p className="eyebrow eyebrow-dark">Four details make scheduling easier</p><h2>Address, property, purpose, and timing.</h2><ol><li>Full property address</li><li>Property type and approximate size</li><li>Reason for the inspection</li><li>Preferred dates and transaction timing</li></ol><div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a></div></div><ContactRequestForm /></div></section>
     </>
   );
+}
+
+function EthicsPage({ route, onNavigate }) {
+  const points = [
+    "Inspection conclusions are based on observed conditions and the inspection agreement.",
+    "C&G does not tell the client whether to buy, sell, or set a property value.",
+    "Referral compensation, inducements, and outcome-contingent fees are not part of the inspection service.",
+    "Report limitations are stated rather than concealed.",
+    "Specialist recommendations identify the expertise needed; they do not guarantee a provider or result.",
+    "Client and report information is not used to bypass the 12-month separation.",
+  ];
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Inspection ethics and independence" title="The report should serve the client—not a repair sale."><p className="page-hero-lede">C&amp;G's inspection work is intended to provide an independent account of visible and accessible conditions.</p></PageHero>
+      <section className="page-section page-section-cream"><div className="container page-split-grid"><div><p className="eyebrow eyebrow-dark">Operating policy</p><h2>Independent conclusions and visible limitations.</h2></div><div><p className="page-copy">The inspection fee and conclusions are not contingent on the findings, the close of escrow, or a later construction project.</p><ul className="ethics-list">{points.map((point) => <li key={point}><ShieldCheck size={18} aria-hidden="true" /> {point}</li>)}</ul></div></div></section>
+      <section className="page-section page-section-deep"><div className="container page-split-grid"><div><p className="eyebrow">12-month separation</p><h2>Inspection information is not a contracting lead.</h2></div><div className="page-copy-light"><p>{separationPolicy.notice}</p><p>This page explains C&amp;G's operating policy in plain language. The signed inspection agreement controls the service, and applicable law controls where it differs from this summary.</p></div></div></section>
+      <BookingCallout onNavigate={onNavigate} />
+    </>
+  );
+}
+
+function PrivacyPage({ route, onNavigate }) {
+  const sections = [
+    ["Information you choose to provide", "The site receives information only when you choose a phone, email, or prepared-email contact path. The inspection form prepares a message in your email application; the website does not receive or store the form values."],
+    ["Technical information", "GitHub Pages and network providers may receive ordinary request information such as IP address, browser details, requested URL, and timestamps. The site also requests font files from Google Fonts."],
+    ["Private site search", "The search feature uses a static Pagefind index delivered with this website. Search terms are processed in the visitor's browser and are not sent to an analytics, advertising, or hosted-search provider."],
+    ["How request information is used", "Information sent to C&G is used to understand and respond to the inspection request, confirm scope, travel, timing, price, and access, and keep the related business record."],
+    ["Inspection reports and client confidentiality", "Do not send full reports, access codes, offer documents, financial information, or other sensitive material through the basic website form. Report sharing follows the inspection agreement and client authorization."],
+    ["Inspection and contracting separation", "Inspection-client information and report findings are not used to solicit contracting work. C&G Contracting Services cannot offer or perform repairs on a property C&G inspected during the previous 12 months."],
+    ["Service providers actually used", "The public site is delivered through GitHub Pages. Google Fonts supplies the adopted typefaces. The prepared-email path relies on the visitor's chosen email application and provider."],
+    ["Retention", "The static website does not retain form entries. If you send an email or call C&G, the resulting communication may be retained as reasonably needed for the request, business records, legal obligations, and dispute prevention."],
+    ["Your choices", "You may contact C&G to ask about a communication you sent or to request an appropriate correction or deletion, subject to records C&G must or reasonably needs to retain."],
+    ["Updates and contact", `This policy is effective July 22, 2026. Material changes should be reflected on this page. Questions may be sent to ${business.inspection.email}.`],
+  ];
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Privacy" title="A plain-language policy for the site that actually exists."><p className="page-hero-lede">No analytics provider, cookie banner, user account, online payment, or server-side form service is enabled.</p></PageHero>
+      <section className="page-section page-section-cream"><div className="container policy-layout">{sections.map(([title, copy], index) => <section key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h2>{title}</h2><p>{copy}</p></div></section>)}</div></section>
+    </>
+  );
+}
+
+function NotFoundPage({ route, onNavigate }) {
+  return <><PageHero route={route} onNavigate={onNavigate} eyebrow="Page not found" title="Let’s get you back to clear answers." actions={<InternalLink className="button button-gold" href="/" onNavigate={onNavigate}>Return to Home <ArrowRight size={17} aria-hidden="true" /></InternalLink>}><p className="page-hero-lede">That page is not available. The inspection, resources, ethics, and contact paths are still here.</p></PageHero><BookingCallout onNavigate={onNavigate} /></>;
 }
 
 function SiteFooter({ onNavigate }) {
   return (
     <footer className="site-footer">
       <div className="container footer-grid">
-        <div>
-          <BrandMark onNavigate={onNavigate} />
-          <p>Inspecting with integrity across Los Angeles County and surrounding communities.</p>
-        </div>
-        <div className="footer-links">
-          <span className="footer-label">Explore</span>
-          {navItems.slice(1, 6).map(([label, href]) => <InternalLink key={href} href={href} onNavigate={onNavigate}>{label}</InternalLink>)}
-        </div>
-        <div className="footer-links">
-          <span className="footer-label">Contact</span>
-          <a href="tel:+13105056581">{phoneNumber}</a>
-          <a href="mailto:clarencegloss@gmail.com">clarencegloss@gmail.com</a>
-          <a href={contractorUrl} target="_blank" rel="noreferrer"><Hammer size={14} /> C&amp;G Contracting Services</a>
-        </div>
+        <div><BrandMark onNavigate={onNavigate} /><p>Clear, construction-informed home inspection guidance. Service coverage is confirmed from the full property address.</p></div>
+        <div className="footer-links"><span className="footer-label">Explore</span>{inspectorNavigation.slice(1, 6).map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}{inspectorFooterRoutes.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}</div>
+        <div className="footer-links"><span className="footer-label">Contact</span><a href={business.inspection.phoneHref}>{business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a><a href={propertyServicesUrl}>Choose a C&amp;G property service</a><a href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Separate contracting service</a></div>
       </div>
-      <div className="container footer-bottom">
-        <span>© 2026 C&amp;G Certified Home Inspector</span>
-        <span>Independent inspection guidance</span>
-      </div>
+      <div className="container footer-disclosures"><p>{separationPolicy.notice}</p><p>People and worksite images are editorial illustrations; they do not depict employees, customers, or completed C&amp;G client projects.</p></div>
+      <div className="container footer-bottom"><span>© 2026 C&amp;G Certified Home Inspector</span><span>Independent inspection guidance</span></div>
     </footer>
   );
 }
 
-export function App() {
+function MobileQuickActions({ onNavigate }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setVisible(window.scrollY > 260);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  if (!visible) return null;
+  return <div className="mobile-quick-actions" aria-label="Quick contact actions"><InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Schedule</InternalLink><a className="button button-dark" href={business.inspection.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a></div>;
+}
+
+export function App({ initialPath = null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(() => routeKey());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [currentPath, setCurrentPath] = useState(() => normalizeRoutePath(initialPath || (typeof window !== "undefined" ? window.location.pathname : "/")));
+  const route = findInspectorRoute(currentPath) || inspectorNotFoundRoute;
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPage(routeKey());
+      setCurrentPath(normalizeRoutePath(window.location.pathname));
       setMobileMenuOpen(false);
       window.scrollTo(0, 0);
     };
@@ -927,115 +637,48 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    const metadata = pageMeta[currentPage] || pageMeta.home;
-    const routePath = Object.entries(pageByPath).find(([, key]) => key === currentPage)?.[0] || "/";
-    const canonicalUrl = `${window.location.origin}${pageUrl(routePath)}`;
-    document.title = metadata.title;
-    const setMeta = (attribute, key, content) => {
-      let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
-      if (!element) {
-        element = document.createElement("meta");
-        element.setAttribute(attribute, key);
-        document.head.appendChild(element);
-      }
-      element.setAttribute("content", content);
-    };
-    setMeta("name", "description", metadata.description);
-    setMeta("property", "og:title", metadata.title);
-    setMeta("property", "og:description", metadata.description);
-    setMeta("property", "og:type", "website");
-    setMeta("property", "og:url", canonicalUrl);
-    setMeta("name", "twitter:card", "summary");
-    setMeta("name", "twitter:title", metadata.title);
-    setMeta("name", "twitter:description", metadata.description);
-
-    let schema = document.getElementById("cg-business-schema");
-    if (!schema) {
-      schema = document.createElement("script");
-      schema.id = "cg-business-schema";
-      schema.type = "application/ld+json";
-      document.head.appendChild(schema);
-    }
-    schema.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      name: "C&G Certified Home Inspector",
-      description: metadata.description,
-      telephone: "+1-310-505-6581",
-      email: "clarencegloss@gmail.com",
-      areaServed: ["Los Angeles County", "San Gabriel Valley", "South Bay", "Surrounding communities"],
-      url: `${window.location.origin}${appBase}`,
-    });
-
-    let canonical = document.head.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = canonicalUrl;
-  }, [currentPage]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById("page-content")?.focus({ preventScroll: true });
-    });
+    const frame = window.requestAnimationFrame(() => document.getElementById("page-content")?.focus({ preventScroll: true }));
     return () => window.cancelAnimationFrame(frame);
-  }, [currentPage]);
+  }, [currentPath]);
 
   const onNavigate = (event, href) => {
     if (!href.startsWith("/")) return;
     event.preventDefault();
     window.history.pushState({}, "", pageUrl(href));
-    setCurrentPage(routeKey(href));
+    setCurrentPath(normalizeRoutePath(href));
     setMobileMenuOpen(false);
     window.scrollTo(0, 0);
   };
 
-  const pageProps = { onNavigate };
-  const page = {
-    home: <HomePage {...pageProps} />,
-    services: <ServicesPage {...pageProps} />,
-    about: <AboutPage {...pageProps} />,
-    areas: <AreasPage {...pageProps} />,
-    faq: <FaqPage {...pageProps} />,
-    resources: <ResourcesPage {...pageProps} />,
-    contact: <ContactPage {...pageProps} />,
-    notFound: <NotFoundPage {...pageProps} />,
-  }[currentPage] || <NotFoundPage {...pageProps} />;
+  const props = { route, onNavigate };
+  let page;
+  if (route.article) page = <ResourceArticlePage {...props} />;
+  else page = {
+    home: <HomePage {...props} />,
+    services: <ServicesPage {...props} />,
+    about: <AboutPage {...props} />,
+    areas: <AreasPage {...props} />,
+    faq: <FaqPage {...props} />,
+    resources: <ResourcesPage {...props} />,
+    contact: <ContactPage {...props} />,
+    ethics: <EthicsPage {...props} />,
+    privacy: <PrivacyPage {...props} />,
+    notFound: <NotFoundPage {...props} />,
+  }[route.key] || <NotFoundPage route={inspectorNotFoundRoute} onNavigate={onNavigate} />;
 
+  const canonicalUrl = route.path ? `${siteOrigin}${route.path}` : `${siteOrigin}/404.html`;
   return (
     <div className="site-shell">
+      <Seo route={route} canonicalUrl={canonicalUrl} siteOrigin={siteOrigin} />
       <a className="skip-link" href="#page-content">Skip to content</a>
-      <SiteHeader
-        mobileMenuOpen={mobileMenuOpen}
-        setMobileMenuOpen={setMobileMenuOpen}
-        currentPage={currentPage}
-        onNavigate={onNavigate}
-      />
-      <main id="page-content" tabIndex="-1">{page}</main>
+      <ServiceSwitcher onNavigate={onNavigate} />
+      <SiteHeader currentRoute={route} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} onNavigate={onNavigate} onOpenSearch={() => setSearchOpen(true)} />
+      <main id="page-content" tabIndex="-1" data-pagefind-body>{page}</main>
       <SiteFooter onNavigate={onNavigate} />
-      <MobileQuickActions />
+      <MobileQuickActions onNavigate={onNavigate} />
+      <SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
 
-function MobileQuickActions() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setVisible(window.scrollY > 260);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  if (!visible) return null;
-
-  return (
-    <div className="mobile-quick-actions" aria-label="Quick contact actions">
-      <a className="button button-gold" href={bookingUrl} target="_blank" rel="noreferrer"><ArrowRight size={15} /> Schedule</a>
-      <a className="button button-dark" href="tel:+13105056581"><Phone size={15} /> Call</a>
-    </div>
-  );
-}
+export { enabledInspectorRoutes };

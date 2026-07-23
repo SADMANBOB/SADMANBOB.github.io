@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-and-deploy:
     env:
-      SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://sadmanbob.github.io' }}
+      SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://www.cginspection.net' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -29,28 +29,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: |
+            package-lock.json
             inspector-site-prototype/package-lock.json
             contractor-site-prototype/package-lock.json
+      - name: Install root build dependencies
+        run: npm ci
       - name: Install inspector dependencies
         run: npm ci
         working-directory: inspector-site-prototype
-      - name: Build inspector site
-        run: npm run build
-        working-directory: inspector-site-prototype
-        env:
-          VITE_BASE_PATH: /
-          VITE_SITE_ORIGIN: ${{ env.SITE_ORIGIN }}
       - name: Install contractor dependencies
         run: npm ci
         working-directory: contractor-site-prototype
-      - name: Build contractor site
+      - name: Build assembled Pages artifact
         run: npm run build
-        working-directory: contractor-site-prototype
-        env:
-          VITE_BASE_PATH: /contracting/
-          VITE_SITE_ORIGIN: ${{ env.SITE_ORIGIN }}
-      - name: Assemble Pages artifact
-        run: node scripts/assemble-site.mjs
+      - name: Verify assembled Pages artifact
+        run: npm run verify
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
