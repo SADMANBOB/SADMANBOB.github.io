@@ -1,12 +1,17 @@
 # Browser QA
 
-The browser suite runs the six approved viewport sizes against representative
-inspection and contracting routes in Chromium, Firefox, and WebKit.
+The browser suite discovers every enabled inspection and contracting route,
+adds the property-services chooser, and checks the complete route set in
+Chromium, Firefox, and WebKit. When an approved registry record enables a new
+area, report, or case-study route, that route enters the smoke suite
+automatically.
 
-- Every browser checks the primary landmark, single page heading, loaded fonts,
-  runtime errors, and horizontal overflow at every viewport.
-- Chromium and WebKit also compare screenshots at a strict two-percent
-  difference limit.
+- Every enabled route is checked at 1280 × 800 for its primary landmark, single
+  page heading, loaded fonts, runtime errors, and horizontal overflow.
+- Representative inspection and contracting routes repeat responsive checks at
+  all six approved viewport sizes.
+- Chromium and WebKit compare those representative screenshots at a strict
+  two-percent difference limit.
 - Screenshot filenames include the operating system because native text
   rasterization and font metrics differ between Darwin and Linux.
 - Firefox remains a semantic and responsive-layout check because local macOS
