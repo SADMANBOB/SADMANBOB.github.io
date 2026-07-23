@@ -23,6 +23,12 @@ Run the committed comparisons:
 npm run test:browsers
 ```
 
+Run the complete enabled-route smoke matrix without screenshot comparisons:
+
+```sh
+npm run test:browsers:smoke
+```
+
 Refresh Darwin baselines only after visually reviewing an intentional UI
 change:
 
