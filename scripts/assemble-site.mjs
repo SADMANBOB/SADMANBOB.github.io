@@ -76,7 +76,7 @@ for (const [legacyRoute, target] of legacyInspectorRoutes) {
   await writeFile(resolve(directory, "index.html"), redirectPage(target));
 }
 
-await writeFile(resolve(output, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${siteOrigin}/sitemap.xml\n`);
+await writeFile(resolve(output, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${siteOrigin}/sitemap.xml\nSitemap: ${siteOrigin}/contracting/sitemap.xml\n`);
 await writeFile(resolve(output, "sitemap.xml"), sitemap([...inspectorRoutes, "/property-services/"]));
 await writeFile(resolve(output, "contracting/robots.txt"), `User-agent: *\nAllow: /contracting/\n\nSitemap: ${siteOrigin}/contracting/sitemap.xml\n`);
 await writeFile(resolve(output, "contracting/sitemap.xml"), sitemap(contractorRoutes));

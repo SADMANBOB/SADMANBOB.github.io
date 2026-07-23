@@ -1,4 +1,18 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap");
+@font-face {
+  font-family: "DM Sans";
+  src: url("/assets/fonts/dm-sans-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("/assets/fonts/newsreader-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
 
 :root {
   color: #252521;
@@ -11,11 +25,11 @@
   --paper: #f2ede4;
   --paper-deep: #e5ddd0;
   --ink: #252521;
-  --muted: #6f6a61;
+  --muted: #635d54;
   --line: #c9c0b2;
-  --copper: #b86f43;
+  --copper: #9f5835;
   --copper-bright: #cb8355;
-  --copper-dark: #8f4f2e;
+  --copper-dark: #8b4b2a;
   --serif: "Newsreader", Georgia, serif;
 }
 
@@ -52,7 +66,7 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .license-line { color: #d8d2c9; background: #171816; border-bottom: 1px solid #343530; }
 .license-line-inner { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 24px; font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
 .contractor-service-switcher { display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
-.contractor-service-switcher > span { color: #77766f; }
+.contractor-service-switcher > span { color: #99958d; }
 .contractor-service-switcher > a { min-height: 29px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; color: #c9c3ba; border: 1px solid transparent; }
 .contractor-service-switcher > a:hover { color: #fff; border-color: #4a4a44; }
 .contractor-service-switcher > a.is-current { color: #fffaf4; background: var(--copper-dark); }
@@ -66,7 +80,7 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .button:hover { transform: translateY(-2px); }
 .button-small { min-height: 38px; padding: 0 16px; font-size: 11px; }
 .button-copper { color: #fffaf4; background: var(--copper); }
-.button-copper:hover { background: var(--copper-bright); }
+.button-copper:hover { background: var(--copper-dark); }
 .button-outline { color: #f2ece4; border-color: #66665f; }
 .button-outline:hover { color: #fff; border-color: var(--copper-bright); }
 .button-outline-dark { color: var(--ink); background: transparent; border-color: #9f9486; }
@@ -291,7 +305,7 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .footer-links a:hover { color: var(--copper-bright); }
 .footer-license { display: flex; justify-content: space-between; gap: 20px; padding: 17px 0; color: #9b968e; border-top: 1px solid #33342f; border-bottom: 1px solid #33342f; font-size: 10px; }
 .footer-license a { display: inline-flex; align-items: center; gap: 6px; color: var(--copper-bright); }
-.footer-bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 20px; color: #706d67; font-size: 10px; }
+.footer-bottom { display: flex; justify-content: space-between; gap: 20px; padding-top: 20px; color: #928c83; font-size: 10px; }
 .footer-bottom a:hover { color: var(--copper-bright); }
 
 @media (max-width: 1110px) {
@@ -425,6 +439,9 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .project-disclosure { margin-bottom: 32px; }
 .representative-media { aspect-ratio: 3 / 2; }
 .project-card-copy { padding: 24px 24px 27px; }
+.published-photo-caption { margin: 0 0 14px; color: var(--copper-dark); font-size: 10px; font-weight: 700; line-height: 1.55; }
+.about-image > .published-photo-caption,
+.about-story-image > .published-photo-caption { margin-top: 10px; }
 .project-card-copy h2 { margin-bottom: 14px; font-size: 28px; }
 .project-card-copy ul { display: grid; gap: 9px; margin: 0 0 20px; padding-left: 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .project-type-index { padding: 108px 0 114px; background: #f7f2ea; }
@@ -524,6 +541,7 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .request-review dd { margin: 0; color: #514c45; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
 .form-submit-truth { margin: -7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .estimate-sidebar > div > p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.estimate-sidebar .estimate-policy > p { color: #c1bcb4; }
 .policy-section { padding: 94px 0; background: #f6f1e9; }
 .policy-copy { max-width: 840px; }
 .policy-copy h2 { margin: 44px 0 16px; font-size: 34px; }

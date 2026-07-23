@@ -1,0 +1,13 @@
+html {
+  scroll-behavior: auto !important;
+}
+
+*, *::before, *::after {
+  animation: none !important;
+  caret-color: transparent !important;
+  transition: none !important;
+}
+
+.site-header {
+  backdrop-filter: none !important;
+}

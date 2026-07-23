@@ -37,7 +37,10 @@ export function Seo({ route, canonicalUrl, siteOrigin }) {
       schema.type = "application/ld+json";
       document.head.appendChild(schema);
     }
-    schema.textContent = JSON.stringify(buildInspectorSchema(route, siteOrigin));
+    schema.textContent = JSON.stringify(buildInspectorSchema({
+      ...route,
+      path: route.path || "/404.html",
+    }, siteOrigin));
   }, [canonicalUrl, route, siteOrigin]);
 
   return null;

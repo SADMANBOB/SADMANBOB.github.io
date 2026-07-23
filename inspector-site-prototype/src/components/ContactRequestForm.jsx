@@ -1,6 +1,14 @@
 import { useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { business } from "../../../shared/siteData.js";
+import {
+  createFileShareAuthorization,
+  formTransportFor,
+  prepareMailto,
+  protectedUploadPolicyFor,
+  submitApprovedForm,
+  uploadProtectedFile,
+} from "../../../shared/integrationAdapters.js";
 
 const requiredFields = ["name", "email", "address", "propertyType", "purpose", "preferredWindow", "occupancy", "consent"];
 
@@ -17,13 +25,23 @@ const labelByField = {
 };
 
 export function ContactRequestForm() {
+  const surface = "inspector-contact";
+  const transport = formTransportFor(surface);
+  const uploadPolicy = protectedUploadPolicyFor(surface);
+  const secureTransport = Boolean(transport && transport.provider !== "mailto");
   const [errors, setErrors] = useState({});
   const [preparedEmail, setPreparedEmail] = useState(null);
   const [preferredContact, setPreferredContact] = useState("email");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState(null);
+  const [uploadConsent, setUploadConsent] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadError, setUploadError] = useState("");
   const errorSummaryRef = useRef(null);
   const preparedStateRef = useRef(null);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const nextErrors = {};
@@ -37,15 +55,38 @@ export function ContactRequestForm() {
       nextErrors.phone = "Phone is required when phone follow-up is selected.";
     }
     if (form.get("consent") !== "yes") nextErrors.consent = "Confirm that C&G may contact you about this request.";
+    if (uploadedFiles.length && !uploadConsent) {
+      nextErrors.uploadAuthorization = "Confirm authorization before including protected files.";
+    }
 
     if (Object.keys(nextErrors).length) {
       setPreparedEmail(null);
+      setSubmissionResult(null);
       setErrors(nextErrors);
       window.requestAnimationFrame(() => errorSummaryRef.current?.focus());
       return;
     }
 
     setErrors({});
+    const payload = {
+      name: String(form.get("name")),
+      email: String(form.get("email")),
+      phone: String(form.get("phone") || ""),
+      preferredContact: String(form.get("preferredContact")),
+      propertyAddress: String(form.get("address")),
+      propertyType: String(form.get("propertyType")),
+      approximateSquareFootage: String(form.get("squareFootage") || ""),
+      inspectionPurpose: String(form.get("purpose")),
+      preferredWindow: String(form.get("preferredWindow")),
+      occupancy: String(form.get("occupancy")),
+      notes: String(form.get("notes") || ""),
+      uploadIds: uploadedFiles.map((file) => file.uploadId),
+      protectedUploads: uploadedFiles.map((file) => ({
+        uploadId: file.uploadId,
+        authorization: file.authorization,
+      })),
+      contactConsent: true,
+    };
     const subject = `Inspection request — ${form.get("address")}`;
     const body = [
       `Name: ${form.get("name")}`,
@@ -62,8 +103,25 @@ export function ContactRequestForm() {
       "Access or deadline notes:",
       form.get("notes") || "None provided",
     ].join("\n");
-    setPreparedEmail(`mailto:${business.inspection.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
-    window.requestAnimationFrame(() => preparedStateRef.current?.focus());
+    if (!secureTransport) {
+      setSubmissionResult(null);
+      setPreparedEmail(prepareMailto({ recipient: business.inspection.email, subject, body }));
+      window.requestAnimationFrame(() => preparedStateRef.current?.focus());
+      return;
+    }
+
+    setPreparedEmail(null);
+    setSubmitting(true);
+    setSubmissionResult(null);
+    try {
+      const result = await submitApprovedForm(surface, payload);
+      setSubmissionResult({ state: "submitted", receipt: result.receipt });
+    } catch {
+      setSubmissionResult({ state: "error" });
+    } finally {
+      setSubmitting(false);
+      window.requestAnimationFrame(() => preparedStateRef.current?.focus());
+    }
   };
 
   const errorFor = (name) => errors[name] ? <span className="field-error" id={`inspection-${name}-error`}>{errors[name]}</span> : null;
@@ -80,6 +138,7 @@ export function ContactRequestForm() {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setPreparedEmail(null);
+    setSubmissionResult(null);
     if (name === "preferredContact") setPreferredContact(value);
     if (!name) return;
     setErrors((current) => {
@@ -91,12 +150,37 @@ export function ContactRequestForm() {
     });
   };
 
+  const handleUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !uploadPolicy || !uploadConsent) return;
+    setUploadError("");
+    setUploading(true);
+    try {
+      const uploaded = await uploadProtectedFile(surface, file, {
+        authorization: createFileShareAuthorization(),
+      });
+      setUploadedFiles((current) => [...current, uploaded].slice(0, uploadPolicy.maxFiles));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "The protected upload did not complete.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadConsentChange = (event) => {
+    const confirmed = event.target.checked;
+    setUploadConsent(confirmed);
+    setUploadError("");
+    if (!confirmed) setUploadedFiles([]);
+  };
+
   return (
     <form className="request-form" onSubmit={handleSubmit} onChange={handleChange} noValidate data-testid="inspection-contact-form" aria-labelledby="inspection-request">
       <div className="request-form-heading">
         <p className="eyebrow eyebrow-dark">Request details</p>
         <h2 id="inspection-request" tabIndex="-1">Start your inspection request.</h2>
-        <p>Required fields are marked with an asterisk. This page checks the details locally and prepares an email draft; it does not send or store the request.</p>
+        <p>Required fields are marked with an asterisk. {secureTransport ? <>This form submits to the owner-approved {transport.provider} processor. Review the processor’s <a href={transport.publicConfig.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>.</> : "This page checks the details locally and prepares an email draft; it does not send or store the request."}</p>
       </div>
 
       {Object.keys(errors).length ? (
@@ -186,6 +270,15 @@ export function ContactRequestForm() {
           <label htmlFor="inspection-notes">Access or deadline notes <span className="field-optional">Optional</span></label>
           <textarea id="inspection-notes" name="notes" rows="5" placeholder="Include known access limitations, utility status, or additional structures." />
         </div>
+        {uploadPolicy ? <div className="form-row" id="inspection-uploadAuthorization">
+          <label htmlFor="inspection-upload">Protected supporting files <span className="field-optional">Optional</span></label>
+          <label className="form-consent-row"><input type="checkbox" checked={uploadConsent} onChange={handleUploadConsentChange} /> <span>I am authorized to share these files and have reviewed the approved upload provider’s <a href={uploadPolicy.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>.</span></label>
+          <input id="inspection-upload" type="file" accept={uploadPolicy.allowedMimeTypes.join(",")} disabled={!uploadConsent || uploading || uploadedFiles.length >= uploadPolicy.maxFiles} onChange={handleUpload} />
+          <p className="form-privacy-note">{uploading ? "Uploading through the protected one-time path…" : `Up to ${uploadPolicy.maxFiles} approved files; each file must be ${Math.floor(uploadPolicy.maxBytes / 1_000_000)} MB or smaller. Unchecking authorization removes upload IDs from this request; orphaned files remain subject to the provider’s approved deletion policy.`}</p>
+          {uploadedFiles.length ? <ul>{uploadedFiles.map((file) => <li key={file.uploadId}>{file.name}</li>)}</ul> : null}
+          {errors.uploadAuthorization ? <span className="field-error" role="alert">{errors.uploadAuthorization}</span> : null}
+          {uploadError ? <span className="field-error" role="alert">{uploadError}</span> : null}
+        </div> : null}
         <div className="form-consent-row">
           <label htmlFor="inspection-consent">
             <input id="inspection-consent" name="consent" type="checkbox" value="yes" {...fieldState("consent")} />
@@ -196,7 +289,7 @@ export function ContactRequestForm() {
         <p className="form-privacy-note">Do not include lockbox codes, alarm codes, financial records, offer documents, or a full inspection report. See the <a href="/privacy/">privacy notice</a>.</p>
       </fieldset>
 
-      <button className="button button-gold" type="submit">Prepare email <ArrowRight size={17} aria-hidden="true" /></button>
+      <button className="button button-gold" type="submit" disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send request securely") : "Prepare email"} <ArrowRight size={17} aria-hidden="true" /></button>
 
       {preparedEmail ? (
         <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status" aria-labelledby="inspection-prepared-title" data-testid="inspection-prepared-state">
@@ -205,6 +298,8 @@ export function ContactRequestForm() {
           <a className="button button-dark" href={preparedEmail}>Open your email app</a>
         </div>
       ) : null}
+      {submissionResult?.state === "submitted" ? <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status"><h3>Request received by the approved processor.</h3><p>C&amp;G still needs to confirm the property, scope, availability, and price. This is not a confirmed appointment.{submissionResult.receipt ? ` Receipt: ${submissionResult.receipt}.` : ""}</p></div> : null}
+      {submissionResult?.state === "error" ? <div className="form-error-summary" ref={preparedStateRef} tabIndex="-1" role="alert"><h3>The request could not be submitted.</h3><p>No appointment was created. Call C&amp;G or try again later.</p></div> : null}
     </form>
   );
 }

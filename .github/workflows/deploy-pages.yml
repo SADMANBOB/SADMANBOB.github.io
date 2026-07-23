@@ -44,6 +44,8 @@ jobs:
         run: npm run build
       - name: Verify assembled Pages artifact
         run: npm run verify
+      - name: Verify publication-critical owner evidence
+        run: npm run release:verify
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

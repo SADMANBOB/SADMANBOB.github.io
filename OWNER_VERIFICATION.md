@@ -1,7 +1,10 @@
 # C&G owner verification queue
 
 This file is a handoff index. The executable gates in `shared/siteData.js` and
-`shared/reviewRegistry.js` remain authoritative. A pending item must not be
+`shared/reviewRegistry.js` remain authoritative. The full field-by-field
+activation workflow is in `OWNER_CONTENT_INTAKE.md`, and
+`node scripts/publication-readiness.mjs` prints the current machine-readable
+queue. A pending item must not be
 published merely because information was supplied informally; update the
 matching registry only after the evidence, exact wording, allowed surfaces, and
 expiration or recheck date have been recorded.
@@ -48,6 +51,12 @@ expiration or recheck date have been recorded.
 - Replace editorial project illustrations with real C&G project photographs
   only after ownership or usage permission, customer/property privacy,
   caption, alt text, and allowed surfaces are recorded.
+- Fill a case-study slot only after its condition, scope, constraints,
+  approach, documented result, source confirmation, permission, privacy
+  approval, and referenced photo records all pass.
+- Add the sample-report PDF only after page-by-page and metadata redaction,
+  owner publication approval, privacy review, page count, template reference,
+  and SHA-256 digest are recorded.
 - Confirm the retained asset/permission record for the current generated
   editorial image set.
 
@@ -62,7 +71,12 @@ expiration or recheck date have been recorded.
 - Reviews: approve the provider and public configuration only after the review
   evidence and permission workflow is operating.
 - Forms: decide whether the current local-validation and mail-draft transport
-  should remain or be replaced by an approved form processor.
+  should remain or be replaced by an approved HTTPS form processor. The secure
+  adapter is present but stays disabled until provider, endpoint, privacy,
+  retention, abuse-control, and receipt behavior are approved.
+- Uploads: approve a one-time upload broker, host allowlist, MIME allowlist,
+  file limits, malware controls, retention/deletion, and privacy terms.
+  GitHub Pages never receives private files or stores an upload credential.
 - Obtain owner and professional review of the final privacy, retention,
   contract, deposit, warranty, cancellation, and business-name wording where
   applicable.

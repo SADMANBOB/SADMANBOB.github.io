@@ -9,15 +9,17 @@ const output = resolve(root, "_site");
 const mode = process.argv[2] || "static";
 
 const budgets = {
-  total: 8 * 1024 * 1024,
+  total: 24 * 1024 * 1024,
   file: 512 * 1024,
   html: 160 * 1024,
   css: 96 * 1024,
   js: 384 * 1024,
   image: 512 * 1024,
+  pdf: 8 * 1024 * 1024,
 };
 
 const contentTypes = new Map([
+  [".avif", "image/avif"],
   [".css", "text/css; charset=utf-8"],
   [".gif", "image/gif"],
   [".html", "text/html; charset=utf-8"],
@@ -30,6 +32,9 @@ const contentTypes = new Map([
   [".svg", "image/svg+xml"],
   [".txt", "text/plain; charset=utf-8"],
   [".wasm", "application/wasm"],
+  [".webp", "image/webp"],
+  [".woff", "font/woff"],
+  [".woff2", "font/woff2"],
   [".xml", "application/xml; charset=utf-8"],
 ]);
 
@@ -116,7 +121,8 @@ const staticChecks = async () => {
     if (extension === ".html") limit = budgets.html;
     else if (extension === ".css") limit = budgets.css;
     else if (extension === ".js") limit = budgets.js;
-    else if ([".gif", ".jpeg", ".jpg", ".png", ".webp"].includes(extension)) limit = budgets.image;
+    else if ([".avif", ".gif", ".jpeg", ".jpg", ".png", ".webp"].includes(extension)) limit = budgets.image;
+    else if (extension === ".pdf") limit = budgets.pdf;
     check(record.bytes <= limit, `${relative} is ${(record.bytes / 1024).toFixed(1)} KiB; ${extension || "file"} budget is ${limit / 1024} KiB`);
   }
 
@@ -335,7 +341,7 @@ const staticChecks = async () => {
   console.log(`- ${htmlRecords.length} HTML documents checked`);
   console.log(`- ${crawlable.length} crawlable canonical pages reconciled with sitemaps`);
   console.log(`- ${outputFiles.size} output files and internal references checked`);
-  console.log(`- ${(totalBytes / 1024 / 1024).toFixed(2)} MiB assembled output (8 MiB budget)`);
+  console.log(`- ${(totalBytes / 1024 / 1024).toFixed(2)} MiB assembled output (${budgets.total / 1024 / 1024} MiB budget)`);
 };
 
 const fileForRequest = async (pathname) => {
