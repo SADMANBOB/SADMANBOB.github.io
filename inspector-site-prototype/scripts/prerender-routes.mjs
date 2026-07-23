@@ -46,7 +46,8 @@ const shell = await readFile(resolve(dist, "index.html"), "utf8");
 
 for (const route of enabledInspectorRoutes) {
   const body = render(route.path);
-  const html = setHead(shell, route, route.path, body);
+  const noindex = Boolean(route.noindex || route.sampleReport?.provisional);
+  const html = setHead(shell, route, route.path, body, { noindex });
   if (route.path === "/") await writeFile(resolve(dist, "index.html"), html);
   else {
     const directory = resolve(dist, route.path.replace(/^\/+|\/+$/g, ""));

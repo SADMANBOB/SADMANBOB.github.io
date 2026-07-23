@@ -15,6 +15,7 @@ export const business = {
     email: "clarencegloss@gmail.com",
     schedulingUrl: null,
     origin: "https://www.cginspection.net",
+    positioning: "Home inspections across Los Angeles County and Riverside County.",
   },
   contracting: {
     publicName: "C&G Contracting Services",
@@ -27,6 +28,8 @@ export const business = {
     phoneE164: "+1-310-505-6581",
     email: "clarencegloss@gmail.com",
     origin: "https://www.cginspection.net/contracting/",
+    positioning:
+      "Residential repair and improvement services across Los Angeles County and Riverside County, subject to project review.",
     license: {
       number: "987643",
       classification: "B — General Building",
@@ -51,25 +54,31 @@ export const contractorRequestCategoryIds = Object.freeze([
 
 export const claims = {
   internachiCertification: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "current directory listing or certificate",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    draftCopy: "Professional home inspection credentials and continuing-education details are being finalized for publication.",
+    organization: null,
+    credentialNumber: null,
+    certificateUrl: null,
   },
   generalLiabilityInsurance: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "current declarations or certificate and approved wording",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    draftCopy: "Insurance and professional coverage details are available upon confirmation and will be published after owner review.",
   },
   errorsAndOmissionsInsurance: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "current declarations or certificate and approved wording",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    draftCopy: "Insurance and professional coverage details are available upon confirmation and will be published after owner review.",
   },
   yearsExperience35Plus: {
     status: "pending",
@@ -107,39 +116,67 @@ export const claims = {
     allowedSurfaces: [],
   },
   nextDayReports: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "owner-approved operational promise",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    draftCopy: "Most inspection reports are delivered within 24 hours. Larger, more complex, or specialty properties may require up to 48 hours.",
+    draftShort: "Most reports delivered within 24 hours.",
   },
   weekendAvailability: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "owner-approved hours and availability policy",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    draftCopy: "Saturday appointments are available. Limited Sunday appointments may be available by request.",
+    hoursCopy: "Monday through Saturday, 8:00 a.m. to 6:00 p.m.",
+    sundayCopy: "Sunday appointments may be available by request.",
+  },
+  responseTime: {
+    status: "provisional_owner_review",
+    evidenceType: "owner-approved response expectation",
+    verifiedAt: null,
+    expiresAt: null,
+    allowedSurfaces: [],
+    draftCopy: "Calls, emails, and website inquiries are typically answered within one business day.",
+  },
+  clarenceBiography: {
+    status: "provisional_owner_review",
+    evidenceType: "owner-approved biography wording",
+    verifiedAt: null,
+    expiresAt: null,
+    allowedSurfaces: [],
+    draftShort: "Clarence Gloss combines inspection discipline, construction knowledge, and clear communication to help property owners make informed decisions.",
+    draftFull: "Clarence Gloss brings a practical, construction-informed perspective to property inspections and residential improvement work. His approach emphasizes careful observation, clear communication, and helping clients understand which findings require immediate attention and which can be planned for over time. Through C&G Certified Home Inspector and C&G Contracting Services, Clarence works with homeowners, buyers, sellers, agents, investors, and property professionals across Los Angeles and Riverside counties.",
   },
   poolSpaInspection: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "scope, qualifications, agreement, report support, and legal review",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    productionVisible: false,
+    draftCopy: "Visible pool and spa components may be observed as an optional add-on when access, conditions, and scheduling allow. This is not a specialist pool inspection unless explicitly arranged.",
   },
   manufacturedHomes: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "owner confirmation and supported inspection agreement",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    productionVisible: false,
+    draftCopy: "Manufactured-home inspections may be accepted after property-specific review. Scope and access requirements must be confirmed before scheduling.",
   },
   moistureMeters: {
-    status: "pending",
+    status: "provisional_owner_review",
     evidenceType: "actual tool and operating-practice confirmation",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    productionVisible: false,
+    draftCopy: "Moisture meters may be used when conditions warrant to support observations of suspected moisture intrusion. Readings are limited to accessible areas and are not a guarantee that hidden moisture is absent.",
   },
   temperatureSensors: {
     status: "pending",
@@ -147,6 +184,15 @@ export const claims = {
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+  },
+  infraredImaging: {
+    status: "provisional_owner_review",
+    evidenceType: "actual tool and operating-practice confirmation",
+    verifiedAt: null,
+    expiresAt: null,
+    allowedSurfaces: [],
+    productionVisible: false,
+    draftCopy: "Infrared imaging may be used when available and appropriate as a supplemental observation tool. It does not replace invasive testing or specialist evaluation.",
   },
   contractorLicense: {
     status: "approved",
@@ -166,11 +212,12 @@ export const claims = {
     allowedSurfaces: ["inspector", "contractor", "portal"],
   },
   customerTestimonials: {
-    status: "pending",
+    status: "legacy_pending_owner_confirmation",
     evidenceType: "verifiable source, permission, and exact approved text",
     verifiedAt: null,
     expiresAt: null,
     allowedSurfaces: [],
+    note: "Legacy feedback imported for owner-review staging. Production getApprovedReviews remains empty until each review is approved.",
   },
 };
 
@@ -197,25 +244,167 @@ export const claimCanRenderOn = (claim, surface, onDate = new Date()) =>
   && typeof surface === "string"
   && claim.allowedSurfaces.includes(surface);
 
+/** Staging-only: provisional draft copy may render with explicit owner-review labeling. */
+export function claimDraftForOwnerReview(claim) {
+  if (!claim || claim.status !== "provisional_owner_review") return null;
+  if (claim.productionVisible === false) return null;
+  return claim.draftCopy || claim.draftFull || claim.draftShort || null;
+}
+
+const SERVICE_AREA_QUALIFICATION =
+  "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address.";
+
+const losAngelesCommunities = Object.freeze([
+  "Los Angeles",
+  "Pasadena",
+  "Glendale",
+  "Burbank",
+  "Alhambra",
+  "West Covina",
+  "Compton",
+  "Long Beach",
+  "Hawthorne",
+  "Inglewood",
+  "Bellflower",
+  "Norwalk",
+  "Paramount",
+  "Lynwood",
+  "Downey",
+  "Carson",
+  "Gardena",
+  "Torrance",
+  "Bell Gardens",
+]);
+
+const riversideCommunities = Object.freeze([
+  "Riverside",
+  "Moreno Valley",
+  "Corona",
+  "Jurupa Valley",
+  "Eastvale",
+  "Perris",
+]);
+
+const losAngelesDescription =
+  "Serving residential clients throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities.";
+
+const riversideDescription =
+  "Serving residential clients throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities.";
+
+const mapsLinkFor = (query) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
 export const serviceAreas = [
   {
     id: "los-angeles-county",
     label: "Los Angeles County",
     type: "county",
-    status: "current_public_needs_owner_confirmation",
-    approvedForInspector: false,
-    approvedForContractor: false,
-    approvedForMetadata: false,
-    uniquePageEnabled: false,
-    ownerConfirmedAt: null,
-    inspectorPage: null,
-    contractorPage: null,
+    status: "approved",
+    contentState: "verified",
+    approvedForInspector: true,
+    approvedForContractor: true,
+    approvedForMetadata: true,
+    uniquePageEnabled: true,
+    ownerConfirmedAt: "2026-07-23T19:00:00Z",
+    description: losAngelesDescription,
+    communities: losAngelesCommunities,
+    qualification: SERVICE_AREA_QUALIFICATION,
+    mapsUrl: mapsLinkFor("Los Angeles County, California"),
+    inspectorPage: {
+      pageTitle: "Home Inspections in Los Angeles County | C&G",
+      metaDescription:
+        "Request a C&G home inspection in Los Angeles County. Coverage is confirmed address by address across Central LA, South LA, the San Gabriel Valley, Gateway Cities, and South Bay.",
+      pageContent: {
+        introduction:
+          "C&G Certified Home Inspector serves residential clients throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities. Share the full property address so coverage, travel, and timing can be confirmed before an appointment is accepted.",
+        propertyContext:
+          "Los Angeles County includes a wide range of housing ages, access patterns, and neighborhood conditions. A request for Compton, Long Beach, Pasadena, Torrance, or another listed community begins with the specific address—not a county-wide assumption that every property is automatically accepted.",
+        accessAndTiming:
+          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. Provide occupancy, access notes, and preferred timing so the inspection conversation starts with accurate logistics.",
+        planningChecklist: [
+          "Full street address and city within Los Angeles County",
+          "Property type, approximate size, and inspection purpose",
+          "Occupancy, access instructions, and preferred timing window",
+        ],
+      },
+    },
+    contractorPage: {
+      pageTitle: "Residential Contracting in Los Angeles County | C&G",
+      metaDescription:
+        "Request residential repair and finish-work review from C&G Contracting Services in Los Angeles County. Project acceptance depends on scope, travel, scheduling, and eligibility.",
+      pageContent: {
+        introduction:
+          "C&G Contracting Services reviews residential repair, finish-work, punch-list, and small multi-trade projects throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities. Every request is evaluated for the property, scope, and license fit.",
+        propertyContext:
+          "Communities such as Compton, Downey, Hawthorne, Long Beach, and Torrance may present different access, finish, and permit contexts. A clear description of the current condition and desired result helps C&G decide whether the project fits current capabilities.",
+        accessAndTiming:
+          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. Projects are not accepted until eligibility, scope, and written estimate steps are complete.",
+        planningChecklist: [
+          "Full property address and authority to request work",
+          "Plain-language description of the condition and desired result",
+          "Occupancy, access, timing, and the 12-month inspection eligibility answer",
+        ],
+      },
+    },
+  },
+  {
+    id: "riverside-county",
+    label: "Riverside County",
+    type: "county",
+    status: "approved",
+    contentState: "verified",
+    approvedForInspector: true,
+    approvedForContractor: true,
+    approvedForMetadata: true,
+    uniquePageEnabled: true,
+    ownerConfirmedAt: "2026-07-23T19:00:00Z",
+    description: riversideDescription,
+    communities: riversideCommunities,
+    qualification: SERVICE_AREA_QUALIFICATION,
+    mapsUrl: mapsLinkFor("Riverside County, California"),
+    inspectorPage: {
+      pageTitle: "Home Inspections in Riverside County | C&G",
+      metaDescription:
+        "Request a C&G home inspection in Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities.",
+      pageContent: {
+        introduction:
+          "C&G Certified Home Inspector serves residential clients throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities. Coverage is confirmed from the actual property address before an appointment is accepted.",
+        propertyContext:
+          "Riverside County properties vary in age, access, and travel distance from the Los Angeles County core. Sharing the complete address, property type, and timing needs early helps C&G confirm whether the inspection can be scheduled.",
+        accessAndTiming:
+          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. A submitted request is not a confirmed appointment until C&G accepts the scope and timing.",
+        planningChecklist: [
+          "Full street address and city within Riverside County",
+          "Property type, approximate size, and inspection purpose",
+          "Preferred timing and any access or occupancy constraints",
+        ],
+      },
+    },
+    contractorPage: {
+      pageTitle: "Residential Contracting in Riverside County | C&G",
+      metaDescription:
+        "Share a residential repair or finish-work request with C&G Contracting Services in Riverside County. Acceptance depends on scope, travel, scheduling, and eligibility review.",
+      pageContent: {
+        introduction:
+          "C&G Contracting Services reviews residential repair and improvement requests throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities. Travel, trades, permits, and eligibility are part of every review.",
+        propertyContext:
+          "A clear project brief matters as much as location. Describe the condition, desired result, access, and any known source issues so C&G can decide whether the work fits the current B — General Building practice.",
+        accessAndTiming:
+          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. No price or work date is promised by the website request form.",
+        planningChecklist: [
+          "Full property address and requester authority",
+          "Condition summary, affected areas, and desired result",
+          "Timing needs plus the 12-month C&G inspection eligibility answer",
+        ],
+      },
+    },
   },
   {
     id: "city-of-compton",
     label: "City of Compton",
     type: "city",
     status: "pending",
+    contentState: "legacy_pending_owner_confirmation",
     approvedForInspector: false,
     approvedForContractor: false,
     approvedForMetadata: false,
@@ -223,19 +412,7 @@ export const serviceAreas = [
     ownerConfirmedAt: null,
     inspectorPage: null,
     contractorPage: null,
-  },
-  {
-    id: "riverside-county",
-    label: "Riverside County",
-    type: "county",
-    status: "pending",
-    approvedForInspector: false,
-    approvedForContractor: false,
-    approvedForMetadata: false,
-    uniquePageEnabled: false,
-    ownerConfirmedAt: null,
-    inspectorPage: null,
-    contractorPage: null,
+    note: "Compton is listed as a representative Los Angeles County community. A separate city landing page remains unpublished.",
   },
 ];
 

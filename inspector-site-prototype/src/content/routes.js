@@ -3,18 +3,30 @@ import {
   getApprovedServiceAreaPages,
   PUBLICATION_SURFACES,
 } from "../../../shared/publicationRegistry.js";
+import {
+  OWNER_REVIEW_STAGING_VISIBLE,
+  provisionalBusinessDetails,
+} from "../../../shared/ownerReview.js";
 
 const approvedSampleReport = getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport)[0] || null;
 const approvedAreaPages = getApprovedServiceAreaPages("Inspector");
+const sampleReportPlaceholder = OWNER_REVIEW_STAGING_VISIBLE
+  ? {
+      provisional: true,
+      title: provisionalBusinessDetails.sampleReportPlaceholder.title,
+      copy: provisionalBusinessDetails.sampleReportPlaceholder.copy,
+    }
+  : null;
+const sampleReportForRoute = approvedSampleReport || sampleReportPlaceholder;
 
 const coreRoutes = [
   {
     key: "home",
     path: "/",
     label: "Home",
-    title: "C&G Certified Home Inspector | Know What You’re Buying",
+    title: "C&G Certified Home Inspector | Los Angeles & Riverside Counties",
     description:
-      "Construction-informed home inspections with clear explanations, detailed photos, and practical next steps for buyers, sellers, and homeowners in approved service areas.",
+      "Home inspections across Los Angeles County and Riverside County with clear explanations, detailed photos, and practical next steps for buyers, sellers, and homeowners.",
     enabled: true,
     navigation: true,
     sitemap: true,
@@ -48,9 +60,9 @@ const coreRoutes = [
     key: "areas",
     path: "/areas/",
     label: "Areas We Serve",
-    title: "Home Inspection Service Area | C&G",
+    title: "Home Inspection Service Areas | Los Angeles & Riverside Counties | C&G",
     description:
-      "Check whether C&G currently schedules home inspections in your community and learn what information to provide for travel and availability confirmation.",
+      "C&G schedules home inspections across Los Angeles County and Riverside County. Coverage is confirmed address by address based on travel, scope, and availability.",
     enabled: true,
     navigation: true,
     sitemap: true,
@@ -125,12 +137,13 @@ const coreRoutes = [
     title: "Sample Home Inspection Report | C&G",
     description:
       "See how a C&G home inspection report organizes photographs, observations, limitations, and practical follow-up recommendations.",
-    enabled: Boolean(approvedSampleReport),
+    enabled: Boolean(sampleReportForRoute),
     navigation: false,
     footer: Boolean(approvedSampleReport),
     sitemap: Boolean(approvedSampleReport),
+    noindex: Boolean(sampleReportPlaceholder && !approvedSampleReport),
     disabledReason: "Owner-approved, properly redacted sample report is required.",
-    sampleReport: approvedSampleReport,
+    sampleReport: sampleReportForRoute,
     breadcrumbs: [{ label: "Sample Report", path: "/sample-report/" }],
   },
 ];

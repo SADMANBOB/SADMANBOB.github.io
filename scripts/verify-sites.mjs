@@ -31,7 +31,8 @@ import {
   sampleReportRegistry,
   serviceAreaPageIsApproved,
 } from "../shared/publicationRegistry.js";
-import { getApprovedReviews, reviewEntryIsApproved, reviewSlots } from "../shared/reviewRegistry.js";
+import { getApprovedReviews, getLegacyOwnerReviewReviews, getRenderableReviews, reviewEntryIsApproved, reviewEntryIsLegacyOwnerReview, reviewSlots } from "../shared/reviewRegistry.js";
+import { CONTENT_STATE, OWNER_REVIEW_STAGING_VISIBLE } from "../shared/ownerReview.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
 import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
@@ -83,7 +84,9 @@ const forbiddenDirectClaims = [
   /\b(?:real customer|customer review|five-star|5-star)\b/i,
   /\bcompleted C&G projects?\b/i,
 ];
-for (const pattern of forbiddenDirectClaims) assert.equal(pattern.test(allSource), false, `Production source contains an unapproved direct claim: ${pattern}`);
+// Exclude preserved legacy client-feedback quotes from the marketing-claim scan.
+const marketingSource = allSource.replace(/legacyText:\s*"[^"]*"/g, 'legacyText:""');
+for (const pattern of forbiddenDirectClaims) assert.equal(pattern.test(marketingSource), false, `Production source contains an unapproved direct claim: ${pattern}`);
 
 const now = new Date();
 const gateTestDate = new Date("2026-07-23T12:00:00Z");
@@ -364,6 +367,13 @@ for (const [index, review] of reviewSlots.entries()) {
   assert.equal(review.id, `review-slot-${String(index + 1).padStart(2, "0")}`, `Review slot ${index + 1} has the wrong ID`);
   if (review.status === "approved") {
     assert.equal(reviewEntryIsApproved(review, "inspector-home", now), true, `${review.id} is marked approved but fails the review gate`);
+  } else if (review.status === CONTENT_STATE.legacyPendingOwnerConfirmation) {
+    assert.equal(reviewEntryIsLegacyOwnerReview(review, "inspector-home"), true, `${review.id} legacy owner-review record is incomplete`);
+    assert.equal(review.sourceUrl, null, `${review.id} must not claim an approved source URL`);
+    assert.equal(review.exactApprovedText, null, `${review.id} must not claim production-approved text`);
+    assert.equal(review.publicationPermissionAt, null, `${review.id} must not claim publication permission`);
+    assert.equal(review.displayAttribution, null, `${review.id} must not claim approved attribution`);
+    assert.deepEqual(review.allowedSurfaces, [], `${review.id} must not expose production allowedSurfaces`);
   } else {
     assert.equal(review.sourceUrl, null, `${review.id} contains an unapproved source`);
     assert.equal(review.exactApprovedText, null, `${review.id} contains unapproved review text`);
@@ -373,8 +383,18 @@ for (const [index, review] of reviewSlots.entries()) {
   }
 }
 const approvedReviews = getApprovedReviews("inspector-home", now);
+assert.equal(approvedReviews.length, 0, "Legacy owner-review feedback must not pass the production review gate");
 assert.ok(approvedReviews.every((review) => reviewEntryIsApproved(review, "inspector-home", now)), "An invalid review became publicly renderable");
-assert.match(inspectorSource, /<ReviewCarousel \/>/, "The gated review carousel is not mounted on the inspector home page");
+const legacyOwnerReviewSlots = reviewSlots.filter((review) => review.status === CONTENT_STATE.legacyPendingOwnerConfirmation);
+assert.equal(legacyOwnerReviewSlots.length, 20, "Exactly 20 legacy owner-review feedback slots should remain registered");
+if (OWNER_REVIEW_STAGING_VISIBLE) {
+  assert.equal(getLegacyOwnerReviewReviews("inspector-home").length, 20, "Exactly 20 legacy owner-review feedback entries should be available for staging");
+  assert.equal(getRenderableReviews("inspector-home").mode, CONTENT_STATE.legacyPendingOwnerConfirmation, "Staging renderable feedback should use the legacy owner-review mode");
+} else {
+  assert.equal(getLegacyOwnerReviewReviews("inspector-home").length, 0, "Production builds must omit legacy owner-review feedback from render helpers");
+  assert.equal(getRenderableReviews("inspector-home").mode, "none", "Production renderable feedback must stay empty while reviews remain unapproved");
+}
+assert.match(inspectorSource, /<ReviewCarousel/, "The gated review carousel is not mounted on the inspector home page");
 assert.match(inspectorSource, /if \(!reviewCount\) return null/, "The review carousel no longer disappears when no review is approved");
 
 assert.equal(sampleReportRegistry.length, 1, "Sample-report registry must expose one primary publication slot");
@@ -592,7 +612,11 @@ for (const record of routeRecords) {
   assert.ok(metaContent(html, "name", "twitter:image"), `${record.outputFile} is missing a Twitter image`);
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1, `${record.outputFile} must contain exactly one prerendered H1`);
   assert.ok(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().length > 500, `${record.outputFile} lacks substantive prerendered page text`);
-  assert.equal(metaContent(html, "name", "robots"), undefined, `${record.outputFile} is accidentally noindex`);
+  if (record.route?.noindex) {
+    assert.equal(metaContent(html, "name", "robots"), "noindex,follow", `${record.outputFile} must remain noindex,follow while provisional`);
+  } else {
+    assert.equal(metaContent(html, "name", "robots"), undefined, `${record.outputFile} is accidentally noindex`);
+  }
   assert.equal(titles.has(title), false, `${record.outputFile} duplicates the title from ${titles.get(title)}`);
   assert.equal(descriptions.has(description), false, `${record.outputFile} duplicates the description from ${descriptions.get(description)}`);
   titles.set(title, record.outputFile);
@@ -653,8 +677,13 @@ for (const record of routeRecords) {
 
 const rootSitemap = sitemapLocations(await read(resolve(output, "sitemap.xml")));
 const contractorSitemap = sitemapLocations(await read(resolve(output, "contracting/sitemap.xml")));
-const expectedRootSitemap = [...enabledInspectorRoutes.map((route) => `${expectedOrigin}${route.path}`), `${expectedOrigin}/property-services/`];
-const expectedContractorSitemap = enabledContractorRoutes.map((route) => `${expectedOrigin}/contracting${route.path}`);
+const expectedRootSitemap = [
+  ...enabledInspectorRoutes.filter((route) => route.sitemap !== false).map((route) => `${expectedOrigin}${route.path}`),
+  `${expectedOrigin}/property-services/`,
+];
+const expectedContractorSitemap = enabledContractorRoutes
+  .filter((route) => route.sitemap !== false)
+  .map((route) => `${expectedOrigin}/contracting${route.path}`);
 assert.deepEqual(rootSitemap, expectedRootSitemap, "Root sitemap does not exactly match enabled inspector and chooser routes");
 assert.deepEqual(contractorSitemap, expectedContractorSitemap, "Contractor sitemap does not exactly match enabled contractor routes");
 assert.equal(new Set(rootSitemap).size, rootSitemap.length, "Root sitemap contains duplicate routes");
@@ -681,8 +710,16 @@ for (const route of [...disabledInspectorRoutes, ...disabledContractorRoutes]) {
   assert.equal(rootSitemap.includes(`${expectedOrigin}${route.path}`) || contractorSitemap.includes(`${expectedOrigin}/contracting${route.path}`), false, `Disabled route ${route.path} leaked into a sitemap`);
   assert.equal(new RegExp(`href="[^"]*${escapeRegex(route.path)}"`).test(publicRouteMarkup), false, `Disabled route ${route.path} leaked into public navigation`);
 }
-if (getApprovedSampleReports().length) await stat(resolve(output, "sample-report/index.html"));
-else await assert.rejects(stat(resolve(output, "sample-report/index.html")), "Disabled sample report route was emitted");
+if (getApprovedSampleReports().length) {
+  await stat(resolve(output, "sample-report/index.html"));
+} else if (OWNER_REVIEW_STAGING_VISIBLE) {
+  const sampleReportHtml = await read(resolve(output, "sample-report/index.html"));
+  assert.match(sampleReportHtml, /provisional|Owner review|pending redaction/i, "Owner-review sample-report page must remain labeled provisional");
+  assert.equal(rootSitemap.includes(`${expectedOrigin}/sample-report/`), false, "Provisional sample-report must stay out of the production sitemap");
+  assert.doesNotMatch(sampleReportHtml, /href="[^"]*\.pdf"/i, "Provisional sample-report must not link a PDF download");
+} else {
+  await assert.rejects(stat(resolve(output, "sample-report/index.html")), "Disabled sample report route was emitted");
+}
 
 for (const [file, route] of [["404.html", inspectorNotFoundRoute], ["contracting/404.html", contractorNotFoundRoute]]) {
   const html = await read(resolve(output, file));
@@ -712,8 +749,30 @@ const assembledContractorServices = await read(resolve(output, "contracting/serv
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
-if (approvedReviews.length) assert.match(assembledInspector, /Published with permission|review-section|review-copy/i, "Approved reviews did not render on the inspector home page");
-else assert.equal(/Published with permission|review-section|review-copy/i.test(assembledInspector), false, "The inspector home page rendered a review before approval");
+if (approvedReviews.length) {
+  assert.match(assembledInspector, /Published with permission|review-section|review-copy/i, "Approved reviews did not render on the inspector home page");
+} else if (OWNER_REVIEW_STAGING_VISIBLE && getLegacyOwnerReviewReviews("inspector-home").length) {
+  assert.match(assembledInspector, /Legacy feedback pending owner confirmation|review-section|review-copy/i, "Owner-review legacy feedback did not render on the inspector home page");
+  assert.doesNotMatch(assembledInspector, /Published with permission/i, "Legacy feedback must not use the production permission label");
+  assert.doesNotMatch(assembledInspector, /itemprop="review"|reviewRating|"@type"\s*:\s*"Review"/i, "Legacy feedback must not emit Review schema");
+} else {
+  assert.equal(/Published with permission|review-section|review-copy|Legacy feedback pending owner confirmation/i.test(assembledInspector), false, "The inspector home page rendered a review before approval");
+}
+assert.equal(OWNER_REVIEW_STAGING_VISIBLE, /^(1|true|yes)$/i.test(String(process.env.VITE_OWNER_REVIEW_STAGING || process.env.OWNER_REVIEW_STAGING || "")), "OWNER_REVIEW_STAGING_VISIBLE must follow OWNER_REVIEW_STAGING / VITE_OWNER_REVIEW_STAGING and default off");
+if (!OWNER_REVIEW_STAGING_VISIBLE) {
+  for (const [label, html] of [
+    ["inspector home", assembledInspector],
+    ["inspector about", assembledInspectorAbout],
+    ["inspector contact", assembledInspectorContact],
+    ["contractor home", assembledContractor],
+  ]) {
+    assert.doesNotMatch(html, /owner-review-banner|provisional-label|Provisional biography|Legacy feedback pending owner confirmation|provisional_owner_review|within 24 hours|Monday through Saturday|inspections@cginspection\.net|contracting@cginspection\.net/i, `Production ${label} leaked owner-review staging content`);
+    assert.doesNotMatch(html, /itemprop="review"|reviewRating|"@type"\s*:\s*"Review"|"@type"\s*:\s*"AggregateRating"/i, `Production ${label} must not emit Review or AggregateRating schema`);
+  }
+} else {
+  assert.match(assembledInspector, /owner-review-banner|Owner review/i, "Staging inspector home should show the owner-review banner");
+  assert.match(assembledContractor, /owner-review-banner|Owner review/i, "Staging contractor home should show the owner-review banner");
+}
 assert.match(assembledContractorServices, /id="project-readiness-guide"/, "Contractor Services lacks the prerendered readiness guide");
 assert.match(assembledContractorServices, /id="request-worksheet"/, "Contractor Services lacks the printable request worksheet");
 assert.match(assembledContractorServices, /Private planning tool/, "Contractor Services lacks the local-only planning context");
@@ -806,7 +865,10 @@ if (formTransportFor("contractor-estimate")?.provider === "mailto") {
 } else {
   assert.ok(assembledEstimate.includes("Send request securely"), "Approved contractor processor lacks secure submit copy");
 }
-if (!approvedReviews.length) assert.equal(/class="[^"]*testimonial|itemprop="review"|reviewRating|"@type":"Review"/i.test(publicRouteMarkup), false, "Unapproved testimonial content rendered publicly");
+if (!approvedReviews.length) {
+  assert.equal(/itemprop="review"|reviewRating|"@type"\s*:\s*"Review"/i.test(publicRouteMarkup), false, "Unapproved production Review schema rendered publicly");
+  assert.equal(getApprovedReviews("inspector-home", now).length, 0, "Production review gate must stay empty while legacy feedback is pending");
+}
 if (!integrationCanRender(integrations.booking, now)) assert.equal(/calendly/i.test(publicRouteMarkup), false, "A pending booking provider leaked into public output");
 if (
   !integrationCanRender(integrations.secureInspectionFormTransport, now)
@@ -816,12 +878,13 @@ if (!integrationCanRender(integrations.maps, now)) assert.equal(/google\.com\/ma
 if (!integrationCanRender(integrations.reviews, now)) assert.equal(/review-widget/i.test(publicRouteMarkup), false, "A pending review provider leaked into public output");
 if (!integrationCanRender(integrations.analytics, now)) assert.equal(/googletagmanager|google-analytics|plausible\.io|cdn\.usefathom/i.test(publicRouteMarkup), false, "A pending analytics provider leaked into public output");
 
-for (const [surface, expectedCount] of [["inspector", enabledInspectorRoutes.length], ["contractor", enabledContractorRoutes.length]]) {
+for (const [surface, routes] of [["inspector", enabledInspectorRoutes], ["contractor", enabledContractorRoutes]]) {
+  const expectedCount = routes.filter((route) => !route.noindex).length;
   const directory = resolve(output, "pagefind", surface);
   await stat(resolve(directory, "pagefind.js"));
   await stat(resolve(directory, "pagefind-entry.json"));
   const fragments = (await readdir(resolve(directory, "fragment"))).filter((file) => file.endsWith(".pf_fragment"));
-  assert.equal(fragments.length, expectedCount, `Pagefind ${surface} index does not exactly match enabled routes`);
+  assert.equal(fragments.length, expectedCount, `Pagefind ${surface} index does not exactly match crawlable enabled routes`);
 }
 assert.equal(integrations.siteSearch.publicConfig.inspectorBundle, "/pagefind/inspector/pagefind.js", "Inspector Pagefind bundle path drifted");
 assert.equal(integrations.siteSearch.publicConfig.contractorBundle, "/pagefind/contractor/pagefind.js", "Contractor Pagefind bundle path drifted");

@@ -11,8 +11,12 @@ const contractorDist = resolve(root, "contractor-site-prototype/dist");
 const portal = resolve(root, "portal");
 const siteOrigin = (process.env.SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
 
-const inspectorRoutes = enabledInspectorRoutes.map((route) => route.path);
-const contractorRoutes = enabledContractorRoutes.map((route) => `/contracting${route.path}`);
+const inspectorRoutes = enabledInspectorRoutes
+  .filter((route) => route.sitemap !== false)
+  .map((route) => route.path);
+const contractorRoutes = enabledContractorRoutes
+  .filter((route) => route.sitemap !== false)
+  .map((route) => `/contracting${route.path}`);
 const legacyInspectorRoutes = [
   ["", "/"],
   ["services", "/services/"],

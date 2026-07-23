@@ -5,7 +5,7 @@ import {
 } from "../../../shared/publicationRegistry.js";
 
 const coreContractorRoutes = [
-  { key: "home", path: "/", label: "Home", title: "C&G Contracting Services | Residential Repair and Finish Work", description: "Share a residential repair, finish-work, punch-list, or property-maintenance project with C&G Contracting Services for scope and eligibility review.", enabled: true },
+  { key: "home", path: "/", label: "Home", title: "C&G Contracting Services | Los Angeles & Riverside Counties", description: "Residential repair and improvement services across Los Angeles County and Riverside County, subject to project review.", enabled: true },
   { key: "services", path: "/services/", label: "Services", title: "Residential Contracting Services | C&G", description: "Review residential repair, drywall, finish carpentry, punch-list, maintenance, exterior-detail, and small multi-trade project categories.", enabled: true },
   { key: "process", path: "/process/", label: "Process", title: "Contracting Process | C&G", description: "See how a C&G project moves from eligibility and scope review through a written estimate, scheduling, work, and final walkthrough.", enabled: true },
   { key: "about", path: "/about/", label: "About", title: "About C&G Contracting Services", description: "Learn how C&G Contracting Services defines residential project scope, identifies the contractor of record, and keeps inspection work separate.", enabled: true },

@@ -11,7 +11,7 @@ export const contractorFaqs = [
   ["What if hidden damage is discovered?", "Affected work should stop as needed, the condition should be documented, and any additional evaluation and written change should be approved before extra work proceeds."],
   ["Do you work while a property is occupied?", "Occupancy is reviewed with access, protection, work hours, pets, children, utilities, and safety. Not every project is suitable for occupied conditions."],
   ["Do you use subcontractors?", "The written scope should identify when appropriately licensed subcontractors are expected. No named subcontractor is represented here without permission and current license verification."],
-  ["Are you insured?", "Current insurance wording has not been approved for publication. Request current insurance information during project review."],
-  ["What areas do you serve?", "No contractor service-area claim is currently approved for publication. Ask whether your property can be reviewed when you prepare a request."],
+  ["Are you insured?", "Current insurance details are confirmed during project review before work is accepted. Published coverage claims appear only after owner approval."],
+  ["What areas do you serve?", "C&G Contracting Services currently serves Los Angeles County and Riverside County. Coverage is confirmed address by address. Availability varies by property location, project scope, scheduling, and travel requirements."],
   ["How soon can work begin?", "Availability depends on scope, materials, permits, access, existing commitments, and required trades. No start window is promised until the project is accepted."],
 ];

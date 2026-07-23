@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { business, evaluateContractorEligibility, separationPolicy } from "../../../shared/siteData.js";
+import { OWNER_REVIEW_STAGING_VISIBLE, preferredEmails } from "../../../shared/ownerReview.js";
 import {
   createFileShareAuthorization,
   formTransportFor,
@@ -379,6 +380,54 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
         {uploadPolicy ? <fieldset id="uploadAuthorization"><legend>Protected supporting files</legend><label className="check-label"><input type="checkbox" checked={uploadConsent} onChange={handleUploadConsentChange} /> I am authorized to share these files and have reviewed the approved upload provider’s <a href={uploadPolicy.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>.</label><label htmlFor="project-upload">Choose an approved file type<input id="project-upload" type="file" accept={uploadPolicy.allowedMimeTypes.join(",")} disabled={!uploadConsent || uploading || uploadedFiles.length >= uploadPolicy.maxFiles} onChange={handleUpload} /></label><p className="form-help">{uploading ? "Uploading through the protected one-time path…" : `Up to ${uploadPolicy.maxFiles} approved files; each must be ${Math.floor(uploadPolicy.maxBytes / 1_000_000)} MB or smaller. Unchecking authorization removes upload IDs from this request; orphaned files remain subject to the provider’s approved deletion policy.`}</p>{uploadedFiles.length ? <ul>{uploadedFiles.map((file) => <li key={file.uploadId}>{file.name}</li>)}</ul> : null}{errors.uploadAuthorization ? <span className="field-error" role="alert">{errors.uploadAuthorization}</span> : null}{uploadError ? <span className="field-error" role="alert">{uploadError}</span> : null}</fieldset> : null}
         <div className="form-navigation"><button className="button button-outline-dark" type="button" onClick={() => moveToStep(3, [])}>Back</button><button className="button button-copper" type="submit" disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send request securely") : "Review and prepare email"}</button></div><p className="form-submit-truth">{secureTransport ? `Submission uses the owner-approved ${transport.provider} processor.` : "Nothing is uploaded or sent when you select this button."}</p>
       </section> : null}
+
+      {OWNER_REVIEW_STAGING_VISIBLE ? (
+        <div className="form-owner-review-panel" role="note">
+          <p><span className="provisional-label">Owner review</span> Secure HTTPS submission UI is implemented. Production transport remains mailto until an approved endpoint is configured. Preferred domain addresses ({preferredEmails.contracting}) stay provisional; live requests still use {business.contracting.email}.</p>
+          {!secureTransport ? (
+            <div className="form-owner-review-actions">
+              <button
+                type="button"
+                className="button button-outline-dark"
+                onClick={() => {
+                  setResult({ state: "demo-loading" });
+                  window.setTimeout(() => setResult({ state: "demo-success", receipt: "owner-review-demo" }), 700);
+                }}
+              >
+                Preview success state
+              </button>
+              <button
+                type="button"
+                className="button button-outline-dark"
+                onClick={() => setResult({ state: "demo-error" })}
+              >
+                Preview failure state
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {result?.state === "demo-loading" ? (
+        <div className="form-status" ref={summaryRef} tabIndex="-1" role="status">
+          <strong>Loading secure submission preview…</strong>
+          <p>This is a staging simulation only. No request was sent.</p>
+        </div>
+      ) : null}
+      {result?.state === "demo-success" ? (
+        <div className="form-status" ref={summaryRef} tabIndex="-1" role="status">
+          <strong>Staging success state</strong>
+          <p>On-page confirmation preview for an approved HTTPS processor. Receipt demo: {result.receipt}. Nothing was transmitted.</p>
+          <button type="button" className="button button-graphite" onClick={() => setResult(null)}>Clear preview</button>
+        </div>
+      ) : null}
+      {result?.state === "demo-error" ? (
+        <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert">
+          <strong>Staging failure state</strong>
+          <p>Secure submission failed in this preview. Retry remains available once a real endpoint is approved.</p>
+          <button type="button" className="button button-graphite" onClick={() => setResult(null)}>Clear preview</button>
+        </div>
+      ) : null}
     </form>
   );
 }

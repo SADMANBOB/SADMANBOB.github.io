@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { business } from "../../../shared/siteData.js";
+import { OWNER_REVIEW_STAGING_VISIBLE, preferredEmails } from "../../../shared/ownerReview.js";
 import {
   createFileShareAuthorization,
   formTransportFor,
@@ -291,6 +292,34 @@ export function ContactRequestForm() {
 
       <button className="button button-gold" type="submit" disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send request securely") : "Prepare email"} <ArrowRight size={17} aria-hidden="true" /></button>
 
+      {OWNER_REVIEW_STAGING_VISIBLE ? (
+      <div className="form-owner-review-panel" role="note">
+        <p><span className="provisional-label">Owner review</span> Secure HTTPS submission UI is implemented. Production transport remains mailto until an approved endpoint is configured. Preferred domain addresses ({preferredEmails.inspections}) stay provisional; live requests still use {business.inspection.email}.</p>
+        {!secureTransport ? (
+          <div className="form-owner-review-actions">
+            <button
+              type="button"
+              className="button button-outline"
+              onClick={() => {
+                setPreparedEmail(null);
+                setSubmissionResult({ state: "demo-loading" });
+                window.setTimeout(() => setSubmissionResult({ state: "demo-success", receipt: "owner-review-demo" }), 700);
+              }}
+            >
+              Preview success state
+            </button>
+            <button
+              type="button"
+              className="button button-outline"
+              onClick={() => setSubmissionResult({ state: "demo-error" })}
+            >
+              Preview failure state
+            </button>
+          </div>
+        ) : null}
+      </div>
+      ) : null}
+
       {preparedEmail ? (
         <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status" aria-labelledby="inspection-prepared-title" data-testid="inspection-prepared-state">
           <h3 id="inspection-prepared-title">Your inspection request is prepared.</h3>
@@ -298,8 +327,40 @@ export function ContactRequestForm() {
           <a className="button button-dark" href={preparedEmail}>Open your email app</a>
         </div>
       ) : null}
-      {submissionResult?.state === "submitted" ? <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status"><h3>Request received by the approved processor.</h3><p>C&amp;G still needs to confirm the property, scope, availability, and price. This is not a confirmed appointment.{submissionResult.receipt ? ` Receipt: ${submissionResult.receipt}.` : ""}</p></div> : null}
-      {submissionResult?.state === "error" ? <div className="form-error-summary" ref={preparedStateRef} tabIndex="-1" role="alert"><h3>The request could not be submitted.</h3><p>No appointment was created. Call C&amp;G or try again later.</p></div> : null}
+
+      {submissionResult?.state === "demo-loading" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status">
+          <h3>Loading secure submission preview…</h3>
+          <p>This is a staging simulation only. No request was sent.</p>
+        </div>
+      ) : null}
+      {submissionResult?.state === "demo-success" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status">
+          <h3>Staging success state</h3>
+          <p>On-page confirmation preview for an approved HTTPS processor. Receipt demo: {submissionResult.receipt}. Nothing was transmitted.</p>
+          <button type="button" className="button button-dark" onClick={() => setSubmissionResult(null)}>Clear preview</button>
+        </div>
+      ) : null}
+      {submissionResult?.state === "demo-error" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="alert">
+          <h3>Staging failure state</h3>
+          <p>Secure submission failed in this preview. Retry remains available once a real endpoint is approved.</p>
+          <button type="button" className="button button-dark" onClick={() => setSubmissionResult(null)}>Clear preview</button>
+        </div>
+      ) : null}
+
+      {submissionResult?.state === "submitted" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status">
+          <h3>Request received</h3>
+          <p>Your request was submitted securely{submissionResult.receipt ? ` (receipt ${submissionResult.receipt})` : ""}. An appointment is not confirmed until C&G accepts the scope and timing.</p>
+        </div>
+      ) : null}
+      {submissionResult?.state === "error" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="alert">
+          <h3>Secure submission failed</h3>
+          <p>Please retry, or call {business.inspection.phoneDisplay}. Nothing was stored by this page beyond the failed attempt response.</p>
+        </div>
+      ) : null}
     </form>
   );
 }

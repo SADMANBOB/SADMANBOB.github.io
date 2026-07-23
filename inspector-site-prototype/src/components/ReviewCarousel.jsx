@@ -1,28 +1,50 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { getApprovedReviews } from "../../../shared/reviewRegistry.js";
+import { ChevronLeft, ChevronRight, Pause, Play, Star } from "lucide-react";
+import {
+  getRenderableReviews,
+  legacyReviewAggregate,
+} from "../../../shared/reviewRegistry.js";
 
-const AUTO_ADVANCE_MS = 8_000;
+const AUTO_ADVANCE_MS = 10_000;
 
-function ReviewCard({ review, active, label }) {
-  if (!review) return <div className="review-card review-card-side" aria-hidden="true" />;
+function StarRating({ rating }) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return null;
+  return (
+    <div className="review-stars" role="img" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <Star
+          key={index}
+          size={14}
+          aria-hidden="true"
+          className={index < rating ? "is-filled" : "is-empty"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FeedbackCard({ review, active, label, mode }) {
+  if (!review || !active) return <div className="review-card review-card-side" aria-hidden="true" />;
 
   return (
     <article
-      className={`review-card ${active ? "review-card-active" : "review-card-side"}`}
-      aria-hidden={active ? undefined : "true"}
-      aria-label={active ? label : undefined}
-      role={active ? "group" : undefined}
-      aria-roledescription={active ? "slide" : undefined}
+      className="review-card review-card-active"
+      aria-label={label}
+      role="group"
+      aria-roledescription="slide"
     >
       <div className="review-card-meta">
-        <span className="review-slot-label">Published with permission</span>
-        <span className="review-theme">Source verified</span>
+        <span className="review-slot-label">
+          {mode === "approved" ? "Published with permission" : "Legacy feedback pending owner confirmation"}
+        </span>
+        <StarRating rating={review.rating} />
       </div>
-      <p className="review-copy">{review.exactApprovedText}</p>
+      <p className="review-copy">{review.text}</p>
       <footer className="review-attribution">
-        <span>{review.displayAttribution}</span>
-        {active ? <a href={review.sourceUrl} target="_blank" rel="noreferrer">View approved source</a> : null}
+        <span>{review.attribution}</span>
+        {review.sourceUrl ? (
+          <a href={review.sourceUrl} target="_blank" rel="noreferrer">View approved source</a>
+        ) : null}
       </footer>
     </article>
   );
@@ -30,14 +52,19 @@ function ReviewCard({ review, active, label }) {
 
 export function ReviewCarousel({
   surface = "inspector-home",
-  heading = "What clients chose to share.",
-  intro = "Each published review uses only source-backed text and attribution approved for this page.",
+  heading = "Client feedback",
+  intro,
 }) {
   const headingId = useId();
   const trackId = useId();
   const playbackTouchedRef = useRef(false);
-  const reviews = useMemo(() => getApprovedReviews(surface), [surface]);
+  const renderable = useMemo(() => getRenderableReviews(surface), [surface]);
+  const reviews = renderable.reviews;
   const reviewCount = reviews.length;
+  const aggregate = useMemo(
+    () => (renderable.mode === "legacy_pending_owner_confirmation" ? legacyReviewAggregate(reviews) : null),
+    [renderable.mode, reviews],
+  );
   const canRotate = reviewCount > 1;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,7 +73,7 @@ export function ReviewCarousel({
   const [documentHidden, setDocumentHidden] = useState(true);
 
   useEffect(() => {
-    setCurrentIndex((index) => reviewCount ? index % reviewCount : 0);
+    setCurrentIndex((index) => (reviewCount ? index % reviewCount : 0));
   }, [reviewCount]);
 
   useEffect(() => {
@@ -106,11 +133,14 @@ export function ReviewCarousel({
     setIsPlaying((playing) => !playing);
   };
 
+  const resolvedIntro = intro || renderable.intro;
+
   return (
     <section
       className="review-section"
       aria-labelledby={headingId}
       aria-roledescription="carousel"
+      data-feedback-mode={renderable.mode}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocusCapture={() => setHasFocusWithin(true)}
@@ -120,8 +150,24 @@ export function ReviewCarousel({
     >
       <div className="container">
         <header className="review-header">
-          <div><p className="eyebrow">{reviewCount} approved review{reviewCount === 1 ? "" : "s"}</p><h2 id={headingId}>{heading}</h2></div>
-          <p className="review-intro">{intro}</p>
+          <div>
+            <p className="eyebrow">
+              {renderable.mode === "approved"
+                ? `${reviewCount} approved review${reviewCount === 1 ? "" : "s"}`
+                : "Feedback from past clients"}
+            </p>
+            <h2 id={headingId}>{heading}</h2>
+            {aggregate ? (
+              <p className="review-aggregate">
+                <strong>{aggregate.average.toFixed(1)} / 5</strong>
+                {" "}
+                ·
+                {" "}
+                {aggregate.label}
+              </p>
+            ) : null}
+          </div>
+          <p className="review-intro">{resolvedIntro}</p>
         </header>
         <div
           id={trackId}
@@ -129,16 +175,39 @@ export function ReviewCarousel({
           aria-live={shouldAdvance ? "off" : "polite"}
           aria-atomic="true"
         >
-          <ReviewCard review={previousReview} active={false} />
-          <ReviewCard review={currentReview} active label={`Review ${currentIndex + 1} of ${reviewCount}`} />
-          <ReviewCard review={nextReview} active={false} />
+          <FeedbackCard review={previousReview} active={false} mode={renderable.mode} />
+          <FeedbackCard
+            review={currentReview}
+            active
+            mode={renderable.mode}
+            label={`Feedback ${currentIndex + 1} of ${reviewCount}`}
+          />
+          <FeedbackCard review={nextReview} active={false} mode={renderable.mode} />
         </div>
         {canRotate ? (
           <div className="review-controls">
-            <button className="review-nav-button" type="button" aria-controls={trackId} aria-label="Show previous review" onClick={() => move(-1)}><ChevronLeft aria-hidden="true" /></button>
-            <span className="review-counter" aria-label={`Review ${currentIndex + 1} of ${reviewCount}`}><strong aria-hidden="true">{String(currentIndex + 1).padStart(2, "0")}</strong><span aria-hidden="true">/ {String(reviewCount).padStart(2, "0")}</span></span>
-            <button className="review-nav-button" type="button" aria-controls={trackId} aria-label="Show next review" onClick={() => move(1)}><ChevronRight aria-hidden="true" /></button>
-            <button className="review-nav-button" type="button" aria-controls={trackId} aria-label={isPlaying ? "Pause automatic review rotation" : "Play automatic review rotation"} onClick={togglePlayback}>{isPlaying ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}</button>
+            <button className="review-nav-button" type="button" aria-controls={trackId} onClick={() => move(-1)}>
+              <ChevronLeft aria-hidden="true" />
+              <span>Previous</span>
+            </button>
+            <span className="review-counter" role="status">
+              <strong>{String(currentIndex + 1).padStart(2, "0")}</strong>
+              <span>/ {String(reviewCount).padStart(2, "0")}</span>
+            </span>
+            <button className="review-nav-button" type="button" aria-controls={trackId} onClick={() => move(1)}>
+              <span>Next</span>
+              <ChevronRight aria-hidden="true" />
+            </button>
+            <button
+              className="review-nav-button"
+              type="button"
+              aria-controls={trackId}
+              aria-label={isPlaying ? "Pause automatic feedback rotation" : "Play automatic feedback rotation"}
+              onClick={togglePlayback}
+            >
+              {isPlaying ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+              <span>{isPlaying ? "Pause" : "Play"}</span>
+            </button>
           </div>
         ) : null}
       </div>
