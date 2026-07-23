@@ -18,9 +18,16 @@ cd contractor-site-prototype && npm install && npm run dev
 ```sh
 SITE_ORIGIN=https://www.cginspection.net npm run build
 SITE_ORIGIN=https://www.cginspection.net npm run verify
+SITE_ORIGIN=https://www.cginspection.net npm run quality
 ```
 
 Pushing `main` deploys the portal and both sites to GitHub Pages.
+
+`npm run quality` rebuilds both sites, runs the authoritative verification
+suite, and checks the assembled HTML, metadata, sitemaps, robots files,
+internal links, fragments, accessible names, and output-size budgets. Pull
+requests also run axe and Lighthouse audits in the pinned Chromium version
+defined by the root lockfile.
 
 ## Temporary editorial photography
 
@@ -44,3 +51,15 @@ The three gallery cards include a public illustrative-imagery disclosure. Keep t
 - Home inspection and contracting are separate services. The contracting service does not offer or perform repairs on a property for which C&G prepared a home inspection report during the previous 12 months.
 
 No fictional testimonials, fabricated project claims, or unverified turnaround/insurance claims are published.
+
+## Approval-gated additions
+
+- `shared/reviewRegistry.js` contains 50 review slots. Every slot is pending by
+  default, and the automatic carousel renders nothing until the testimonial
+  claim plus the source URL, exact text, display attribution, permission date,
+  and page surface are approved.
+- `shared/siteData.js` gates booking, forms, analytics, maps, reviews, service
+  areas, credentials, and business claims. Pending providers have no public
+  configuration or renderable surface.
+- `OWNER_VERIFICATION.md` is the owner handoff queue. It summarizes the
+  evidence and decisions still required without changing any public gate.

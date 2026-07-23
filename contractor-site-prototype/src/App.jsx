@@ -1,667 +1,240 @@
-import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  CalendarCheck,
-  Check,
-  ChevronRight,
-  ClipboardCheck,
-  DoorOpen,
-  ExternalLink,
-  FileText,
-  Hammer,
-  Mail,
-  MapPin,
-  Menu,
-  Phone,
-  Ruler,
-  ShieldCheck,
-  Wrench,
-  X,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Check, ExternalLink, House, Menu, Phone, Search, ShieldCheck, Wrench, X } from "lucide-react";
+import { approvedServiceAreas, business, separationPolicy } from "../../shared/siteData.js";
+import { Breadcrumbs } from "./components/Breadcrumbs.jsx";
+import { DisclosureGroup } from "./components/DisclosureGroup.jsx";
+import { EstimateRequestForm } from "./components/EstimateRequestForm.jsx";
+import { ProjectReadinessGuide } from "./components/ProjectReadinessGuide.jsx";
+import { Seo } from "./components/Seo.jsx";
+import { SiteSearchDialog } from "./components/SiteSearchDialog.jsx";
+import { contractorFaqs } from "./content/faqs.js";
+import { contractorFooterRoutes, contractorNavigation, contractorNotFoundRoute, enabledContractorRoutes, findContractorRoute } from "./content/routes.js";
+import { contractorServices, requestCategoryFromSearch } from "./content/services.js";
 
-const phoneNumber = "(310) 505-6581";
-const emailAddress = "clarencegloss@gmail.com";
-const licenseNumber = "987643";
-const licenseUrl = `https://www.cslb.ca.gov/${licenseNumber}`;
-const inspectionUrl = "/";
 const appBase = import.meta.env.BASE_URL;
+const origin = (import.meta.env.VITE_SITE_ORIGIN || "https://www.cginspection.net").replace(/\/+$/, "");
+const contractorOrigin = `${origin}/contracting`;
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
 const pageUrl = (path) => {
-  const relativePath = path.replace(/^\/+|\/+$/g, "");
-  return relativePath ? `${appBase}${relativePath}/` : appBase;
+  const [pathAndQuery, fragment] = path.split("#", 2);
+  const queryIndex = pathAndQuery.indexOf("?");
+  const pathname = queryIndex === -1 ? pathAndQuery : pathAndQuery.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : pathAndQuery.slice(queryIndex);
+  const relative = pathname.replace(/^\/+|\/+$/g, "");
+  const route = relative ? `${appBase}${relative}/` : appBase;
+  return `${route}${query}${fragment ? `#${fragment}` : ""}`;
+};
+const normalizePath = (pathname = "/") => {
+  const base = appBase.replace(/\/+$/, "");
+  const relative = base && pathname.startsWith(base) ? pathname.slice(base.length) || "/" : pathname;
+  const pathOnly = relative.split(/[?#]/, 1)[0] || "/";
+  return pathOnly === "/" ? "/" : `/${pathOnly.replace(/^\/+|\/+$/g, "")}/`;
 };
 
-const navItems = [
-  ["Home", "/"],
-  ["Services", "/services"],
-  ["Process", "/process"],
-  ["About", "/about"],
-  ["Request Estimate", "/estimate"],
-];
-
-const pageByPath = {
-  "/": "home",
-  "/services": "services",
-  "/process": "process",
-  "/about": "about",
-  "/estimate": "estimate",
-};
-
-const pageMeta = {
-  home: {
-    title: "C&G Contracting Services | Practical repairs. Built to last.",
-    description: "Residential repair and improvement work with clear scopes, dependable communication, and respect for your home.",
-  },
-  services: {
-    title: "Residential Repair Services | C&G Contracting Services",
-    description: "Explore residential repair, finish work, doors, trim, punch-list coordination, and property maintenance services from C&G.",
-  },
-  process: {
-    title: "Our Process | C&G Contracting Services",
-    description: "See how C&G moves from an initial project request to a clear scope, written estimate, scheduling, and final walkthrough.",
-  },
-  about: {
-    title: "About C&G Contracting Services",
-    description: "Learn about C&G’s practical, construction-informed approach and verify California contractor license information.",
-  },
-  estimate: {
-    title: "Request an Estimate | C&G Contracting Services",
-    description: "Share your residential repair or improvement project with C&G Contracting Services.",
-  },
-  notFound: {
-    title: "Page Not Found | C&G Contracting Services",
-    description: "Return to C&G Contracting Services for residential repair and improvement information.",
-  },
-};
-
-const serviceRows = [
-  {
-    number: "01",
-    title: "Repair & finish work",
-    summary: "Construction-informed repair scopes that bring damaged, incomplete, or worn areas back to a clean finish.",
-    details: ["Interior repair planning", "Finish carpentry", "Multi-item correction lists"],
-    icon: Wrench,
-  },
-  {
-    number: "02",
-    title: "Doors, trim & hardware",
-    summary: "Careful fit, alignment, adjustment, and replacement work for the details you use every day.",
-    details: ["Interior doors and jambs", "Baseboard and casing", "Hardware adjustment and replacement"],
-    icon: DoorOpen,
-  },
-  {
-    number: "03",
-    title: "Drywall & punch lists",
-    summary: "Organized correction work for visible damage, incomplete finishes, and multi-trade residential punch lists.",
-    details: ["Drywall repair coordination", "Move-in and move-out corrections", "Final-detail punch lists"],
-    icon: ClipboardCheck,
-  },
-  {
-    number: "04",
-    title: "Property maintenance",
-    summary: "Practical maintenance projects for homeowners and property teams who need a clear, prioritized scope.",
-    details: ["Recurring repair lists", "Turnover preparation", "General building maintenance"],
-    icon: Hammer,
-  },
-];
-
-const processSteps = [
-  ["01", "Share your project", "Send the basics, photos, or a repair list. You do not need to diagnose the problem before reaching out."],
-  ["02", "Review the scope", "C&G follows up to clarify access, materials, priorities, and whether the project fits the contractor’s license and schedule."],
-  ["03", "Approve the estimate", "Review the written scope and project assumptions before scheduling begins."],
-  ["04", "Schedule and complete", "Coordinate access, complete the agreed work, and finish with a clear walkthrough."],
-];
-
-const projectQuickFacts = [
-  ["Project focus", "Residential repairs, finish work, punch lists, and maintenance"],
-  ["Start with", "A short repair list, project location, timing, and useful photos"],
-  ["Scope standard", "Written scope and project assumptions reviewed before scheduling"],
-  ["Service area", "Los Angeles County and nearby communities"],
-];
-
-const representativeProjects = [
-  {
-    title: "Interior surface repair",
-    description: "Contained patch preparation and finish work that respects the surrounding room.",
-    image: assetUrl("assets/illustrative-drywall-repair.jpg"),
-    alt: "Repair professional smoothing a small drywall patch in a protected living space",
-  },
-  {
-    title: "Exterior trim maintenance",
-    description: "Measured review of weathered exterior details before repair or replacement scope is confirmed.",
-    image: assetUrl("assets/illustrative-exterior-trim.jpg"),
-    alt: "Contractor measuring weathered wood trim beneath an exterior window",
-  },
-  {
-    title: "Finish carpentry details",
-    description: "Careful fitting and alignment for baseboard, casing, and the details that complete a room.",
-    image: assetUrl("assets/illustrative-finish-carpentry.jpg"),
-    alt: "Finish carpenter checking trim alignment beside an interior doorway",
-  },
-];
-
-function routeKey(pathname = window.location.pathname) {
-  const basePath = appBase.replace(/\/+$/, "");
-  const relativePath = basePath && pathname.startsWith(basePath)
-    ? pathname.slice(basePath.length) || "/"
-    : pathname;
-  const cleanPath = relativePath.replace(/\/+$/, "") || "/";
-  return pageByPath[cleanPath] || "notFound";
+function InternalLink({ href, onNavigate, children, className = "", ...props }) {
+  return <a className={className} href={pageUrl(href)} onClick={(event) => onNavigate(event, href)} {...props}>{children}</a>;
 }
 
 function Brand({ onNavigate }) {
-  return (
-    <a className="brand" href={pageUrl("/")} onClick={(event) => onNavigate(event, "/")} aria-label="C&G Contracting Services home">
-      <span className="brand-monogram" aria-hidden="true">C&amp;G</span>
-      <span className="brand-name">Contracting Services</span>
-    </a>
-  );
+  return <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.contracting.publicName} home`}><span className="brand-monogram" aria-hidden="true">C&amp;G</span><span className="brand-name">Contracting Services</span></InternalLink>;
 }
 
-function InternalLink({ href, onNavigate, children, className = "" }) {
-  return <a className={className} href={pageUrl(href)} onClick={(event) => onNavigate(event, href)}>{children}</a>;
-}
-
-function SiteHeader({ currentPage, mobileMenuOpen, setMobileMenuOpen, onNavigate }) {
-  return (
-    <>
-      <header className="site-header">
-        <div className="container header-inner">
-          <Brand onNavigate={onNavigate} />
-          <nav className={`site-nav ${mobileMenuOpen ? "is-open" : ""}`} aria-label="Main navigation">
-            {navItems.map(([label, href]) => (
-              <a
-                href={pageUrl(href)}
-                className={currentPage === routeKey(pageUrl(href)) ? "is-active" : ""}
-                aria-current={currentPage === routeKey(pageUrl(href)) ? "page" : undefined}
-                key={href}
-                onClick={(event) => {
-                  onNavigate(event, href);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                {label}
-              </a>
-            ))}
-            <a className="mobile-call" href="tel:+13105056581"><Phone size={15} /> Call {phoneNumber}</a>
-          </nav>
-          <div className="header-actions">
-            <a className="header-phone" href="tel:+13105056581"><Phone size={15} /> {phoneNumber}</a>
-            <InternalLink className="button button-copper button-small" href="/estimate" onNavigate={onNavigate}>Request Estimate</InternalLink>
-            <button
-              className="menu-toggle"
-              type="button"
-              aria-expanded={mobileMenuOpen}
-              aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
-              onClick={() => setMobileMenuOpen((open) => !open)}
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-      </header>
-      <div className="license-line">
-        <div className="container license-line-inner">
-          <span>California B — General Building</span>
-          <a href={licenseUrl} target="_blank" rel="noreferrer">CSLB #{licenseNumber} <ExternalLink size={12} /></a>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function PageHero({ title, lede, children }) {
-  return (
-    <section className="page-hero">
-      <div className="container page-hero-inner">
-        <h1>{title}</h1>
-        <p>{lede}</p>
-        {children ? <div className="page-hero-actions">{children}</div> : null}
-      </div>
-    </section>
-  );
-}
-
-function ServiceList({ detailed = false }) {
-  return (
-    <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>
-      {serviceRows.map(({ number, title, summary, details, icon: Icon }) => (
-        <article className="service-row" key={number}>
-          <span className="service-number">{number}</span>
-          <div className="service-icon"><Icon size={24} strokeWidth={1.45} /></div>
-          <div className="service-copy">
-            <h3>{title}</h3>
-            <p>{summary}</p>
-            {detailed ? (
-              <ul>{details.map((detail) => <li key={detail}><Check size={15} /> {detail}</li>)}</ul>
-            ) : null}
-          </div>
-          <ChevronRight size={20} className="service-arrow" />
-        </article>
-      ))}
-    </div>
-  );
-}
-
-function ProcessList({ compact = false }) {
-  return (
-    <ol className={`process-list ${compact ? "process-list-compact" : ""}`}>
-      {processSteps.map(([number, title, description]) => (
-        <li key={number}>
-          <span className="process-number">{number}</span>
-          <div><h3>{title}</h3><p>{description}</p></div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function ProjectQuickFacts() {
-  return (
-    <section className="project-summary-band" aria-label="Contracting services at a glance">
-      <div className="container project-summary-grid">
-        {projectQuickFacts.map(([label, value], index) => (
-          <div className="project-summary-item" key={label}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <div><strong>{label}</strong><p>{value}</p></div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function RepresentativeWork({ sectionLabel = "Representative project types" }) {
-  return (
-    <section className="representative-work" aria-labelledby="representative-work-title">
-      <div className="container">
-        <div className="section-heading split-heading representative-heading">
-          <div>
-            <span>{sectionLabel}</span>
-            <h2 id="representative-work-title">A closer look at the details C&amp;G is built for.</h2>
-          </div>
-          <div className="representative-intro">
-            <p>From a focused repair to a coordinated punch list, the finish begins with a clear understanding of the condition and the expected result.</p>
-            <p className="illustrative-disclosure"><strong>Illustrative imagery</strong> These images show representative project types, not completed C&amp;G client projects. Client photography can replace them as the portfolio grows.</p>
-          </div>
-        </div>
-        <div className="representative-grid">
-          {representativeProjects.map((project) => (
-            <figure className="representative-card" key={project.title}>
-              <div className="representative-media">
-                <img src={project.image} alt={project.alt} width="1536" height="1024" loading="lazy" decoding="async" />
-              </div>
-              <figcaption>
-                <span>Illustrative image</span>
-                <h3>{project.title}</h3>
-                <p>{project.description}</p>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function EstimateCta({ onNavigate }) {
-  return (
-    <section className="estimate-cta">
-      <div className="container estimate-cta-inner">
-        <div><h2>Tell us what needs attention.</h2><p>Start with the project as you understand it. C&amp;G will help clarify the scope.</p></div>
-        <div className="cta-actions">
-          <InternalLink className="button button-copper" href="/estimate" onNavigate={onNavigate}>Request an Estimate <ArrowRight size={17} /></InternalLink>
-          <a className="button button-outline" href="tel:+13105056581"><Phone size={17} /> Call {phoneNumber}</a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SeparationNotice() {
-  return (
-    <section className="separation-notice" aria-labelledby="service-separation-title">
-      <div className="container separation-inner">
-        <ShieldCheck size={22} />
-        <div>
-          <h2 id="service-separation-title">Inspection and construction are separate services.</h2>
-          <p>Home inspection is a separate C&amp;G service. C&amp;G Contracting Services does not offer or perform repairs on a property for which C&amp;G prepared a home inspection report during the previous 12 months.</p>
-        </div>
-        <a href={inspectionUrl}>Visit the inspection site <ArrowRight size={15} /></a>
-      </div>
-    </section>
-  );
-}
-
-function HomePage({ onNavigate }) {
-  return (
-    <>
-      <section className="hero">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <h1>Practical repairs.<br /><em>Built to last.</em></h1>
-            <p>Residential repair and improvement work with clear scopes, dependable communication, and respect for your home.</p>
-            <div className="hero-actions">
-              <InternalLink className="button button-copper" href="/estimate" onNavigate={onNavigate}>Request an Estimate <ArrowRight size={17} /></InternalLink>
-              <InternalLink className="text-link" href="/services" onNavigate={onNavigate}>Explore Services <ChevronRight size={16} /></InternalLink>
-            </div>
-          </div>
-          <figure className="hero-image">
-            <img src={assetUrl("assets/contractor-hero.jpg")} alt="Contractor carefully measuring interior wood trim" width="1536" height="1024" fetchPriority="high" decoding="async" />
-            <figcaption>Careful scope. Clean finish. Clear communication.</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <ProjectQuickFacts />
-
-      <section className="services-section">
-        <div className="container">
-          <div className="section-heading split-heading">
-            <div><span>01 / Services</span><h2>Focused work for the details that make a home feel finished.</h2></div>
-            <p>Every request starts with project fit. C&amp;G confirms the scope, trade needs, and expectations before work is scheduled.</p>
-          </div>
-          <ServiceList />
-          <InternalLink className="section-link" href="/services" onNavigate={onNavigate}>View service details <ArrowRight size={16} /></InternalLink>
-        </div>
-      </section>
-
-      <section className="process-section">
-        <div className="container process-grid">
-          <div className="process-heading"><span>02 / Process</span><h2>A clear path from scope to finish.</h2><p>No mystery handoffs. The work starts with a written understanding of what is—and is not—included.</p></div>
-          <ProcessList compact />
-        </div>
-      </section>
-
-      <RepresentativeWork sectionLabel="03 / Representative work" />
-
-      <section className="about-preview">
-        <div className="container about-preview-grid">
-          <div className="about-image"><img src={assetUrl("assets/project-planning.jpg")} alt="Construction professionals reviewing a residential project plan" width="1536" height="1024" loading="lazy" decoding="async" /></div>
-          <div className="about-copy">
-            <span>04 / About</span>
-            <h2>Practical experience. Straight answers.</h2>
-            <p>C&amp;G approaches residential repair work with a construction-informed eye, careful communication, and respect for the property.</p>
-            <div className="credential-line"><ShieldCheck size={20} /><div><strong>California General Building contractor</strong><a href={licenseUrl} target="_blank" rel="noreferrer">Verify CSLB #{licenseNumber} <ExternalLink size={13} /></a></div></div>
-            <InternalLink className="text-link text-link-dark" href="/about" onNavigate={onNavigate}>Learn about C&amp;G <ChevronRight size={16} /></InternalLink>
-          </div>
-        </div>
-      </section>
-
-      <EstimateCta onNavigate={onNavigate} />
-      <SeparationNotice />
-    </>
-  );
-}
-
-function ServicesPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero title="Residential work with a clear, practical scope." lede="From finish details to organized repair lists, C&G starts by defining the work carefully and confirming that the project fits the contractor’s license and capabilities.">
-        <InternalLink className="button button-copper" href="/estimate" onNavigate={onNavigate}>Share your project <ArrowRight size={17} /></InternalLink>
-      </PageHero>
-      <section className="services-section services-page-section">
-        <div className="container">
-          <div className="section-heading split-heading"><div><span>Service categories</span><h2>Start with what needs attention.</h2></div><p>A service category is a starting point, not an automatic promise of scope. C&amp;G reviews the project details before accepting work.</p></div>
-          <ServiceList detailed />
-        </div>
-      </section>
-      <RepresentativeWork />
-      <section className="scope-section">
-        <div className="container scope-grid">
-          <div><span>Project fit</span><h2>The right scope matters as much as the finish.</h2></div>
-          <div className="scope-copy">
-            <p>California General Building work can involve multiple building trades. Requests that are specialty-only, require engineering or design services, or fall outside the accepted scope may need another appropriately licensed professional.</p>
-            <ul>
-              <li><Check size={16} /> Written scope before scheduling</li>
-              <li><Check size={16} /> Materials and access clarified up front</li>
-              <li><Check size={16} /> Permit and specialty-trade needs identified when applicable</li>
-              <li><Check size={16} /> Changes documented before extra work begins</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-      <EstimateCta onNavigate={onNavigate} />
-      <SeparationNotice />
-    </>
-  );
-}
-
-function ProcessPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero title="A straightforward project should have a straightforward process." lede="C&G keeps the path visible: share the issue, clarify the scope, approve the written estimate, and coordinate the work.">
-        <InternalLink className="button button-copper" href="/estimate" onNavigate={onNavigate}>Start a project request <ArrowRight size={17} /></InternalLink>
-      </PageHero>
-      <section className="process-section process-page-section">
-        <div className="container process-grid"><div className="process-heading"><span>From request to walkthrough</span><h2>Four steps. No hidden phase.</h2><p>Timing depends on scope, access, materials, permits, and current availability. Those details are clarified before scheduling.</p></div><ProcessList /></div>
-      </section>
-      <section className="readiness-section">
-        <div className="container readiness-grid">
-          <div><img src={assetUrl("assets/finish-work.jpg")} alt="Craftsperson checking the alignment of a wood door and brass hardware" width="1448" height="1086" loading="lazy" decoding="async" /></div>
-          <div className="readiness-copy"><span>Helpful before the review</span><h2>A few details make the first conversation more useful.</h2><ul><li><FileText size={18} /><div><strong>A short repair list</strong><p>Describe what is damaged, unfinished, or not working as expected.</p></div></li><li><Ruler size={18} /><div><strong>Approximate size and access</strong><p>Room, opening, surface, and access details help establish project fit.</p></div></li><li><CalendarCheck size={18} /><div><strong>Your timing priorities</strong><p>Share a target window, but wait for confirmed scheduling before making plans around the work.</p></div></li></ul></div>
-        </div>
-      </section>
-      <EstimateCta onNavigate={onNavigate} />
-      <SeparationNotice />
-    </>
-  );
-}
-
-function AboutPage({ onNavigate }) {
-  return (
-    <>
-      <PageHero title="Practical experience, accountable work, and a clear point of contact." lede="C&G Contracting Services brings a construction-informed approach to residential repair and improvement work across Los Angeles County and nearby communities." />
-      <section className="about-story">
-        <div className="container about-story-grid">
-          <div className="about-story-image"><img src={assetUrl("assets/contractor-hero.jpg")} alt="Contractor checking dimensions during interior finish work" width="1536" height="1024" loading="lazy" decoding="async" /></div>
-          <div className="about-story-copy"><span>The approach</span><h2>Respect the home. Define the scope. Communicate the work.</h2><p>Small and mid-sized residential projects still deserve organized planning. C&amp;G begins with the condition in front of you, clarifies the expected finish, and documents the agreed work before scheduling.</p><p>The result is a practical process built around fewer surprises and a clear final walkthrough.</p></div>
-        </div>
-      </section>
-      <section className="credentials-section">
-        <div className="container credentials-grid">
-          <div><span>License transparency</span><h2>Verify the contractor record directly.</h2></div>
-          <div className="license-panel"><div><span>Contractor of record</span><strong>Coastal Construction Services</strong></div><div><span>California license</span><strong>CSLB #{licenseNumber}</strong></div><div><span>Classification</span><strong>B — General Building</strong></div><a className="button button-graphite" href={licenseUrl} target="_blank" rel="noreferrer">Open CSLB verification <ExternalLink size={16} /></a></div>
-        </div>
-      </section>
-      <section className="area-section"><div className="container area-grid"><div><MapPin size={25} /><h2>Los Angeles County &amp; nearby communities</h2></div><p>Project location, travel, current schedule, and scope are confirmed before an estimate visit or work date is offered.</p></div></section>
-      <EstimateCta onNavigate={onNavigate} />
-      <SeparationNotice />
-    </>
-  );
-}
-
-function EstimateForm() {
-  const [status, setStatus] = useState(null);
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const inspected = form.get("inspected");
-
-    if (inspected === "yes") {
-      setStatus({ type: "blocked", message: "C&G Contracting Services cannot offer or perform repairs on this property within 12 months of a C&G home inspection. Please contact an independent contractor." });
-      return;
-    }
-
-    const subject = `Project request — ${form.get("projectType")} — ${form.get("city")}`;
-    const body = [
-      `Name: ${form.get("name")}`,
-      `Phone: ${form.get("phone")}`,
-      `Email: ${form.get("email")}`,
-      `City / ZIP: ${form.get("city")}`,
-      `Project type: ${form.get("projectType")}`,
-      `Preferred timing: ${form.get("timeline")}`,
-      `C&G inspection in previous 12 months: ${inspected}`,
-      "",
-      "Project details:",
-      form.get("details"),
-    ].join("\n");
-
-    setStatus({ type: "ready", message: "Your email app should open with the project details filled in. Review the message and send it when you are ready." });
-    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
-
-  return (
-    <form className="estimate-form" onSubmit={handleSubmit}>
-      <div className="form-row">
-        <label><span>Name</span><input type="text" name="name" autoComplete="name" required /></label>
-        <label><span>Phone</span><input type="tel" name="phone" autoComplete="tel" required /></label>
-      </div>
-      <div className="form-row">
-        <label><span>Email</span><input type="email" name="email" autoComplete="email" required /></label>
-        <label><span>City or ZIP</span><input type="text" name="city" autoComplete="postal-code" required /></label>
-      </div>
-      <div className="form-row">
-        <label><span>Project type</span><select name="projectType" defaultValue="" required><option value="" disabled>Select one</option>{serviceRows.map(({ title }) => <option key={title}>{title}</option>)}<option>Other residential project</option></select></label>
-        <label><span>Preferred timing</span><select name="timeline" defaultValue="Flexible" required><option>Flexible</option><option>Within 30 days</option><option>Within 1–3 months</option><option>Planning ahead</option></select></label>
-      </div>
-      <label><span>Has C&amp;G prepared a home inspection report for this property in the previous 12 months?</span><select name="inspected" defaultValue="" required><option value="" disabled>Select one</option><option value="no">No</option><option value="unsure">Not sure</option><option value="yes">Yes</option></select></label>
-      <label><span>Project details</span><textarea name="details" rows="7" placeholder="Describe what needs attention, where it is located, and any access or timing details." required /></label>
-      <div className="form-submit-row"><button className="button button-copper" type="submit">Prepare email request <ArrowRight size={17} /></button><p>This form opens your email app. Nothing is sent until you review and send the message.</p></div>
-      {status ? <div className={`form-status form-status-${status.type}`} role="status">{status.message}</div> : null}
-    </form>
-  );
-}
-
-function EstimatePage() {
-  return (
-    <>
-      <PageHero title="Tell us what needs attention." lede="Share the project basics and C&G will follow up to clarify fit, scope, access, and next steps." />
-      <section className="estimate-page-section">
-        <div className="container estimate-page-grid">
-          <div className="estimate-form-wrap"><h2>Project request</h2><EstimateForm /></div>
-          <aside className="estimate-sidebar">
-            <div><span>Prefer to talk?</span><a href="tel:+13105056581"><Phone size={18} /> {phoneNumber}</a><a href={`mailto:${emailAddress}`}><Mail size={18} /> {emailAddress}</a></div>
-            <div><span>A stronger request includes</span><ul><li><Check size={15} /> A short repair or improvement list</li><li><Check size={15} /> Exact room, area, or exterior location</li><li><Check size={15} /> Access limits or occupied spaces</li><li><Check size={15} /> Approximate timing or a flexible window</li><li><Check size={15} /> Photos available by reply, if useful</li></ul></div>
-            <div className="estimate-next-steps">
-              <span>After you send</span>
-              <ol>
-                <li><b>01</b><div><strong>Fit review</strong><p>Location, scope, access, and licensing fit are reviewed first.</p></div></li>
-                <li><b>02</b><div><strong>Clarify the work</strong><p>C&amp;G follows up on missing details and confirms whether an estimate visit is the right next step.</p></div></li>
-                <li><b>03</b><div><strong>Written scope</strong><p>Accepted work is defined in writing before scheduling begins.</p></div></li>
-              </ol>
-            </div>
-            <div className="estimate-policy"><ShieldCheck size={20} /><p>If C&amp;G inspected the property during the previous 12 months, the contracting service cannot offer or perform repairs there.</p></div>
-          </aside>
-        </div>
-      </section>
-      <SeparationNotice />
-    </>
-  );
-}
-
-function NotFoundPage({ onNavigate }) {
-  return <><PageHero title="That page is not part of this site." lede="Return home, review services, or start a project request."><InternalLink className="button button-copper" href="/" onNavigate={onNavigate}>Return home <ArrowRight size={17} /></InternalLink></PageHero><EstimateCta onNavigate={onNavigate} /></>;
-}
-
-function SiteFooter({ onNavigate }) {
-  return (
-    <footer className="site-footer">
-      <div className="container footer-grid">
-        <div><Brand onNavigate={onNavigate} /><p>Residential repair and improvement work with a practical, clearly defined scope.</p></div>
-        <div className="footer-links"><span>Explore</span>{navItems.slice(1).map(([label, href]) => <InternalLink href={href} onNavigate={onNavigate} key={href}>{label}</InternalLink>)}</div>
-        <div className="footer-links"><span>Contact</span><a href="tel:+13105056581">{phoneNumber}</a><a href={`mailto:${emailAddress}`}>{emailAddress}</a><p>Los Angeles County &amp; nearby communities</p></div>
-      </div>
-      <div className="container footer-license"><span>Contractor of record: Coastal Construction Services</span><a href={licenseUrl} target="_blank" rel="noreferrer">CSLB #{licenseNumber} · B — General Building <ExternalLink size={12} /></a></div>
-      <div className="container footer-bottom"><span>© 2026 C&amp;G Contracting Services</span><a href={inspectionUrl}>C&amp;G Certified Home Inspector</a></div>
-    </footer>
-  );
-}
-
-export function App() {
-  const [currentPage, setCurrentPage] = useState(() => routeKey());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+function Header({ currentRoute, onNavigate, onOpenSearch }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const navRef = useRef(null);
   useEffect(() => {
-    const onPopState = () => {
-      setCurrentPage(routeKey());
-      setMobileMenuOpen(false);
-      window.scrollTo(0, 0);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    if (open) navRef.current?.querySelector("a")?.focus();
+    const close = (event) => { if (event.key === "Escape" && open) { setOpen(false); buttonRef.current?.focus(); } };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
+  return <>
+    <header className="site-header"><div className="container header-inner"><Brand onNavigate={onNavigate} /><nav ref={navRef} id="contractor-navigation" className={`site-nav ${open ? "is-open" : ""}`} aria-label="Main navigation">{contractorNavigation.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={(event, href) => { onNavigate(event, href); setOpen(false); }} className={currentRoute.key === route.key ? "is-active" : ""} aria-current={currentRoute.key === route.key ? "page" : undefined}>{route.label}</InternalLink>)}<a className="mobile-call" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" /> Call {business.contracting.phoneDisplay}</a></nav><div className="header-actions"><a className="header-phone" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" />{business.contracting.phoneDisplay}</a><button className="header-search" type="button" onClick={onOpenSearch} aria-label="Search contractor guidance"><Search size={18} aria-hidden="true" /><span>Search</span></button><InternalLink className="button button-small button-copper" href="/estimate/" onNavigate={onNavigate}>Request Estimate</InternalLink><button ref={buttonRef} type="button" className="menu-toggle" aria-expanded={open} aria-controls="contractor-navigation" aria-label={open ? "Close navigation" : "Open navigation"} onClick={() => setOpen((value) => !value)}>{open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button></div></div></header>
+    <div className="license-line"><div className="container license-line-inner"><nav className="contractor-service-switcher" aria-label="C&G property services"><span>Choose a service</span><a href="/"><House size={13} aria-hidden="true" /> Home Inspection</a><InternalLink className="is-current" href="/" onNavigate={onNavigate} aria-current="true"><Wrench size={13} aria-hidden="true" /> Residential Contracting</InternalLink><InternalLink className="service-rule-link" href="/estimate/#inspection-eligibility" onNavigate={onNavigate}>Separate service · 12-month rule</InternalLink></nav><div className="license-record"><span>Contractor of record: {business.contracting.contractorOfRecord} · CSLB #{business.contracting.license.number} · {business.contracting.license.classification}</span><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">Official verification <ExternalLink size={11} aria-hidden="true" /></a></div></div></div>
+  </>;
+}
+
+function SeparationNotice({ onNavigate, compact = false }) {
+  return <section className={`separation-notice ${compact ? "is-compact" : ""}`} aria-labelledby="separation-title"><div className="container separation-inner"><ShieldCheck aria-hidden="true" /><div><h2 id="separation-title">Inspection and construction stay separate.</h2><p>{separationPolicy.notice}</p></div><InternalLink href="/estimate/" onNavigate={onNavigate}>Review eligibility <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></section>;
+}
+
+function PageHero({ title, lead, route, onNavigate, actions, compact = false }) {
+  return <><div className="container"><Breadcrumbs currentLabel={route.label} /></div><section className={`page-hero ${compact ? "page-hero-compact" : ""}`}><div className="container"><h1>{title}</h1><p>{lead}</p>{actions ? <div className="page-hero-actions">{actions}</div> : null}</div></section></>;
+}
+
+function ServiceList({ onNavigate, detailed = false, limit }) {
+  return <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>{contractorServices.slice(0, limit || contractorServices.length).map((service, index) => <article className="service-row" id={service.id} key={service.id} tabIndex={detailed ? -1 : undefined} aria-labelledby={`${service.id}-title`}><span className="service-number">{String(index + 1).padStart(2, "0")}</span><span className="service-icon"><Wrench size={20} aria-hidden="true" /></span><div className="service-copy"><h2 id={`${service.id}-title`}>{service.title}</h2><p>{service.summary}</p>{detailed ? <><div className="service-detail-grid"><div><h3>Potentially eligible examples</h3><ul>{service.examples.map((item) => <li key={item}><Check size={13} aria-hidden="true" />{item}</li>)}</ul></div><div><h3>Boundaries</h3><ul>{service.boundaries.map((item) => <li key={item}>{item}</li>)}</ul></div></div><InternalLink className="button button-graphite service-request-link" href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></> : <InternalLink className="text-link service-section-link" href={`/services/#${service.id}`} onNavigate={onNavigate}>Review category <ArrowRight size={14} aria-hidden="true" /></InternalLink>}</div></article>)}</div>;
+}
+
+function ServiceDirectory({ onNavigate }) {
+  const navigateAndFocus = (event, href, targetId) => {
+    onNavigate(event, href);
+    if (!event.defaultPrevented) return;
+    requestAnimationFrame(() => document.getElementById(targetId)?.focus({ preventScroll: true }));
+  };
+  return <section className="service-directory-section" aria-labelledby="service-directory"><div className="container"><div className="service-directory-heading"><div><span>Project categories</span><h2 id="service-directory" tabIndex="-1">Choose the closest starting point.</h2></div><div><p>A category organizes the first conversation. It does not accept the work or replace property-specific review.</p><InternalLink className="text-link text-link-dark" href="/projects/" onNavigate={onNavigate}>See illustrated project types <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></div><nav className="service-directory-grid" aria-labelledby="service-directory">{contractorServices.map((service, index) => <InternalLink className="service-directory-link" href={`/services/#${service.id}`} onNavigate={(event, href) => navigateAndFocus(event, href, service.id)} key={service.id}><span>{String(index + 1).padStart(2, "0")}</span><span><strong>{service.title}</strong><small>{service.summary}</small></span><ArrowRight size={16} aria-hidden="true" /></InternalLink>)}</nav><div className="service-directory-uncertain"><p><strong>Not sure which category fits?</strong> Choose “Other or not sure” and describe the condition in plain language. Eligibility is still reviewed first.</p><InternalLink href="/estimate/?category=other-or-not-sure" onNavigate={onNavigate}>Start without choosing a category <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></div></section>;
+}
+
+const processSteps = [
+  ["Submit the request", "Share the address, occupancy, requested work, timing, and inspection-eligibility answer. Photos must wait for an approved sharing path."],
+  ["Review eligibility", "C&G confirms the property was not inspected by C&G during the previous 12 months and reviews license and service boundaries."],
+  ["Clarify the scope", "Discuss access, source conditions, desired result, materials, permits, trades, schedule, and known constraints."],
+  ["Site visit if needed", "A visit may be needed before a written estimate. A visit is not acceptance of the work."],
+  ["Written estimate", "Review scope, exclusions, allowances, assumptions, payment terms, permit responsibility, and schedule conditions."],
+  ["Authorization and scheduling", "Work is scheduled only after required documents and approvals are complete."],
+  ["Changes in discovered conditions", "Concealed or changed conditions are documented and handled through an approved written change process before extra work proceeds."],
+  ["Final walkthrough", "Review the accepted scope, completion items, care information, and any documented follow-up."],
+];
+
+function ProcessList({ limit }) {
+  return <ol className="process-list">{processSteps.slice(0, limit || processSteps.length).map(([title, copy], index) => <li key={title}><span className="process-number">{String(index + 1).padStart(2, "0")}</span><div><h2>{title}</h2><p>{copy}</p></div></li>)}</ol>;
+}
+
+const projects = [
+  { category: "drywall-surface-repair", title: "Drywall and surface repair", image: "illustrative-drywall-repair.jpg", alt: "Repair professional smoothing a small drywall patch in a protected living space", details: ["Describe the source condition and whether it is resolved", "Show the damaged area and surrounding finish", "Note matching goals, access, moisture, or movement"] },
+  { category: "exterior-details", title: "Exterior details", image: "illustrative-exterior-trim.jpg", alt: "Contractor measuring weathered wood trim beneath an exterior window", details: ["Show the detail and its wider weather exposure", "Describe any active leak or concealed-damage concern", "Note material, access, height, and finish condition"] },
+  { category: "doors-trim-finish-carpentry", title: "Doors, trim, and finish carpentry", image: "illustrative-finish-carpentry.jpg", alt: "Finish carpenter checking trim alignment beside an interior doorway", details: ["Describe fit, movement, hardware, and desired result", "Show existing profiles and adjacent finishes", "Note settlement, rated assembly, or egress concerns"] },
+];
+
+const contractorReasons = [
+  ["01", "Eligibility before a sales conversation", "The property-level inspection separation is reviewed before an ordinary project request can move forward."],
+  ["02", "A result that can be described", "The request begins with the current condition, desired result, access, known source conditions, and the information still missing."],
+  ["03", "Assumptions kept in the open", "License fit, trades, permits, materials, exclusions, allowances, and concealed-condition risk belong in the scope conversation."],
+  ["04", "Changes documented before extra work", "If site conditions change the accepted scope, the next decision is documented instead of being hidden inside the project."],
+];
+
+const planningExamples = [
+  { title: "Drywall after a resolved leak", condition: "The source is reported as repaired, but the wall or ceiling finish still needs evaluation.", helps: "Share the affected area, source status, access, finish-matching goal, and whether moisture or concealed damage is still a concern.", boundary: "The request does not prove the source is resolved or establish the concealed condition." },
+  { title: "A door that no longer closes cleanly", condition: "Fit, hardware, trim, movement, egress, rated-assembly, or wider building conditions may affect the scope.", helps: "Describe when it changed, show the full opening and adjacent finishes, and identify the result you want—not only the visible symptom.", boundary: "A finish-work request may require different expertise if structural movement, safety, or another source condition is suspected." },
+  { title: "A grouped turnover or punch list", condition: "Several smaller items may involve different materials, access needs, trades, permits, or owner-supplied products.", helps: "Group the list by room or exterior area, rank priorities, identify occupancy and access, and note any real deadline.", boundary: "An illustrative list is not an accepted scope, price, schedule, or promise that every item fits the current service." },
+];
+
+function Home({ onNavigate }) {
+  return <>
+    <section className="hero"><div className="container hero-grid"><div className="hero-copy"><span className="eyebrow">C&amp;G Contracting Services</span><h1>Practical repairs. <em>Built to last.</em></h1><p>Start with a clear description of the property, the condition, and the result you want. C&amp;G reviews eligibility, access, trades, permits, materials, schedule, and license fit before offering an estimate or accepting work.</p><div className="hero-actions"><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request an Estimate <ArrowRight size={16} aria-hidden="true" /></InternalLink><InternalLink className="text-link text-link-dark" href="/services/" onNavigate={onNavigate}>Explore Services <ArrowRight size={15} aria-hidden="true" /></InternalLink></div></div><figure className="hero-image"><img src={assetUrl("assets/contractor-hero.jpg")} alt="Contractor carefully measuring interior wood trim" width="960" height="640" /><figcaption>Representative editorial image · not client project photography</figcaption></figure></div></section>
+    <section className="project-summary-band"><div className="container project-summary-grid">{[["01", "Eligibility first", "The 12-month inspection boundary is checked before an ordinary request."], ["02", "Defined scope", "Requested work, assumptions, exclusions, trades, and access are reviewed."], ["03", "Written estimate", "No price, acceptance, or work date is promised by this website."], ["04", "License visible", `${business.contracting.contractorOfRecord} · CSLB #${business.contracting.license.number}`]].map(([number, title, copy]) => <div className="project-summary-item" key={title}><span>{number}</span><div><strong>{title}</strong><p>{copy}</p></div></div>)}</div></section>
+    <section className="contractor-confidence-section"><div className="container"><div className="section-heading split-heading"><div><span>Why C&amp;G</span><h2>A professional project begins before the tools come out.</h2></div><p>Good work needs more than a polished gallery. It needs a request that can be evaluated, a scope that can be understood, and boundaries that stay visible.</p></div><div className="contractor-reason-grid">{contractorReasons.map(([number, title, copy]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p></article>)}</div><div className="request-ready-panel"><div><span>Make the first conversation useful</span><h3>A request C&amp;G can evaluate.</h3></div><ul>{["Full property address and authority to request work", "Plain-language condition and desired result", "Source status, affected areas, occupancy, and access", "Timing, materials, permit, design, and hazard context", "A direct answer to the 12-month inspection eligibility question"].map((item) => <li key={item}><Check size={16} aria-hidden="true" />{item}</li>)}</ul><InternalLink className="button button-graphite" href="/estimate/" onNavigate={onNavigate}>Prepare the request <ArrowRight size={15} aria-hidden="true" /></InternalLink></div></div></section>
+    <section className="services-section"><div className="container"><div className="section-heading split-heading"><div><span>Service categories</span><h2>Start with what needs attention.</h2></div><p>Each request is reviewed for the property, required trades, permits, access, materials, schedule, and license fit.</p></div><ServiceList onNavigate={onNavigate} /><InternalLink className="section-link" href="/services/" onNavigate={onNavigate}>See detailed categories and boundaries <ArrowRight size={15} aria-hidden="true" /></InternalLink></div></section>
+    <section className="process-section"><div className="container process-grid"><div className="process-heading"><span>Visible process</span><h2>Clear before work begins.</h2><p>Good project communication starts with eligibility and a written definition of the requested result.</p><InternalLink className="button button-outline section-link" href="/process/" onNavigate={onNavigate}>See all eight steps</InternalLink></div><ProcessList limit={6} /></div></section>
+    <section className="about-preview"><div className="container about-preview-grid"><figure className="about-image"><img src={assetUrl("assets/project-planning.jpg")} alt="Construction professionals reviewing a residential project plan" width="960" height="640" /></figure><div className="about-copy"><span>Scope and communication</span><h2>Assumptions belong in the open.</h2><p>Good project communication begins before work starts. C&amp;G defines the requested scope, identifies assumptions and exclusions, and confirms whether the project fits the contractor's current capabilities and schedule.</p><div className="credential-line"><ShieldCheck aria-hidden="true" /><div><strong>{business.contracting.contractorOfRecord}</strong><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">CSLB #{business.contracting.license.number} · verify officially <ExternalLink size={12} aria-hidden="true" /></a></div></div><InternalLink className="text-link text-link-dark" href="/about/" onNavigate={onNavigate}>How identity and scope are disclosed <ArrowRight size={15} aria-hidden="true" /></InternalLink></div></div></section>
+    <SeparationNotice onNavigate={onNavigate} />
+    <section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Describe the project.</h2><p>Start an eligibility and scope review. No estimate or schedule is promised.</p></div><div className="cta-actions"><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Review request form</InternalLink><a className="button button-outline" href={business.contracting.phoneHref}>Call {business.contracting.phoneDisplay}</a></div></div></section>
+  </>;
+}
+
+function Services({ route, onNavigate }) {
+  const navigateToDirectory = (event, href) => {
+    onNavigate(event, href);
+    if (!event.defaultPrevented) return;
+    requestAnimationFrame(() => document.getElementById("service-directory")?.focus({ preventScroll: true }));
+  };
+  return <><PageHero route={route} compact title="Residential work with a clear, practical scope." lead="Service categories help start the conversation. Final acceptance depends on the property, inspection eligibility, required trades, permits, access, materials, schedule, and the contractor's license and capabilities." actions={<><InternalLink className="button button-copper" href="/services/#service-directory" onNavigate={navigateToDirectory}>Choose a category <ArrowRight size={15} aria-hidden="true" /></InternalLink><InternalLink className="button button-outline" href="/estimate/" onNavigate={onNavigate}>Review eligibility</InternalLink></>} /><ServiceDirectory onNavigate={onNavigate} /><ProjectReadinessGuide estimateHref={pageUrl("/estimate/")} /><section className="services-section services-page-section" aria-label="Detailed service scopes and boundaries"><div className="container"><ServiceList detailed onNavigate={onNavigate} /></div></section><section className="third-party-report"><div className="container"><h2>Eligible work based on a third-party inspection report</h2><p>A report prepared by an independent inspector may help describe a requested project. C&amp;G still performs its own scope review and does not adopt the inspector's conclusions, guarantee that every related condition is visible, or treat the report as construction drawings. Remove confidential client information or confirm that you are authorized to share it.</p></div></section><SeparationNotice onNavigate={onNavigate} /><section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Ready to describe the scope?</h2><p>Choose a category and review the eligibility guard before preparing an email.</p></div><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request review</InternalLink></div></section></>;
+}
+
+function Process({ route, onNavigate }) {
+  return <><PageHero route={route} title="A straightforward project should have a visible process." lead="Eligibility and scope come before an estimate, scheduling, or work." /><section className="process-section process-page-section"><div className="container process-grid"><div className="process-heading"><span>Eight steps</span><h2>From request to final walkthrough.</h2><p>Contract terms, deposit statements, warranty promises, and cancellation language are intentionally not published until reviewed for the actual business and California requirements.</p></div><ProcessList /></div></section><SeparationNotice onNavigate={onNavigate} /></>;
+}
+
+function About({ route, onNavigate }) {
+  const license = business.contracting.license;
+  return <><PageHero route={route} title="Construction experience, organized around a clear scope." lead="C&G Contracting Services focuses on practical residential repair and finish work that can be clearly described, reviewed for license fit, and documented in a written estimate." /><section className="about-story"><div className="container about-story-grid"><figure className="about-story-image"><img src={assetUrl("assets/contractor-hero.jpg")} alt="Contractor carefully measuring interior wood trim" width="960" height="640" /></figure><div className="about-story-copy"><span>Public identity</span><h2>The contractor of record stays visible.</h2><p>The public C&amp;G name does not replace the contractor of record. The contractor identity and current license information remain visible throughout the site.</p><p className="legal-name-note">C&amp;G Contracting Services is the public-facing service name shown on this site. Coastal Construction Services is identified as the contractor of record. Confirm the appropriate legal business-name disclosure before publication.</p></div></div></section><section className="credentials-section"><div className="container credentials-grid"><div><span>Official license record</span><h2>Current public verification</h2><p>License details were checked against the official California Contractors State License Board record. The exact legal relationship between the public-facing name and contractor of record still awaits owner confirmation.</p></div><div className="license-panel"><div><span>Contractor of record</span><strong>{business.contracting.contractorOfRecord}</strong></div><div><span>California license</span><strong>CSLB #{license.number}</strong></div><div><span>Classification</span><strong>{license.classification}</strong></div><div><span>Last live checked</span><strong>{license.liveVerifiedAt}</strong></div><a className="button button-graphite" href={license.officialLookupUrl} rel="noreferrer" target="_blank">Open official record <ExternalLink size={14} aria-hidden="true" /></a></div></div></section><section className="values-section"><div className="container"><h2>Working values</h2><ul>{["Define the requested result before scheduling", "State exclusions and assumptions", "Identify specialty or design needs early", "Document changes rather than hiding them", "Keep inspection and contracting records separated as required", "Use project photography and testimonials only with approval"].map((value) => <li key={value}><Check aria-hidden="true" />{value}</li>)}</ul></div></section><SeparationNotice onNavigate={onNavigate} /></>;
+}
+
+function Projects({ route, onNavigate }) {
+  return <><PageHero route={route} title="Project Types" lead="Representative categories can help you describe a request without implying that these images show completed C&G work." /><section className="representative-work"><div className="container"><p className="illustrative-disclosure project-disclosure"><strong>Illustrative material</strong>The images on this page are representative editorial illustrations of project types. They are not photographs of completed C&amp;G client projects.</p><div className="representative-grid">{projects.map((project) => <article className="representative-card" key={project.title}><div className="representative-media"><img src={assetUrl(`assets/${project.image}`)} alt={project.alt} width="960" height="640" /></div><div className="project-card-copy"><h2>{project.title}</h2><ul>{project.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><InternalLink className="text-link text-link-dark" href={`/estimate/?category=${project.category}`} onNavigate={onNavigate}>Describe this project type <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></article>)}</div></div></section><section className="project-type-index"><div className="container"><div className="section-heading split-heading"><div><span>All current categories</span><h2>Find the closest starting point.</h2></div><p>A category organizes the first conversation. It does not accept the work or replace property-specific review.</p></div><div className="project-type-grid">{contractorServices.map((service, index) => <article key={service.id}><span>{String(index + 1).padStart(2, "0")}</span><h3>{service.title}</h3><p>{service.summary}</p><ul>{service.examples.slice(0, 2).map((item) => <li key={item}>{item}</li>)}</ul><InternalLink href={`/services/#${service.id}`} onNavigate={onNavigate}>Review scope and boundaries <ArrowRight size={14} aria-hidden="true" /></InternalLink><InternalLink href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start request with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><section className="planning-examples-section"><div className="container"><div className="section-heading split-heading"><div><span>Illustrative planning examples</span><h2>Turn a symptom into a better project brief.</h2></div><p>These are educational scenarios—not customer stories, completed work, estimates, schedules, or promises about a property.</p></div><div className="planning-example-grid">{planningExamples.map((example, index) => <article key={example.title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{example.title}</h3><dl><div><dt>Starting condition</dt><dd>{example.condition}</dd></div><div><dt>What helps</dt><dd>{example.helps}</dd></div><div><dt>Scope boundary</dt><dd>{example.boundary}</dd></div></dl><InternalLink className="text-link text-link-dark" href="/estimate/" onNavigate={onNavigate}>Prepare an eligible request <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><SeparationNotice onNavigate={onNavigate} /></>;
+}
+
+function Faq({ route, onNavigate }) {
+  return <><PageHero route={route} title="Contractor questions, answered before a request." lead="Review project fit, eligibility, estimates, materials, permits, concealed conditions, specialty work, and scheduling boundaries." /><section className="faq-section"><div className="container faq-layout"><aside><h2>Before you submit</h2><p>An answer describes the current review process; it does not accept work or promise a result.</p><InternalLink className="button button-graphite" href="/estimate/" onNavigate={onNavigate}>Review the form</InternalLink></aside><div>{contractorFaqs.map(([question, answer], index) => <DisclosureGroup key={question} title={question} defaultOpen={index === 0}><p>{answer}</p></DisclosureGroup>)}</div></div></section><SeparationNotice onNavigate={onNavigate} /></>;
+}
+
+function Estimate({ route, categoryKey }) {
+  return <><PageHero route={route} title="Tell us what needs attention." lead="The details below help C&G decide whether the request is eligible, whether it fits the contractor's license and current services, and whether an estimate visit is the right next step. This form does not create a contract, promise a price, or reserve a work date." /><section className="estimate-page-section"><div className="container estimate-page-grid"><div className="estimate-form-wrap"><h2>Project review details</h2><EstimateRequestForm key={categoryKey || "unclassified"} initialCategoryKey={categoryKey} /></div><aside className="estimate-sidebar"><div><span>Current contact</span><a href={business.contracting.phoneHref}><Phone size={17} aria-hidden="true" />{business.contracting.phoneDisplay}</a><a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a></div><div className="estimate-policy"><ShieldCheck aria-hidden="true" /><p>{separationPolicy.notice}</p></div><div><span>Transport truth</span><p>This page validates information locally and prepares a mailto draft. It does not upload files or send data to a server.</p></div></aside></div></section></>;
+}
+
+function Privacy({ route }) {
+  return <><PageHero route={route} title="Contractor privacy notice" lead="This notice describes the current static website and email-preparation flow. It should be reviewed with the business's actual record-retention and legal practices before publication." /><section className="policy-section"><div className="container policy-copy"><h2>Information you choose to provide</h2><p>The estimate form can prepare an email containing contact, property, project, access, timing, material, permit, hazard, eligibility, and consent details. The website does not receive the form or store its contents on a C&amp;G server.</p><h2>Photos and reports</h2><p>This basic form has no upload. Wait for an approved sharing method. If an independent inspection report is later shared, remove confidential information or confirm authorization. Do not send full claim files, financial documents, government IDs, payment cards, alarm or lockbox codes, or unredacted reports.</p><h2>Eligibility screening and separation</h2><p>Eligibility answers distinguish an ordinary project request, a manual review, and a blocked property. C&amp;G inspection-client data is not used for contracting solicitation. The website itself does not retain blocked requests.</p><h2>Communications and specialist sharing</h2><p>Opening a prepared mailto link transfers the draft to the visitor's email application and provider. Estimating communications may later be shared with a subcontractor or specialist only when needed and authorized; this site does not perform that sharing.</p><h2>Hosting, fonts, search, and analytics</h2><p>The site is delivered as static files through GitHub Pages. Google Fonts may receive ordinary technical request data when fonts load. Pagefind searches the static contractor index inside the visitor's browser; search terms are not sent to a hosted-search or analytics provider. No analytics provider or advertising tracker is enabled.</p><h2>Contact</h2><p>Privacy questions may be sent to <a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a>. Professional review of final privacy and retention wording remains pending.</p></div></section></>;
+}
+
+function NotFound({ onNavigate }) {
+  return <section className="not-found"><div className="container"><span>404</span><h1>That contractor page was not found.</h1><p>The requested route is not enabled in the current contractor site.</p><InternalLink className="button button-copper" href="/" onNavigate={onNavigate}>Return to contracting home</InternalLink></div></section>;
+}
+
+function Footer({ onNavigate }) {
+  const areas = approvedServiceAreas("Contractor");
+  return <footer className="site-footer"><div className="container"><div className="footer-grid"><div><Brand onNavigate={onNavigate} /><p>Residential project requests reviewed for eligibility, license fit, scope, access, permits, materials, and schedule. Representative editorial images are not client project photographs.</p></div><nav className="footer-links" aria-label="Contractor footer"><span>Contracting</span>{contractorFooterRoutes.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}</nav><div className="footer-links"><span>Separate services</span><a href="/">Home inspection</a><a href="/property-services/">Property-services chooser</a><a href={business.contracting.phoneHref}>{business.contracting.phoneDisplay}</a><a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a>{areas.length ? <p>{areas.map((area) => area.label).join(", ")}</p> : <p>Service-area publication awaits owner verification.</p>}</div></div><div className="footer-license"><span>Contractor of record: {business.contracting.contractorOfRecord} · CSLB #{business.contracting.license.number} · {business.contracting.license.classification}</span><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">Official CSLB lookup <ExternalLink size={11} aria-hidden="true" /></a></div><p className="footer-policy">{separationPolicy.notice}</p><div className="footer-bottom"><span>© {new Date().getFullYear()} C&amp;G. Public-facing service information.</span><InternalLink href="/privacy/" onNavigate={onNavigate}>Privacy</InternalLink></div></div></footer>;
+}
+
+function MobileQuickActions({ currentRoute, onNavigate }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setVisible(window.scrollY > 260);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    const metadata = pageMeta[currentPage] || pageMeta.notFound;
-    const routePath = Object.entries(pageByPath).find(([, key]) => key === currentPage)?.[0] || "/";
-    const canonicalUrl = `${window.location.origin}${pageUrl(routePath)}`;
-    document.title = metadata.title;
-    const setMeta = (attribute, key, content) => {
-      let element = document.head.querySelector(`meta[${attribute}="${key}"]`);
-      if (!element) {
-        element = document.createElement("meta");
-        element.setAttribute(attribute, key);
-        document.head.appendChild(element);
-      }
-      element.setAttribute("content", content);
-    };
-    setMeta("name", "description", metadata.description);
-    setMeta("property", "og:title", metadata.title);
-    setMeta("property", "og:description", metadata.description);
-    setMeta("property", "og:url", canonicalUrl);
-    setMeta("name", "twitter:title", metadata.title);
-    setMeta("name", "twitter:description", metadata.description);
-
-    let canonical = document.head.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = canonicalUrl;
-
-    let schema = document.getElementById("cg-contractor-schema");
-    if (!schema) {
-      schema = document.createElement("script");
-      schema.id = "cg-contractor-schema";
-      schema.type = "application/ld+json";
-      document.head.appendChild(schema);
-    }
-    schema.textContent = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "GeneralContractor",
-      name: "C&G Contracting Services",
-      legalName: "Coastal Construction Services",
-      description: metadata.description,
-      telephone: "+1-310-505-6581",
-      email: emailAddress,
-      areaServed: "Los Angeles County and nearby communities",
-      identifier: `CSLB #${licenseNumber}`,
-      url: `${window.location.origin}${appBase}`,
-      sameAs: [licenseUrl],
-    });
-
-    const frame = window.requestAnimationFrame(() => document.getElementById("page-content")?.focus({ preventScroll: true }));
-    return () => window.cancelAnimationFrame(frame);
-  }, [currentPage]);
-
-  const onNavigate = (event, href) => {
-    if (!href.startsWith("/")) return;
-    event.preventDefault();
-    window.history.pushState({}, "", pageUrl(href));
-    setCurrentPage(routeKey(pageUrl(href)));
-    setMobileMenuOpen(false);
-    window.scrollTo(0, 0);
-  };
-
-  const props = { onNavigate };
-  const page = {
-    home: <HomePage {...props} />,
-    services: <ServicesPage {...props} />,
-    process: <ProcessPage {...props} />,
-    about: <AboutPage {...props} />,
-    estimate: <EstimatePage {...props} />,
-    notFound: <NotFoundPage {...props} />,
-  }[currentPage] || <NotFoundPage {...props} />;
-
-  return (
-    <div className="site-shell">
-      <a className="skip-link" href="#page-content">Skip to content</a>
-      <SiteHeader currentPage={currentPage} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} onNavigate={onNavigate} />
-      <main id="page-content" tabIndex="-1">{page}</main>
-      <SiteFooter onNavigate={onNavigate} />
-    </div>
-  );
+  if (!visible) return null;
+  const primaryAction = currentRoute.key === "estimate"
+    ? <a className="button button-copper" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a>
+    : <InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Start request</InternalLink>;
+  return <nav className="mobile-conversion-rail" aria-label="Quick contractor actions"><InternalLink className="button button-graphite" href="/services/#service-directory" onNavigate={onNavigate}><Wrench size={15} aria-hidden="true" /> Services</InternalLink>{primaryAction}</nav>;
 }
+
+export function App({ initialPath }) {
+  const initial = normalizePath(initialPath ?? (typeof window === "undefined" ? "/" : window.location.pathname));
+  const [path, setPath] = useState(initial);
+  const [search, setSearch] = useState(() => typeof window === "undefined" ? "" : window.location.search);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const route = findContractorRoute(path);
+  useEffect(() => {
+    const pop = () => {
+      setPath(normalizePath(window.location.pathname));
+      setSearch(window.location.search);
+      const fragment = window.location.hash.slice(1);
+      if (fragment) requestAnimationFrame(() => {
+        const target = document.getElementById(fragment);
+        target?.scrollIntoView();
+        target?.focus({ preventScroll: true });
+      });
+      else window.scrollTo(0, 0);
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, []);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const fragment = window.location.hash.slice(1);
+      const target = fragment ? document.getElementById(fragment) : null;
+      if (target) {
+        target.scrollIntoView();
+        target.focus({ preventScroll: true });
+      } else document.getElementById("main-content")?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [path]);
+  const navigate = (event, nextPath) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const href = pageUrl(nextPath);
+    window.history.pushState({}, "", href);
+    setPath(normalizePath(nextPath));
+    setSearch(new URL(href, window.location.origin).search);
+    const fragment = nextPath.split("#", 2)[1];
+    if (fragment) requestAnimationFrame(() => document.getElementById(fragment)?.scrollIntoView());
+    else window.scrollTo({ top: 0, behavior: "auto" });
+  };
+  let page;
+  if (route.key === "home") page = <Home onNavigate={navigate} />;
+  else if (route.key === "services") page = <Services route={route} onNavigate={navigate} />;
+  else if (route.key === "process") page = <Process route={route} onNavigate={navigate} />;
+  else if (route.key === "about") page = <About route={route} onNavigate={navigate} />;
+  else if (route.key === "projects") page = <Projects route={route} onNavigate={navigate} />;
+  else if (route.key === "faq") page = <Faq route={route} onNavigate={navigate} />;
+  else if (route.key === "estimate") page = <Estimate route={route} categoryKey={requestCategoryFromSearch(search)} />;
+  else if (route.key === "privacy") page = <Privacy route={route} />;
+  else page = <NotFound onNavigate={navigate} />;
+  return <div className="site-shell"><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><MobileQuickActions currentRoute={route} onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
+}
+
+export { enabledContractorRoutes };

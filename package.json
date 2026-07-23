@@ -4,10 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run build:inspector && npm run build:contractor && npm run assemble",
-    "build:inspector": "cd inspector-site-prototype && VITE_BASE_PATH=/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://sadmanbob.github.io} npm run build",
-    "build:contractor": "cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://sadmanbob.github.io} npm run build",
+    "build": "npm run build:inspector && npm run build:contractor && npm run assemble && npm run build:search",
+    "build:inspector": "cd inspector-site-prototype && VITE_BASE_PATH=/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://www.cginspection.net} npm run build",
+    "build:contractor": "cd contractor-site-prototype && VITE_BASE_PATH=/contracting/ VITE_SITE_ORIGIN=${SITE_ORIGIN:-https://www.cginspection.net} npm run build",
+    "build:search": "node scripts/build-search-index.mjs",
     "assemble": "node scripts/assemble-site.mjs",
-    "verify": "node scripts/verify-sites.mjs"
+    "verify": "node scripts/verify-sites.mjs",
+    "quality:static": "node scripts/quality-gates.mjs static",
+    "quality": "npm run build && npm run verify && npm run quality:static",
+    "audit:a11y": "node scripts/quality-gates.mjs browser-a11y",
+    "audit:lighthouse": "lhci autorun --config=./lighthouserc.json"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@lhci/cli": "0.15.1",
+    "parse5": "8.0.1",
+    "pagefind": "1.5.2",
+    "playwright": "1.61.1"
   }
 }

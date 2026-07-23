@@ -9,7 +9,13 @@
     <meta property="og:description" content="Two distinct services. One commitment to clear information and careful work." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{SITE_ORIGIN}}/property-services/" />
+    <meta property="og:image" content="{{SITE_ORIGIN}}/assets/hero-inspector.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="C&G Property Services" />
+    <meta name="twitter:description" content="Choose between distinct home inspection and residential contracting services." />
+    <meta name="twitter:image" content="{{SITE_ORIGIN}}/assets/hero-inspector.jpg" />
     <link rel="canonical" href="{{SITE_ORIGIN}}/property-services/" />
+    <script id="cg-page-schema" type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"{{SITE_ORIGIN}}/property-services/#webpage","url":"{{SITE_ORIGIN}}/property-services/","name":"C&G Property Services","description":"Choose between distinct home inspection and residential contracting services."}]}</script>
     <title>C&amp;G Property Services</title>
     <link rel="stylesheet" href="/property-services/styles.css" />
   </head>
@@ -17,28 +23,28 @@
     <a class="skip-link" href="#services">Skip to services</a>
     <header>
       <a class="brand" href="/property-services/" aria-label="C&G Property Services home"><span>C&amp;G</span><strong>Property Services</strong></a>
-      <a class="phone" href="tel:+13105056581">(310) 505-6581</a>
+      <a class="phone" href="{{PHONE_HREF}}">{{PHONE_DISPLAY}}</a>
     </header>
     <main>
       <section class="intro">
-        <p>Two distinct services. One clear standard.</p>
-        <h1>Understand the home.<br />Improve it <em>responsibly.</em></h1>
+        <p>Two distinct services. One clear boundary.</p>
+        <h1>Which service are<br />you looking <em>for?</em></h1>
       </section>
       <section class="service-grid" id="services" aria-label="Choose a C&G service">
         <article class="service inspection">
-          <div class="service-copy"><span>01 / Home inspection</span><h2>Know what you’re <em>buying.</em></h2><p>Construction-informed inspections with clear answers, detailed photos, and practical next steps.</p><a href="/">Visit the inspection site <b aria-hidden="true">→</b></a></div>
+          <div class="service-copy"><span>01 / Home inspection</span><h2>Home <em>Inspection</em></h2><p>Understand visible and accessible property conditions before a purchase, sale, or maintenance decision.</p><a href="/">Explore Home Inspection <b aria-hidden="true">→</b></a></div>
           <img src="/assets/hero-inspector.jpg" alt="C&G home inspector at a residential property" width="1731" height="909" loading="lazy" decoding="async" />
         </article>
         <article class="service contracting">
-          <div class="service-copy"><span>02 / Residential contracting</span><h2>Practical repairs.<br /><em>Built to last.</em></h2><p>Residential repair and improvement work with clear scopes and dependable communication.</p><a href="/contracting/">Visit the contractor site <b aria-hidden="true">→</b></a></div>
+          <div class="service-copy"><span>02 / Residential contracting</span><h2>Residential <em>Contracting</em></h2><p>Share a repair, finish-work, punch-list, or small multi-trade project for scope and eligibility review.</p><a href="/contracting/">Explore Contracting Services <b aria-hidden="true">→</b></a></div>
           <img src="/contracting/assets/contractor-hero.jpg" alt="Contractor carefully measuring interior wood trim" width="1536" height="1024" loading="lazy" decoding="async" />
         </article>
       </section>
       <section class="boundary">
         <strong>Clear service separation</strong>
-        <p>C&amp;G Contracting Services does not offer or perform repairs on a property for which C&amp;G prepared a home inspection report during the previous 12 months.</p>
+        <p>{{SEPARATION_NOTICE}}</p>
       </section>
     </main>
-    <footer><span>© 2026 C&amp;G Property Services</span><a href="mailto:clarencegloss@gmail.com">clarencegloss@gmail.com</a><a href="https://www.cslb.ca.gov/987643">Contractor CSLB #987643</a></footer>
+    <footer><span>© 2026 C&amp;G Property Services</span><a href="mailto:{{EMAIL}}">{{EMAIL}}</a><a href="{{LICENSE_URL}}">{{CONTRACTOR_OF_RECORD}} · CSLB #{{LICENSE_NUMBER}} · {{LICENSE_CLASSIFICATION}}</a></footer>
   </body>
 </html>

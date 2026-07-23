@@ -3,6 +3,7 @@
 **/.npm-cache/
 **/dist/
 _site/
+.lighthouseci/
 
 # Local audit and browser evidence stay in the workspace, not the public source repo.
 cg-sites-launch-audit-2026-07-21/

@@ -1,0 +1,67 @@
+export const contractorServices = [
+  {
+    id: "interior-repair-finish-work",
+    title: "Interior repair and finish work",
+    summary: "Defined interior repair and finish scopes reviewed for source conditions, matching limits, and license fit.",
+    examples: ["Repair or replacement of damaged interior finish components", "Small areas of wall, ceiling, baseboard, casing, or trim work", "Adjustment and repair of interior doors and hardware", "Coordinated finish work connected to an eligible multi-trade project", "Owner-provided punch lists that can be reviewed and clearly scoped"],
+    boundaries: ["Concealed conditions may change scope and price", "Exact paint, texture, stain, wood grain, tile, or aged-finish matches cannot be guaranteed", "Hazardous-material testing or remediation requires an appropriately qualified provider", "Specialty-only work requires license review"],
+  },
+  {
+    id: "drywall-surface-repair",
+    title: "Drywall and surface repair",
+    summary: "Localized repair and preparation after the source condition has been corrected and ordinary finish work is appropriate.",
+    examples: ["Localized drywall patching after the source condition has been corrected", "Small wall or ceiling repairs", "Surface preparation connected to an accepted repair scope", "Texture blending where reasonably achievable", "Coordinated access patches after approved multi-trade work"],
+    boundaries: ["Active leaks, unresolved moisture, mold, structural movement, or hazardous materials must be addressed first", "Hidden framing or utility damage is excluded unless added by written change order", "Texture and sheen variation may remain visible under different light"],
+  },
+  {
+    id: "doors-trim-finish-carpentry",
+    title: "Doors, trim, and finish carpentry",
+    summary: "Door, trim, and selected finish-carpentry requests with attention to fit, material availability, and underlying conditions.",
+    examples: ["Interior door adjustment or replacement", "Casing, baseboard, and selected trim repair", "Finish-carpentry details", "Shelving or built-in component work when within accepted scope", "Minor exterior carpentry when condition and license fit are confirmed"],
+    boundaries: ["Structural framing, rated assemblies, egress, waterproofing, termite damage, and specialty hardware may require more review", "Material availability and existing profiles affect matching", "Openings with settlement or structural movement require cause evaluation before finish adjustment"],
+  },
+  {
+    id: "punch-list-coordination",
+    title: "Punch-list coordination",
+    summary: "Multiple documented items reviewed individually for trade, safety, permit, access, and material requirements.",
+    examples: ["Multiple small, clearly documented items at one residential property", "Move-in or turnover corrections", "Completion items remaining after an eligible project", "Owner-maintained lists needing on-site scope review", "More than one building trade where the license and project structure permit it"],
+    boundaries: ["A list is not automatically an accepted scope", "Each item requires trade, permit, access, material, and safety review", "A C&G inspection within the previous 12 months makes the property ineligible for C&G repair work", "Third-party reports may be provided only after personal information is removed or sharing is authorized"],
+  },
+  {
+    id: "property-maintenance-turnover",
+    title: "Property maintenance and turnover work",
+    summary: "Planned, authorized repair groups for residential properties without implying emergency or property-management services.",
+    examples: ["Planned repairs between occupants", "Visible wear items and finish corrections", "Door, trim, wall, and hardware work", "Grouped maintenance items that form an appropriate project scope", "Recurring work only after the exact service model is approved"],
+    boundaries: ["Emergency, on-call, and same-day maintenance are not promised", "Occupancy, tenant communication, access authority, and owner approval must be clear", "Property management services are not implied", "Regulated abatement, security, lockout, or utility work requires the appropriate provider"],
+  },
+  {
+    id: "exterior-details",
+    title: "Exterior details",
+    summary: "Selected weather-exposed details reviewed after the source condition and specialty boundaries are understood.",
+    examples: ["Selected exterior trim or finish repairs", "Small carpentry details", "Localized exterior damage review", "Coordinated weather-exposed finish work after the source condition is understood", "Eligible multi-trade exterior repair scopes"],
+    boundaries: ["Roofing, waterproofing, drainage, structural, stucco, electrical, plumbing, and specialty scopes require classification and project review", "Active leaks and concealed damage may require another professional", "Weather and substrate condition affect scheduling and finish results"],
+  },
+  {
+    id: "small-multi-trade-projects",
+    title: "Small multi-trade residential projects",
+    summary: "Defined residential projects involving multiple unrelated trades when the project structure and B classification permit them.",
+    examples: ["A defined residential repair involving at least two unrelated trades where permitted", "Coordinated repair and finish restoration", "Small room or area updates with a clear written scope", "Projects requiring appropriately licensed subcontractors"],
+    boundaries: ["Small does not remove permit, contract, license, or safety requirements", "Structural design, architecture, engineering, hazardous materials, and specialty-only work are separate", "Subcontractors, allowances, owner-supplied materials, permits, and exclusions must be identified in writing"],
+  },
+];
+
+export const contractorRequestCategories = [
+  ...contractorServices.map(({ id, title }) => ({ key: id, label: title })),
+  { key: "other-or-not-sure", label: "Other or not sure" },
+];
+
+export const contractorServiceById = new Map(contractorServices.map((service) => [service.id, service]));
+export const contractorRequestCategoryByKey = new Map(contractorRequestCategories.map((category) => [category.key, category]));
+
+export function requestCategoryFromSearch(search = "") {
+  const params = new URLSearchParams(search);
+  if ([...params.keys()].some((key) => key !== "category")) return "";
+  const values = params.getAll("category");
+  if (values.length !== 1) return "";
+  return contractorRequestCategoryByKey.has(values[0]) ? values[0] : "";
+}

@@ -1,0 +1,17 @@
+export const contractorFaqs = [
+  ["What kinds of projects can I submit?", "You may submit residential repair, finish-work, door and trim, drywall, punch-list, maintenance, exterior-detail, and small multi-trade requests. Submission does not guarantee the project fits the contractor's license, capabilities, schedule, or accepted scope."],
+  ["Can C&G repair items from my C&G home inspection?", "Not within 12 months of the C&G inspection report. Use an independent contractor during that period."],
+  ["What if another company prepared the inspection report?", "You may use an independently prepared report to help describe the request if you are authorized to share it. C&G still performs an independent scope review and does not treat the report as plans or a complete construction specification."],
+  ["Do you provide free estimates?", "C&G does not promise a free estimate or site visit on this site. Any fee, credit, or condition will be stated before a visit is booked."],
+  ["Does submitting the form schedule work?", "No. It begins review. Work is not accepted or scheduled until eligibility, scope, license fit, documents, price, and availability are confirmed."],
+  ["Do you take emergency calls?", "This site does not represent emergency or active-loss service. For an immediate hazard, active leak, gas odor, electrical danger, fire, or unsafe structure, contact emergency services, the utility, property management, or the appropriate emergency or specialty provider."],
+  ["Will you match existing finishes?", "C&G can review reasonable matching goals, but age, light, wear, product discontinuation, texture, substrate, dye lot, grain, and prior coatings may prevent an exact match. The estimate should state the agreed approach."],
+  ["Who purchases materials?", "The written estimate should identify contractor-provided, owner-provided, allowance, and special-order materials. Owner-provided materials may affect schedule, compatibility, responsibility, and warranty terms."],
+  ["Who handles permits?", "Permit responsibility must be identified in the written scope. A permit is not assumed unnecessary based only on project size."],
+  ["What if hidden damage is discovered?", "Affected work should stop as needed, the condition should be documented, and any additional evaluation and written change should be approved before extra work proceeds."],
+  ["Do you work while a property is occupied?", "Occupancy is reviewed with access, protection, work hours, pets, children, utilities, and safety. Not every project is suitable for occupied conditions."],
+  ["Do you use subcontractors?", "The written scope should identify when appropriately licensed subcontractors are expected. No named subcontractor is represented here without permission and current license verification."],
+  ["Are you insured?", "Current insurance wording has not been approved for publication. Request current insurance information during project review."],
+  ["What areas do you serve?", "No contractor service-area claim is currently approved for publication. Ask whether your property can be reviewed when you prepare a request."],
+  ["How soon can work begin?", "Availability depends on scope, materials, permits, access, existing commitments, and required trades. No start window is promised until the project is accepted."],
+];

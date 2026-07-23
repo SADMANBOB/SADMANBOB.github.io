@@ -1,15 +1,18 @@
 import { copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { business, separationPolicy } from "../shared/siteData.js";
+import { enabledInspectorRoutes } from "../inspector-site-prototype/src/content/routes.js";
+import { enabledContractorRoutes } from "../contractor-site-prototype/src/content/routes.js";
 
 const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "_site");
 const inspectorDist = resolve(root, "inspector-site-prototype/dist");
 const contractorDist = resolve(root, "contractor-site-prototype/dist");
 const portal = resolve(root, "portal");
-const siteOrigin = (process.env.SITE_ORIGIN || "https://sadmanbob.github.io").replace(/\/+$/, "");
+const siteOrigin = (process.env.SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
 
-const inspectorRoutes = ["/", "/services/", "/about/", "/areas/", "/faq/", "/resources/", "/contact/"];
-const contractorRoutes = ["/contracting/", "/contracting/services/", "/contracting/process/", "/contracting/about/", "/contracting/estimate/"];
+const inspectorRoutes = enabledInspectorRoutes.map((route) => route.path);
+const contractorRoutes = enabledContractorRoutes.map((route) => `/contracting${route.path}`);
 const legacyInspectorRoutes = [
   ["", "/"],
   ["services", "/services/"],
@@ -55,7 +58,15 @@ await cp(contractorDist, resolve(output, "contracting"), { recursive: true });
 
 await mkdir(resolve(output, "property-services"), { recursive: true });
 const portalHtml = (await readFile(resolve(portal, "index.html"), "utf8"))
-  .replaceAll("{{SITE_ORIGIN}}", siteOrigin);
+  .replaceAll("{{SITE_ORIGIN}}", siteOrigin)
+  .replaceAll("{{PHONE_DISPLAY}}", business.inspection.phoneDisplay)
+  .replaceAll("{{PHONE_HREF}}", business.inspection.phoneHref)
+  .replaceAll("{{EMAIL}}", business.inspection.email)
+  .replaceAll("{{CONTRACTOR_OF_RECORD}}", business.contracting.contractorOfRecord)
+  .replaceAll("{{LICENSE_NUMBER}}", business.contracting.license.number)
+  .replaceAll("{{LICENSE_CLASSIFICATION}}", business.contracting.license.classification)
+  .replaceAll("{{LICENSE_URL}}", business.contracting.license.officialLookupUrl.replaceAll("&", "&amp;"))
+  .replaceAll("{{SEPARATION_NOTICE}}", separationPolicy.notice.replaceAll("&", "&amp;"));
 await writeFile(resolve(output, "property-services/index.html"), portalHtml);
 await copyFile(resolve(portal, "styles.css"), resolve(output, "property-services/styles.css"));
 
