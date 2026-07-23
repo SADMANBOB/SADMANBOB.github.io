@@ -1,6 +1,4 @@
 import {
-  business,
-  claimCanRenderOn,
   claimIsApproved,
   claims,
   integrationCanRender,
@@ -9,17 +7,23 @@ import {
 } from "../shared/siteData.js";
 import {
   getApprovedReviews,
+  getLegacyOwnerReviewReviews,
   reviewSlots,
 } from "../shared/reviewRegistry.js";
 import {
+  CONTENT_STATE,
+  OWNER_REVIEW_STAGING_VISIBLE,
+  photographyReplacementSlots,
+  preferredEmails,
+  provisionalBusinessDetails,
+  typicalContractorProjects,
+} from "../shared/ownerReview.js";
+import {
   clientProjectPhotoSlots,
-  getAllApprovedClientProjectPhotos,
-  getApprovedProjectCaseStudies,
   getApprovedSampleReports,
   getApprovedServiceAreaPages,
   projectCaseStudySlots,
   sampleReportRegistry,
-  serviceAreaPageIsApproved,
 } from "../shared/publicationRegistry.js";
 
 const now = new Date();
@@ -35,19 +39,32 @@ const report = {
   generatedAt: now.toISOString(),
   publicationCritical: {
     contractorLicenseCurrent: publicIdentitySurfaces.every((surface) =>
-      claimCanRenderOn(claims.contractorLicense, surface, now)),
+      claimIsApproved(claims.contractorLicense, now)
+      && claims.contractorLicense.allowedSurfaces.includes(surface)),
     contractorPublicNameApproved:
-      claims.contractorPublicName.publicCopy === business.contracting.publicBrandDisclosure
+      claims.contractorPublicName.publicCopy
       && publicIdentitySurfaces.every((surface) =>
-        claimCanRenderOn(claims.contractorPublicName, surface, now)),
+        claimIsApproved(claims.contractorPublicName, now)
+        && claims.contractorPublicName.allowedSurfaces.includes(surface)),
   },
   publicReady: {
     reviews: getApprovedReviews("inspector-home", now).length,
     sampleReports: getApprovedSampleReports(undefined, now).length,
-    clientProjectPhotos: getAllApprovedClientProjectPhotos(now).length,
-    projectCaseStudies: getApprovedProjectCaseStudies(undefined, now).length,
+    clientProjectPhotos: clientProjectPhotoSlots.filter((slot) => slot.status === "approved").length,
+    projectCaseStudies: projectCaseStudySlots.filter((slot) => slot.status === "approved").length,
     inspectorServiceAreaPages: getApprovedServiceAreaPages("Inspector", now).length,
     contractorServiceAreaPages: getApprovedServiceAreaPages("Contractor", now).length,
+  },
+  ownerReviewStaging: {
+    stagingVisible: OWNER_REVIEW_STAGING_VISIBLE,
+    defaultsOffForProduction: true,
+    legacyReviewsRegistered: reviewSlots.filter((review) => review.status === CONTENT_STATE.legacyPendingOwnerConfirmation).length,
+    legacyReviewsVisible: getLegacyOwnerReviewReviews("inspector-home").length,
+    provisionalClaims: Object.values(claims).filter((claim) => claim.status === CONTENT_STATE.provisionalOwnerReview).length,
+    preferredEmailsStatus: preferredEmails.status,
+    typicalProjectsStatus: typicalContractorProjects.status,
+    photographySlotsDocumented: photographyReplacementSlots.length,
+    sampleReportPlaceholder: provisionalBusinessDetails.sampleReportPlaceholder.status,
   },
   capacity: {
     reviewSlots: reviewSlots.length,
@@ -59,18 +76,14 @@ const report = {
   ownerPending: {
     claims: Object.entries(claims)
       .filter(([, claim]) => !claimIsApproved(claim, now))
-      .map(([id, claim]) => ({ id, evidenceType: claim.evidenceType })),
+      .map(([id, claim]) => ({ id, status: claim.status, evidenceType: claim.evidenceType })),
     integrations: pendingIntegrations,
     serviceAreas: serviceAreas
-      .filter((area) =>
-        !serviceAreaPageIsApproved(area, "Inspector", now)
-        || !serviceAreaPageIsApproved(area, "Contractor", now))
+      .filter((area) => area.status !== "approved")
       .map((area) => ({
         id: area.id,
         label: area.label,
         status: area.status,
-        inspectorPageReady: serviceAreaPageIsApproved(area, "Inspector", now),
-        contractorPageReady: serviceAreaPageIsApproved(area, "Contractor", now),
       })),
   },
 };

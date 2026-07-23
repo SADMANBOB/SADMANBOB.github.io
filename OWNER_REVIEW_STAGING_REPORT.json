@@ -1,0 +1,479 @@
+{
+  "generatedAt": "2026-07-23T21:25:12.881Z",
+  "title": "C&G owner-review staging report",
+  "stagingIsolation": {
+    "flagDefaultsOff": true,
+    "enableLocally": "OWNER_REVIEW_STAGING=1 VITE_OWNER_REVIEW_STAGING=1 npm run build:owner-review",
+    "productionSafeBuild": "npm run build",
+    "confirmAbsentFromProduction": [
+      "Run npm run build with staging unset (default).",
+      "Confirm _site/index.html and _site/contracting/index.html omit owner-review-banner, provisional-label, legacy feedback, preferred domain emails, and sample-report.",
+      "Confirm _site/sitemap.xml omits /sample-report/.",
+      "Run npm run verify (production-safe) and expect OWNER_REVIEW_STAGING_VISIBLE=false isolation asserts to pass."
+    ],
+    "promoteAfterOwnerApproval": [
+      "Move approved claim status to approved / verified with evidence fields filled.",
+      "Promote individual legacy reviews to status=approved with exactApprovedText, publicationPermissionAt, allowedSurfaces, and displayAttribution.",
+      "Approve customerTestimonials claim only after reviews are source-backed.",
+      "Add redacted sample PDF to the sample-report registry and set status=approved.",
+      "Switch public email only after preferred domain mailboxes are confirmed operational.",
+      "Keep infrared/moisture claims productionVisible:false unless intentionally published."
+    ],
+    "disableBeforeDeploy": "Unset OWNER_REVIEW_STAGING and VITE_OWNER_REVIEW_STAGING (or set them to 0). Deploy only from a production-safe npm run build / npm run release:verify on main.",
+    "localReviewCommand": "OWNER_REVIEW_STAGING=1 VITE_OWNER_REVIEW_STAGING=1 npm run build && cd _site && python3 -m http.server 4177"
+  },
+  "summary": {
+    "stagingVisibleDuringReport": true,
+    "verifiedServiceAreas": [
+      "los-angeles-county",
+      "riverside-county"
+    ],
+    "productionApprovedReviews": 0,
+    "legacyReviewsVisibleInStaging": 20,
+    "provisionalClaims": 11,
+    "inspectorAreaPages": 2,
+    "contractorAreaPages": 2,
+    "approvedSampleReports": 0
+  },
+  "verified": {
+    "serviceAreas": [
+      {
+        "id": "los-angeles-county",
+        "label": "Los Angeles County",
+        "communities": [
+          "Los Angeles",
+          "Pasadena",
+          "Glendale",
+          "Burbank",
+          "Alhambra",
+          "West Covina",
+          "Compton",
+          "Long Beach",
+          "Hawthorne",
+          "Inglewood",
+          "Bellflower",
+          "Norwalk",
+          "Paramount",
+          "Lynwood",
+          "Downey",
+          "Carson",
+          "Gardena",
+          "Torrance",
+          "Bell Gardens"
+        ],
+        "inspectorPage": true,
+        "contractorPage": true
+      },
+      {
+        "id": "riverside-county",
+        "label": "Riverside County",
+        "communities": [
+          "Riverside",
+          "Moreno Valley",
+          "Corona",
+          "Jurupa Valley",
+          "Eastvale",
+          "Perris"
+        ],
+        "inspectorPage": true,
+        "contractorPage": true
+      }
+    ],
+    "contractorLicense": true,
+    "contractorPublicName": true
+  },
+  "legacyPendingOwnerConfirmation": {
+    "reviewClaimStatus": "legacy_pending_owner_confirmation",
+    "reviews": [
+      {
+        "id": "review-slot-01",
+        "rating": 5,
+        "initials": "M.R.",
+        "role": "Homebuyer",
+        "location": "Compton, California",
+        "text": "Clarence was extremely thorough and explained everything clearly. The same-day report helped us close confidently."
+      },
+      {
+        "id": "review-slot-02",
+        "rating": 5,
+        "initials": "J.T.",
+        "role": "Realtor",
+        "location": "Riverside County",
+        "text": "As an agent, I value inspectors who communicate well. C&G is my go-to in Riverside County."
+      },
+      {
+        "id": "review-slot-03",
+        "rating": 5,
+        "initials": "D.G.",
+        "role": "Buyers",
+        "location": "Los Angeles, California",
+        "text": "His construction experience really shows. Caught issues other inspectors missed."
+      },
+      {
+        "id": "review-slot-04",
+        "rating": 5,
+        "initials": "L.V.",
+        "role": "Investor",
+        "location": "Long Beach, California",
+        "text": "Very detailed, honest, and professional. Arrived early and delivered fast."
+      },
+      {
+        "id": "review-slot-05",
+        "rating": 5,
+        "initials": "N.R.",
+        "role": "Buyer",
+        "location": "Hawthorne, California",
+        "text": "Great communication and very friendly. Made the whole process easy."
+      },
+      {
+        "id": "review-slot-06",
+        "rating": 4,
+        "initials": "R.A.",
+        "role": "Investor",
+        "location": "Inglewood, California",
+        "text": "Very professional and knowledgeable. Would have liked a bit more detail on one item, but overall excellent."
+      },
+      {
+        "id": "review-slot-07",
+        "rating": 4,
+        "initials": "K.D.",
+        "role": "Homeowner",
+        "location": "Bellflower, California",
+        "text": "Quick turnaround and a solid report. Would definitely use again."
+      },
+      {
+        "id": "review-slot-08",
+        "rating": 5,
+        "initials": "J.P.",
+        "role": "Realtor",
+        "location": "Norwalk, California",
+        "text": "Clarence is dependable and consistent. My clients always appreciate his work."
+      },
+      {
+        "id": "review-slot-09",
+        "rating": 5,
+        "initials": "M.C.",
+        "role": "First-Time Buyer",
+        "location": "Paramount, California",
+        "text": "He explained what was urgent, what could wait, and helped us budget our repairs."
+      },
+      {
+        "id": "review-slot-10",
+        "rating": 3,
+        "initials": "T.H.",
+        "role": "Buyer",
+        "location": "Riverside County",
+        "text": "Solid inspection. A bit more photos would’ve helped, but still very good overall."
+      },
+      {
+        "id": "review-slot-11",
+        "rating": 5,
+        "initials": "E.F.",
+        "role": "Buyer",
+        "location": "Lynwood, California",
+        "text": "Friendly, honest, and extremely thorough. Highly recommend."
+      },
+      {
+        "id": "review-slot-12",
+        "rating": 4,
+        "initials": "B.P.",
+        "role": "Homeowner",
+        "location": "Downey, California",
+        "text": "Great service and fast scheduling. Everything was smooth."
+      },
+      {
+        "id": "review-slot-13",
+        "rating": 5,
+        "initials": "S.K.",
+        "role": "Agent",
+        "location": "Compton, California",
+        "text": "Very detailed report. Worth every penny."
+      },
+      {
+        "id": "review-slot-14",
+        "rating": 3,
+        "initials": "W.L.",
+        "role": "Homeowner",
+        "location": "Carson, California",
+        "text": "Good inspection overall. A little shorter than expected, but still clear and helpful."
+      },
+      {
+        "id": "review-slot-15",
+        "rating": 5,
+        "initials": "J.S.",
+        "role": "Buyer",
+        "location": "Los Angeles, California",
+        "text": "Fast, professional, and very clear. You can tell he cares about his work."
+      },
+      {
+        "id": "review-slot-16",
+        "rating": 5,
+        "initials": "D.M.",
+        "role": "Homeowner",
+        "location": "Compton, California",
+        "text": "Straightforward, honest, and reliable. Highly recommend."
+      },
+      {
+        "id": "review-slot-17",
+        "rating": 4,
+        "initials": "S.T.",
+        "role": "Buyer",
+        "location": "Ontario, California",
+        "text": "Report was easy to read and well organized."
+      },
+      {
+        "id": "review-slot-18",
+        "rating": 5,
+        "initials": "C.F.",
+        "role": "Buyer",
+        "location": "Gardena, California",
+        "text": "Very thorough! Helped us avoid a bad purchase."
+      },
+      {
+        "id": "review-slot-19",
+        "rating": 5,
+        "initials": "R.B.",
+        "role": "Homeowner",
+        "location": "Torrance, California",
+        "text": "Professional, respectful, and extremely detail-oriented."
+      },
+      {
+        "id": "review-slot-20",
+        "rating": 4,
+        "initials": "L.H.",
+        "role": "Buyer",
+        "location": "Bell Gardens, California",
+        "text": "Great experience. Would recommend to anyone buying an older home."
+      }
+    ],
+    "remainingEmptySlots": 30
+  },
+  "provisionalOwnerReview": {
+    "businessDetails": {
+      "reportTurnaround": {
+        "status": "provisional_owner_review",
+        "short": "Most reports delivered within 24 hours.",
+        "full": "Most inspection reports are delivered within 24 hours. Larger, more complex, or specialty properties may require up to 48 hours."
+      },
+      "businessHours": {
+        "status": "provisional_owner_review",
+        "weekdaysAndSaturday": "Monday through Saturday, 8:00 a.m. to 6:00 p.m.",
+        "sunday": "Sunday appointments may be available by request."
+      },
+      "responseTime": {
+        "status": "provisional_owner_review",
+        "copy": "Calls, emails, and website inquiries are typically answered within one business day."
+      },
+      "weekendAppointments": {
+        "status": "provisional_owner_review",
+        "copy": "Saturday appointments are available. Limited Sunday appointments may be available by request."
+      },
+      "inspectorCertification": {
+        "status": "provisional_owner_review",
+        "copy": "Professional home inspection credentials and continuing-education details are being finalized for publication.",
+        "organization": null,
+        "credentialNumber": null,
+        "certificateUrl": null,
+        "expiresAt": null
+      },
+      "insurance": {
+        "status": "provisional_owner_review",
+        "copy": "Insurance and professional coverage details are available upon confirmation and will be published after owner review."
+      },
+      "biography": {
+        "status": "provisional_owner_review",
+        "short": "Clarence Gloss combines inspection discipline, construction knowledge, and clear communication to help property owners make informed decisions.",
+        "full": "Clarence Gloss brings a practical, construction-informed perspective to property inspections and residential improvement work. His approach emphasizes careful observation, clear communication, and helping clients understand which findings require immediate attention and which can be planned for over time. Through C&G Certified Home Inspector and C&G Contracting Services, Clarence works with homeowners, buyers, sellers, agents, investors, and property professionals across Los Angeles and Riverside counties."
+      },
+      "poolSpa": {
+        "status": "provisional_owner_review",
+        "copy": "Visible pool and spa components may be observed as an optional add-on when access, conditions, and scheduling allow. This is not a specialist pool inspection unless explicitly arranged.",
+        "productionVisible": false
+      },
+      "manufacturedHomes": {
+        "status": "provisional_owner_review",
+        "copy": "Manufactured-home inspections may be accepted after property-specific review. Scope and access requirements must be confirmed before scheduling.",
+        "productionVisible": false
+      },
+      "infrared": {
+        "status": "provisional_owner_review",
+        "copy": "Infrared imaging may be used when available and appropriate as a supplemental observation tool. It does not replace invasive testing or specialist evaluation.",
+        "productionVisible": false
+      },
+      "moistureMeters": {
+        "status": "provisional_owner_review",
+        "copy": "Moisture meters may be used when conditions warrant to support observations of suspected moisture intrusion. Readings are limited to accessible areas and are not a guarantee that hidden moisture is absent.",
+        "productionVisible": false
+      },
+      "sampleReportPlaceholder": {
+        "status": "provisional_owner_review",
+        "title": "Sample report pending redaction",
+        "copy": "A redacted sample report will be added after client information and property-identifying details have been removed.",
+        "productionNavigation": false
+      }
+    },
+    "preferredEmails": {
+      "status": "provisional_owner_review",
+      "inspections": "inspections@cginspection.net",
+      "contracting": "contracting@cginspection.net",
+      "contact": "contact@cginspection.net",
+      "note": "Preferred domain mailboxes stay provisional until confirmed operational. Public forms continue to use the current Gmail fallback."
+    },
+    "typicalContractorProjects": {
+      "status": "provisional_owner_review",
+      "qualification": "Project acceptance depends on scope, location, scheduling, licensing requirements, access, and the relationship between the property and any prior C&G inspection.",
+      "categories": [
+        "Interior repairs",
+        "Drywall repair and patching",
+        "Finish carpentry",
+        "Doors, trim, and hardware",
+        "Painting and surface preparation",
+        "Punch-list work",
+        "Rental turnover repairs",
+        "Small remodeling projects",
+        "Kitchen and bathroom updates",
+        "Exterior repairs",
+        "Property maintenance",
+        "Pre-sale repair preparation",
+        "Inspection-related repairs performed only when ethically and legally eligible"
+      ]
+    },
+    "claims": [
+      {
+        "id": "internachiCertification",
+        "status": "provisional_owner_review",
+        "draftCopy": "Professional home inspection credentials and continuing-education details are being finalized for publication.",
+        "productionVisible": true
+      },
+      {
+        "id": "generalLiabilityInsurance",
+        "status": "provisional_owner_review",
+        "draftCopy": "Insurance and professional coverage details are available upon confirmation and will be published after owner review.",
+        "productionVisible": true
+      },
+      {
+        "id": "errorsAndOmissionsInsurance",
+        "status": "provisional_owner_review",
+        "draftCopy": "Insurance and professional coverage details are available upon confirmation and will be published after owner review.",
+        "productionVisible": true
+      },
+      {
+        "id": "nextDayReports",
+        "status": "provisional_owner_review",
+        "draftCopy": "Most inspection reports are delivered within 24 hours. Larger, more complex, or specialty properties may require up to 48 hours.",
+        "productionVisible": true
+      },
+      {
+        "id": "weekendAvailability",
+        "status": "provisional_owner_review",
+        "draftCopy": "Saturday appointments are available. Limited Sunday appointments may be available by request.",
+        "productionVisible": true
+      },
+      {
+        "id": "responseTime",
+        "status": "provisional_owner_review",
+        "draftCopy": "Calls, emails, and website inquiries are typically answered within one business day.",
+        "productionVisible": true
+      },
+      {
+        "id": "clarenceBiography",
+        "status": "provisional_owner_review",
+        "draftCopy": "Clarence Gloss brings a practical, construction-informed perspective to property inspections and residential improvement work. His approach emphasizes careful observation, clear communication, and helping clients understand which findings require immediate attention and which can be planned for over time. Through C&G Certified Home Inspector and C&G Contracting Services, Clarence works with homeowners, buyers, sellers, agents, investors, and property professionals across Los Angeles and Riverside counties.",
+        "productionVisible": true
+      },
+      {
+        "id": "poolSpaInspection",
+        "status": "provisional_owner_review",
+        "draftCopy": "Visible pool and spa components may be observed as an optional add-on when access, conditions, and scheduling allow. This is not a specialist pool inspection unless explicitly arranged.",
+        "productionVisible": false
+      },
+      {
+        "id": "manufacturedHomes",
+        "status": "provisional_owner_review",
+        "draftCopy": "Manufactured-home inspections may be accepted after property-specific review. Scope and access requirements must be confirmed before scheduling.",
+        "productionVisible": false
+      },
+      {
+        "id": "moistureMeters",
+        "status": "provisional_owner_review",
+        "draftCopy": "Moisture meters may be used when conditions warrant to support observations of suspected moisture intrusion. Readings are limited to accessible areas and are not a guarantee that hidden moisture is absent.",
+        "productionVisible": false
+      },
+      {
+        "id": "infraredImaging",
+        "status": "provisional_owner_review",
+        "draftCopy": "Infrared imaging may be used when available and appropriate as a supplemental observation tool. It does not replace invasive testing or specialist evaluation.",
+        "productionVisible": false
+      }
+    ],
+    "photographyReplacementSlots": [
+      {
+        "id": "clarence-portrait",
+        "label": "Clarence portrait",
+        "intendedSurface": "inspector-about"
+      },
+      {
+        "id": "inspector-at-work",
+        "label": "Inspector at work",
+        "intendedSurface": "inspector-home"
+      },
+      {
+        "id": "exterior-inspection",
+        "label": "Exterior inspection",
+        "intendedSurface": "inspector-services"
+      },
+      {
+        "id": "electrical-panel-inspection",
+        "label": "Electrical panel inspection",
+        "intendedSurface": "inspector-services"
+      },
+      {
+        "id": "roof-or-attic-observation",
+        "label": "Roof or attic observation",
+        "intendedSurface": "inspector-services"
+      },
+      {
+        "id": "contractor-project",
+        "label": "Contractor project",
+        "intendedSurface": "contractor-projects"
+      },
+      {
+        "id": "before-and-after-project",
+        "label": "Before-and-after project",
+        "intendedSurface": "contractor-projects"
+      },
+      {
+        "id": "finished-detail-work",
+        "label": "Finished detail work",
+        "intendedSurface": "contractor-home"
+      }
+    ],
+    "sampleReportPlaceholder": {
+      "status": "provisional_owner_review",
+      "title": "Sample report pending redaction",
+      "copy": "A redacted sample report will be added after client information and property-identifying details have been removed.",
+      "productionNavigation": false
+    }
+  },
+  "productionGatesStillClosed": [
+    "getApprovedReviews remains empty until status=approved + customerTestimonials claim approved",
+    "claimIsApproved ignores provisional_owner_review and legacy_pending_owner_confirmation",
+    "sampleReportIsApproved remains false until a redacted PDF record is approved",
+    "secure form transports remain mailto until HTTPS endpoints are approved",
+    "preferred domain emails are provisional; Gmail remains the live public fallback"
+  ],
+  "ownerApprovalChecklist": [
+    "Confirm LA County and Riverside County wording and community lists",
+    "Approve or revise each of the 20 legacy feedback entries",
+    "Approve report turnaround, hours, weekend, and response-time wording",
+    "Supply credential organization/number/URL or keep credentials unpublished",
+    "Supply insurance wording with evidence or keep insurance unpublished",
+    "Approve or revise Clarence biography",
+    "Decide pool/spa, manufactured homes, moisture meters, and infrared publication",
+    "Provide redacted sample-report PDF",
+    "Confirm domain email addresses are operational before switching from Gmail",
+    "Approve HTTPS form processor endpoint and privacy policy",
+    "Replace editorial photography using documented slots",
+    "Approve typical contractor project category list"
+  ]
+}

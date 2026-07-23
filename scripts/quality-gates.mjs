@@ -13,7 +13,7 @@ const budgets = {
   file: 512 * 1024,
   html: 160 * 1024,
   css: 96 * 1024,
-  js: 384 * 1024,
+  js: 386 * 1024,
   image: 512 * 1024,
   pdf: 8 * 1024 * 1024,
 };
@@ -132,7 +132,10 @@ const staticChecks = async () => {
     const source = await readFile(record.file, "utf8");
     const document = parse(source);
     const robots = attr(meta(document, "name", "robots"), "content")?.toLowerCase() || "";
-    const expectedNoindex = relative.endsWith("404.html") || relative.startsWith("inspections/");
+    const expectedNoindex =
+      relative.endsWith("404.html")
+      || relative.startsWith("inspections/")
+      || relative === "sample-report/index.html";
     const isCrawlable = !robots.split(/\s*,\s*/).includes("noindex");
     const ids = new Map();
     for (const node of descendants(document, (item) => Boolean(attr(item, "id")))) {

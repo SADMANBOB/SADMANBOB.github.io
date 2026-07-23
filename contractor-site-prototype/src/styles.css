@@ -676,3 +676,107 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
   .license-line { color: #000; background: #fff; }
   .disclosure-content { display: block !important; }
 }
+
+/* Owner-review staging helpers */
+.owner-review-banner {
+  margin: 0;
+  padding: 10px 18px;
+  background: #2a2b28;
+  color: #f3eee4;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  border-bottom: 1px solid #4a4b45;
+}
+.provisional-label {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--copper);
+  color: var(--copper-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.provisional-note {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.form-owner-review-panel {
+  margin-top: 28px;
+  padding: 18px 20px;
+  border: 1px dashed var(--copper);
+  background: #f7f2ea;
+}
+.form-owner-review-panel p { margin: 0; }
+.form-owner-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.home-area-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+.home-area-card {
+  padding: 28px;
+  background: #f7f2ea;
+  border: 1px solid var(--line);
+}
+.home-area-card > span {
+  color: var(--copper);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.home-area-card h2,
+.home-area-card h3 { margin-top: 8px; }
+.home-area-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin-top: 18px;
+}
+.community-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+  padding: 0;
+  list-style: none;
+}
+.community-chip-list li {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 13px;
+}
+.community-chip-list-large li { font-size: 14px; }
+.typical-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.typical-projects-grid li {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.home-areas-section { padding-bottom: 112px; }
+@media (max-width: 900px) {
+  .home-area-card-grid,
+  .typical-projects-grid { grid-template-columns: 1fr; }
+}

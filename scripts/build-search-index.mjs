@@ -15,17 +15,21 @@ const routeFile = (path) =>
 const plans = [
   {
     name: "inspector",
-    routes: enabledInspectorRoutes.map((route) => ({
-      publicPath: route.path,
-      file: resolve(output, routeFile(route.path)),
-    })),
+    routes: enabledInspectorRoutes
+      .filter((route) => !route.noindex)
+      .map((route) => ({
+        publicPath: route.path,
+        file: resolve(output, routeFile(route.path)),
+      })),
   },
   {
     name: "contractor",
-    routes: enabledContractorRoutes.map((route) => ({
-      publicPath: `/contracting${route.path}`,
-      file: resolve(output, "contracting", routeFile(route.path)),
-    })),
+    routes: enabledContractorRoutes
+      .filter((route) => !route.noindex)
+      .map((route) => ({
+        publicPath: `/contracting${route.path}`,
+        file: resolve(output, "contracting", routeFile(route.path)),
+      })),
   },
 ];
 
