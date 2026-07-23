@@ -9,7 +9,8 @@ const ensureMeta = (selector, attributes) => {
 
 export function Seo({ route, origin }) {
   useEffect(() => {
-    const canonical = `${origin.replace(/\/+$/, "")}${route.path === "/" ? "/" : route.path}`;
+    const routePath = route.path || "/404.html";
+    const canonical = `${origin.replace(/\/+$/, "")}${routePath === "/" ? "/" : routePath}`;
     document.title = route.title;
     ensureMeta('meta[name="description"]', { name: "description", content: route.description });
     ensureMeta('meta[property="og:title"]', { property: "og:title", content: route.title });
@@ -22,9 +23,10 @@ export function Seo({ route, origin }) {
     let link = document.head.querySelector('link[rel="canonical"]');
     if (!link) { link = document.createElement("link"); link.rel = "canonical"; document.head.append(link); }
     link.href = canonical;
-    let script = document.head.querySelector('script[data-site-schema="contractor"]');
-    if (!script) { script = document.createElement("script"); script.type = "application/ld+json"; script.dataset.siteSchema = "contractor"; document.head.append(script); }
-    script.textContent = JSON.stringify(buildContractorSchema(route, origin));
+    let script = document.getElementById("cg-page-schema");
+    if (!script) { script = document.createElement("script"); script.id = "cg-page-schema"; script.type = "application/ld+json"; document.head.append(script); }
+    script.dataset.siteSchema = "contractor";
+    script.textContent = JSON.stringify(buildContractorSchema({ ...route, path: routePath }, origin));
   }, [origin, route]);
   return null;
 }

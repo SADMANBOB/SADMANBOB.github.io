@@ -19,6 +19,9 @@ export const business = {
   contracting: {
     publicName: "C&G Contracting Services",
     contractorOfRecord: "Coastal Construction Services",
+    publicBrandDisclosure:
+      "C&G Contracting Services is the public-facing brand for contracting work performed by Coastal Construction Services, CSLB #987643.",
+    publicBrandAuthorizedAt: "2026-07-23",
     phoneDisplay: "(310) 505-6581",
     phoneHref: "tel:+13105056581",
     phoneE164: "+1-310-505-6581",
@@ -28,13 +31,23 @@ export const business = {
       number: "987643",
       classification: "B — General Building",
       status: "approved",
-      officialLookupUrl:
-        "https://www.cslb.ca.gov/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=987643",
-      liveVerifiedAt: "2026-07-22",
+      officialLookupUrl: "https://www.cslb.ca.gov/987643",
+      liveVerifiedAt: "2026-07-23",
       expiresAt: "2027-10-31",
     },
   },
 };
+
+export const contractorRequestCategoryIds = Object.freeze([
+  "interior-repair-finish-work",
+  "drywall-surface-repair",
+  "doors-trim-finish-carpentry",
+  "punch-list-coordination",
+  "property-maintenance-turnover",
+  "exterior-details",
+  "small-multi-trade-projects",
+  "other-or-not-sure",
+]);
 
 export const claims = {
   internachiCertification: {
@@ -141,14 +154,16 @@ export const claims = {
     evidenceUrl: business.contracting.license.officialLookupUrl,
     verifiedAt: business.contracting.license.liveVerifiedAt,
     expiresAt: business.contracting.license.expiresAt,
-    allowedSurfaces: ["contractor"],
+    allowedSurfaces: ["inspector", "contractor", "portal"],
   },
   contractorPublicName: {
-    status: "pending",
-    evidenceType: "legal-name, DBA, or approved public-brand explanation",
-    verifiedAt: null,
+    status: "approved",
+    publicCopy: business.contracting.publicBrandDisclosure,
+    evidenceType: "explicit publisher authorization of the public-brand and contractor-of-record wording",
+    evidenceReference: "Site-owner publishing workflow authorization recorded 2026-07-23",
+    verifiedAt: business.contracting.publicBrandAuthorizedAt,
     expiresAt: null,
-    allowedSurfaces: [],
+    allowedSurfaces: ["inspector", "contractor", "portal"],
   },
   customerTestimonials: {
     status: "pending",
@@ -161,10 +176,26 @@ export const claims = {
 
 export function claimIsApproved(claim, onDate = new Date()) {
   if (!claim || claim.status !== "approved") return false;
+  if (!(onDate instanceof Date) || !Number.isFinite(onDate.getTime())) return false;
+  if (
+    !Array.isArray(claim.allowedSurfaces)
+    || claim.allowedSurfaces.length === 0
+    || new Set(claim.allowedSurfaces).size !== claim.allowedSurfaces.length
+    || claim.allowedSurfaces.some((surface) => typeof surface !== "string" || !surface.trim())
+  ) return false;
+  if (typeof claim.verifiedAt !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(claim.verifiedAt)) return false;
+  const verifiedAt = new Date(`${claim.verifiedAt}T00:00:00Z`);
+  if (!Number.isFinite(verifiedAt.getTime()) || verifiedAt > onDate) return false;
   if (!claim.expiresAt) return true;
+  if (typeof claim.expiresAt !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(claim.expiresAt)) return false;
   const endOfDate = new Date(`${claim.expiresAt}T23:59:59Z`);
-  return endOfDate >= onDate;
+  return Number.isFinite(endOfDate.getTime()) && endOfDate >= onDate;
 }
+
+export const claimCanRenderOn = (claim, surface, onDate = new Date()) =>
+  claimIsApproved(claim, onDate)
+  && typeof surface === "string"
+  && claim.allowedSurfaces.includes(surface);
 
 export const serviceAreas = [
   {
@@ -177,6 +208,8 @@ export const serviceAreas = [
     approvedForMetadata: false,
     uniquePageEnabled: false,
     ownerConfirmedAt: null,
+    inspectorPage: null,
+    contractorPage: null,
   },
   {
     id: "city-of-compton",
@@ -188,6 +221,8 @@ export const serviceAreas = [
     approvedForMetadata: false,
     uniquePageEnabled: false,
     ownerConfirmedAt: null,
+    inspectorPage: null,
+    contractorPage: null,
   },
   {
     id: "riverside-county",
@@ -199,6 +234,8 @@ export const serviceAreas = [
     approvedForMetadata: false,
     uniquePageEnabled: false,
     ownerConfirmedAt: null,
+    inspectorPage: null,
+    contractorPage: null,
   },
 ];
 
@@ -318,6 +355,7 @@ export const integrations = {
   siteSearch: {
     status: "approved",
     enabled: true,
+    capability: "site-search",
     provider: "Pagefind",
     allowedSurfaces: ["inspector", "contractor"],
     publicConfig: {
@@ -329,15 +367,20 @@ export const integrations = {
   booking: {
     status: "pending",
     enabled: false,
+    capability: "booking",
     provider: null,
     publicConfig: null,
     allowedSurfaces: [],
+    ownerApprovedAt: null,
+    privacyReviewedAt: null,
+    policyApprovedAt: null,
     fallback: "/contact/",
     ownerGate: "approved scheduling provider, public booking URL, availability policy, and privacy review",
   },
   inspectionFormTransport: {
     status: "approved",
     enabled: true,
+    capability: "form-transport",
     provider: "mailto",
     publicConfig: null,
     allowedSurfaces: ["inspector-contact"],
@@ -346,14 +389,56 @@ export const integrations = {
   contractorFormTransport: {
     status: "approved",
     enabled: true,
+    capability: "form-transport",
     provider: "mailto",
     publicConfig: null,
     allowedSurfaces: ["contractor-estimate"],
     serverSubmissionEnabled: false,
   },
+  secureInspectionFormTransport: {
+    status: "pending",
+    enabled: false,
+    capability: "form-transport",
+    provider: null,
+    publicConfig: null,
+    allowedSurfaces: [],
+    serverSubmissionEnabled: false,
+    ownerApprovedAt: null,
+    privacyReviewedAt: null,
+    securityReviewedAt: null,
+    fallbackIntegration: "inspectionFormTransport",
+    ownerGate: "approved HTTPS form processor, endpoint, privacy policy, retention policy, abuse controls, and success/error contract",
+  },
+  secureContractorFormTransport: {
+    status: "pending",
+    enabled: false,
+    capability: "form-transport",
+    provider: null,
+    publicConfig: null,
+    allowedSurfaces: [],
+    serverSubmissionEnabled: false,
+    ownerApprovedAt: null,
+    privacyReviewedAt: null,
+    securityReviewedAt: null,
+    fallbackIntegration: "contractorFormTransport",
+    ownerGate: "approved HTTPS form processor, endpoint, privacy policy, retention policy, abuse controls, and success/error contract",
+  },
+  protectedUpload: {
+    status: "pending",
+    enabled: false,
+    capability: "protected-upload",
+    provider: null,
+    publicConfig: null,
+    allowedSurfaces: [],
+    ownerApprovedAt: null,
+    privacyReviewedAt: null,
+    securityReviewedAt: null,
+    ownerGate: "approved upload broker, one-time upload contract, file allowlist, size limits, retention/deletion policy, malware controls, and privacy review",
+  },
   analytics: {
     status: "pending",
     enabled: false,
+    capability: "analytics",
     provider: null,
     publicConfig: null,
     allowedSurfaces: [],
@@ -362,6 +447,7 @@ export const integrations = {
   maps: {
     status: "pending",
     enabled: false,
+    capability: "map",
     provider: null,
     publicConfig: null,
     allowedSurfaces: [],
@@ -370,6 +456,7 @@ export const integrations = {
   reviews: {
     status: "pending",
     enabled: false,
+    capability: "reviews",
     provider: null,
     publicConfig: null,
     allowedSurfaces: [],
@@ -377,11 +464,107 @@ export const integrations = {
   },
 };
 
-export function integrationCanRender(integration) {
+const approvedHttpsUrl = (value) => {
+  if (typeof value !== "string" || value !== value.trim()) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && Boolean(url.hostname)
+      && !url.username
+      && !url.password;
+  } catch {
+    return false;
+  }
+};
+
+const FORM_SURFACES = Object.freeze(["inspector-contact", "contractor-estimate"]);
+const BOOKING_SURFACES = Object.freeze(["inspector"]);
+const safeApprovalText = (value, min = 20, max = 1_000) =>
+  typeof value === "string"
+  && value === value.trim()
+  && value.length >= min
+  && value.length <= max
+  && !/[<>\u0000-\u001F]/.test(value);
+const validApprovalTimestamp = (value, onDate) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return false;
+  const timestamp = new Date(value);
+  return Number.isFinite(timestamp.getTime()) && timestamp <= onDate;
+};
+const hasApprovedSurfaces = (surfaces, allowlist) =>
+  Array.isArray(surfaces)
+  && surfaces.length > 0
+  && new Set(surfaces).size === surfaces.length
+  && surfaces.every((surface) => allowlist.includes(surface));
+
+export function integrationCanRender(integration, onDate = new Date()) {
   if (!integration || integration.status !== "approved" || integration.enabled !== true) return false;
+  if (!(onDate instanceof Date) || !Number.isFinite(onDate.getTime())) return false;
   if (integration.provider === "Pagefind") return Boolean(integration.publicConfig?.inspectorBundle && integration.publicConfig?.contractorBundle);
   if (integration.provider === "mailto") return integration.serverSubmissionEnabled === false;
-  return Boolean(integration.provider && integration.publicConfig);
+  if (typeof integration.provider !== "string" || !integration.provider.trim()) return false;
+  if (integration.capability === "booking") {
+    return approvedHttpsUrl(integration.publicConfig?.bookingUrl)
+      && approvedHttpsUrl(integration.publicConfig?.privacyUrl)
+      && safeApprovalText(integration.publicConfig?.actionLabel, 4, 60)
+      && safeApprovalText(integration.publicConfig?.availabilityPolicy)
+      && safeApprovalText(integration.publicConfig?.cancellationPolicy)
+      && hasApprovedSurfaces(integration.allowedSurfaces, BOOKING_SURFACES)
+      && validApprovalTimestamp(integration.ownerApprovedAt, onDate)
+      && validApprovalTimestamp(integration.privacyReviewedAt, onDate)
+      && validApprovalTimestamp(integration.policyApprovedAt, onDate);
+  }
+  if (integration.capability === "form-transport") {
+    return integration.serverSubmissionEnabled === true
+      && integration.publicConfig?.method === "POST"
+      && integration.publicConfig?.encoding === "application/json"
+      && approvedHttpsUrl(integration.publicConfig?.endpoint)
+      && approvedHttpsUrl(integration.publicConfig?.privacyUrl)
+      && typeof integration.publicConfig?.formId === "string"
+      && /^[a-z0-9][a-z0-9_-]{2,80}$/i.test(integration.publicConfig.formId)
+      && safeApprovalText(integration.publicConfig?.retentionPolicy)
+      && safeApprovalText(integration.publicConfig?.deletionPolicy)
+      && safeApprovalText(integration.publicConfig?.abuseControls)
+      && safeApprovalText(integration.publicConfig?.responseContractVersion, 3, 80)
+      && hasApprovedSurfaces(integration.allowedSurfaces, FORM_SURFACES)
+      && validApprovalTimestamp(integration.ownerApprovedAt, onDate)
+      && validApprovalTimestamp(integration.privacyReviewedAt, onDate)
+      && validApprovalTimestamp(integration.securityReviewedAt, onDate);
+  }
+  if (integration.capability === "protected-upload") {
+    return approvedHttpsUrl(integration.publicConfig?.sessionEndpoint)
+      && approvedHttpsUrl(integration.publicConfig?.privacyUrl)
+      && Number.isInteger(integration.publicConfig?.maxBytes)
+      && integration.publicConfig.maxBytes > 0
+      && integration.publicConfig.maxBytes <= 25_000_000
+      && Number.isInteger(integration.publicConfig?.maxFiles)
+      && integration.publicConfig.maxFiles > 0
+      && integration.publicConfig.maxFiles <= 5
+      && Array.isArray(integration.publicConfig?.allowedMimeTypes)
+      && integration.publicConfig.allowedMimeTypes.length > 0
+      && integration.publicConfig.allowedMimeTypes.every((type) => [
+        "image/avif",
+        "image/heic",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+      ].includes(type))
+      && Array.isArray(integration.publicConfig?.allowedUploadHosts)
+      && integration.publicConfig.allowedUploadHosts.length > 0
+      && integration.publicConfig.allowedUploadHosts.every((host) => typeof host === "string" && /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(host))
+      && Number.isInteger(integration.publicConfig?.sessionTtlSeconds)
+      && integration.publicConfig.sessionTtlSeconds >= 60
+      && integration.publicConfig.sessionTtlSeconds <= 3_600
+      && safeApprovalText(integration.publicConfig?.oneTimeUploadContract)
+      && safeApprovalText(integration.publicConfig?.retentionPolicy)
+      && safeApprovalText(integration.publicConfig?.deletionPolicy)
+      && safeApprovalText(integration.publicConfig?.malwareControls)
+      && hasApprovedSurfaces(integration.allowedSurfaces, FORM_SURFACES)
+      && validApprovalTimestamp(integration.ownerApprovedAt, onDate)
+      && validApprovalTimestamp(integration.privacyReviewedAt, onDate)
+      && validApprovalTimestamp(integration.securityReviewedAt, onDate);
+  }
+  return false;
 }
 
 export function approvedIntegrationsFor(surface) {

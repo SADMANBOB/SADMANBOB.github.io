@@ -37,6 +37,18 @@ import {
   business,
   separationPolicy,
 } from "../../shared/siteData.js";
+import {
+  getApprovedServiceAreaPages,
+} from "../../shared/publicationRegistry.js";
+import {
+  bookingActionFor,
+  formTransportFor,
+  protectedUploadPolicyFor,
+} from "../../shared/integrationAdapters.js";
+import {
+  responsiveImageProps,
+  responsivePictureSources,
+} from "../../shared/imageVariants.js";
 import { Breadcrumbs } from "./components/Breadcrumbs.jsx";
 import { ContactRequestForm } from "./components/ContactRequestForm.jsx";
 import { DisclosureGroup } from "./components/DisclosureGroup.jsx";
@@ -58,12 +70,27 @@ const contractorUrl = "/contracting/";
 const propertyServicesUrl = "/property-services/";
 const appBase = import.meta.env.BASE_URL;
 const siteOrigin = (import.meta.env.VITE_SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
+const inspectionFormTransport = formTransportFor("inspector-contact");
+const inspectionSecureFormEnabled = Boolean(inspectionFormTransport && inspectionFormTransport.provider !== "mailto");
+const inspectionUploadPolicy = protectedUploadPolicyFor("inspector-contact");
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
 
 const pageUrl = (path) => {
   const relativePath = path.replace(/^\/+|\/+$/g, "");
   return relativePath ? `${appBase}${relativePath}/` : appBase;
 };
+
+function InspectionPrimaryAction({ className = "button button-gold", onNavigate, short = false }) {
+  const action = bookingActionFor("inspector", {
+    href: "/contact/",
+    label: short ? "Request" : "Request an Inspection",
+  });
+  const content = <>{action.label} <ArrowRight size={short ? 15 : 17} aria-hidden="true" /></>;
+  if (action.external) {
+    return <><a className={className} href={action.href} rel="noreferrer">{content}</a><a className="booking-privacy-link" href={action.privacyUrl} rel="noreferrer" target="_blank">Scheduling privacy</a></>;
+  }
+  return <InternalLink className={className} href={action.href} onNavigate={onNavigate}>{content}</InternalLink>;
+}
 
 const normalizeRoutePath = (pathname = "/") => {
   const basePath = appBase.replace(/\/+$/, "");
@@ -80,6 +107,12 @@ function InternalLink({ href, onNavigate, children, className = "", ...props }) 
     onNavigate(event, href);
   };
   return <a className={className} href={pageUrl(href)} onClick={handleClick} {...props}>{children}</a>;
+}
+
+function EditorialPicture({ id, sizes, loading, fetchPriority }) {
+  const sources = responsivePictureSources(id, { basePath: appBase, sizes });
+  const image = responsiveImageProps(id, { basePath: appBase, sizes });
+  return <picture style={{ display: "contents" }}>{sources.map((source) => <source key={source.type} {...source} />)}<img {...image} loading={loading} fetchPriority={fetchPriority} /></picture>;
 }
 
 function BrandMark({ onNavigate }) {
@@ -139,13 +172,13 @@ function SiteHeader({ currentRoute, mobileMenuOpen, setMobileMenuOpen, onNavigat
               {route.label}
             </InternalLink>
           ))}
-          <InternalLink className="mobile-menu-cta button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={16} aria-hidden="true" /></InternalLink>
+          <InspectionPrimaryAction className="mobile-menu-cta button button-gold" onNavigate={onNavigate} />
           <a className="mobile-menu-sister" href={contractorUrl}>Separate contracting service · 12-month rule applies <ArrowRight size={14} aria-hidden="true" /></a>
         </nav>
         <div className="header-actions">
           <a className="phone-link" href={business.inspection.phoneHref} aria-label={`Call C&G at ${business.inspection.phoneDisplay}`}><Phone size={16} aria-hidden="true" /><span>{business.inspection.phoneDisplay}</span></a>
           <button className="header-search" type="button" onClick={onOpenSearch} aria-label="Search inspection guidance"><Search size={18} aria-hidden="true" /><span>Search</span></button>
-          <InternalLink className="button button-small button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection</InternalLink>
+          <InspectionPrimaryAction className="button button-small button-gold" onNavigate={onNavigate} />
           <button
             ref={menuButtonRef}
             className="menu-toggle"
@@ -183,7 +216,7 @@ function BookingCallout({ onNavigate, eyebrow = "Have a property in mind?", titl
       <div className="container contact-card">
         <div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div>
         <div className="contact-actions">
-          <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+          <InspectionPrimaryAction onNavigate={onNavigate} />
           <a className="button button-outline-light" href={business.inspection.phoneHref}><Phone size={17} aria-hidden="true" /> Call C&amp;G</a>
         </div>
       </div>
@@ -229,13 +262,13 @@ function HomePage({ route, onNavigate }) {
             <h1>Know what you’re <em>buying.</em></h1>
             <p className="hero-lede">A clear home inspection helps you understand the visible condition of the property, focus on the findings that matter, and move into the next conversation with better questions.</p>
             <div className="hero-actions">
-              <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+              <InspectionPrimaryAction onNavigate={onNavigate} />
               <InternalLink className="text-link text-link-light" href="/services/" onNavigate={onNavigate}>Explore What We Inspect <ChevronRight size={16} aria-hidden="true" /></InternalLink>
             </div>
             <div className="hero-trust"><span><ShieldCheck size={16} aria-hidden="true" /> Clear explanations</span><span><Camera size={16} aria-hidden="true" /> Detailed photos</span><span>No scare tactics</span></div>
           </div>
           <figure className="hero-visual">
-            <img src={assetUrl("assets/hero-inspector.jpg")} alt="Home inspector using a diagnostic meter beside a stucco home" width="1731" height="909" fetchPriority="high" decoding="async" />
+            <EditorialPicture id="inspector-hero" sizes="(max-width: 900px) 100vw, 55vw" fetchPriority="high" />
             <figcaption className="hero-caption"><span className="caption-rule" /><span>Editorial illustration of the inspection process.</span></figcaption>
           </figure>
         </div>
@@ -269,8 +302,8 @@ function HomePage({ route, onNavigate }) {
         <div className="container">
           <div className="section-intro section-intro-row"><div><p className="eyebrow eyebrow-dark">The report</p><h2>A report you can actually use.</h2></div><p>Observations, photographs, location context, and practical recommendations make the property easier to discuss.</p></div>
           <div className="feature-grid">
-            <article className="feature-card feature-card-image"><div className="feature-image"><img src={assetUrl("assets/report-laptop.jpg")} alt="Home inspection report and tools on a desk" width="1536" height="1024" loading="lazy" decoding="async" /></div><div className="feature-card-body"><span className="feature-number">01</span><h3>Visible condition documented</h3><p>Photographs are tied to the relevant observation and location where useful.</p></div></article>
-            <article className="feature-card feature-card-image"><div className="feature-image"><img src={assetUrl("assets/attic-inspection.jpg")} alt="Inspector measuring visible attic framing with a flashlight" width="1536" height="1024" loading="lazy" decoding="async" /></div><div className="feature-card-body"><span className="feature-number">02</span><h3>Context that stays connected</h3><p>System, location, limitation, and next-step language remain together.</p></div></article>
+            <article className="feature-card feature-card-image"><div className="feature-image"><EditorialPicture id="inspector-report" sizes="(max-width: 760px) 100vw, 33vw" loading="lazy" /></div><div className="feature-card-body"><span className="feature-number">01</span><h3>Visible condition documented</h3><p>Photographs are tied to the relevant observation and location where useful.</p></div></article>
+            <article className="feature-card feature-card-image"><div className="feature-image"><EditorialPicture id="inspector-attic" sizes="(max-width: 760px) 100vw, 33vw" loading="lazy" /></div><div className="feature-card-body"><span className="feature-number">02</span><h3>Context that stays connected</h3><p>System, location, limitation, and next-step language remain together.</p></div></article>
             <article className="feature-card feature-card-icon"><div className="feature-icon"><ClipboardCheck size={28} aria-hidden="true" /></div><div className="feature-card-body"><span className="feature-number">03</span><h3>Practical follow-up</h3><p>Questions are welcomed after delivery; timing is confirmed when the inspection is scheduled.</p></div></article>
           </div>
         </div>
@@ -286,7 +319,7 @@ function HomePage({ route, onNavigate }) {
 
       <section className="sister-section">
         <div className="container sister-grid">
-          <div className="sister-image-wrap"><img src={assetUrl("assets/contracting-review.jpg")} alt="Construction professionals reviewing plans in a kitchen" width="1536" height="1024" loading="lazy" decoding="async" /><span className="sister-image-label">Editorial illustration</span></div>
+          <div className="sister-image-wrap"><EditorialPicture id="cross-service-planning" sizes="(max-width: 900px) 100vw, 45vw" loading="lazy" /><span className="sister-image-label">Editorial illustration</span></div>
           <div className="sister-copy"><p className="eyebrow eyebrow-dark">Inspection independence</p><h2>Inspection conclusions should stand on their own.</h2><p>{separationPolicy.notice}</p><InternalLink className="button button-gold" href="/ethics/" onNavigate={onNavigate}>Read the Inspection Ethics Policy <ArrowRight size={17} aria-hidden="true" /></InternalLink></div>
         </div>
       </section>
@@ -324,7 +357,7 @@ function ServicesPage({ route, onNavigate }) {
 
   return (
     <>
-      <PageHero route={route} onNavigate={onNavigate} eyebrow="Home inspection services" title="A practical inspection for a clearer property decision." actions={<InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}>Schedule an Inspection <ArrowRight size={17} aria-hidden="true" /></InternalLink>}>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Home inspection services" title="A practical inspection for a clearer property decision." actions={<InspectionPrimaryAction onNavigate={onNavigate} />}>
         <p className="page-hero-lede">Whether you are buying, selling, maintaining, or planning work, the inspection documents visible conditions, explains important context, and identifies appropriate next steps.</p>
       </PageHero>
       <ScopeAtlas sections={enabledInspectionScope} onScopeRequest={handleScopeRequest} />
@@ -412,11 +445,11 @@ function ScopeAtlas({ sections, onScopeRequest }) {
 
         <div className="scope-atlas-media" role="group" aria-label="Representative inspection imagery">
           <figure className="scope-atlas-figure scope-atlas-figure-wide">
-            <img src={assetUrl("assets/attic-inspection.jpg")} alt="Inspector measuring visible attic framing with a flashlight" width="1536" height="1024" loading="lazy" decoding="async" />
+            <EditorialPicture id="inspector-attic" sizes="(max-width: 760px) 100vw, 50vw" loading="lazy" />
             <figcaption><span>Structure in context</span><small>Editorial illustration</small></figcaption>
           </figure>
           <figure className="scope-atlas-figure">
-            <img src={assetUrl("assets/report-laptop.jpg")} alt="Home inspection report and tools on a desk" width="1536" height="1024" loading="lazy" decoding="async" />
+            <EditorialPicture id="inspector-report" sizes="(max-width: 760px) 100vw, 50vw" loading="lazy" />
             <figcaption><span>Observations documented</span><small>Editorial illustration</small></figcaption>
           </figure>
         </div>
@@ -521,18 +554,72 @@ function AboutPage({ route, onNavigate }) {
 
 function AreasPage({ route, onNavigate }) {
   const areas = approvedServiceAreas("Inspector");
+  const areaPageIds = new Set(getApprovedServiceAreaPages("Inspector").map((area) => area.id));
   return (
     <>
       <PageHero route={route} onNavigate={onNavigate} eyebrow="Areas we serve" title="Local scheduling, confirmed one property at a time."><p className="page-hero-lede">Service availability depends on the property location, inspection type, access, current schedule, and travel requirements.</p></PageHero>
-      <section className="experience-section areas-main-section"><div className="container experience-grid"><div><p className="eyebrow">Address-first confirmation</p><h2>Share the full property address before relying on an appointment.</h2></div><div className="experience-copy"><p>C&amp;G confirms coverage, travel, scope, and availability for each request. County and city claims remain unpublished until the owner approves the service-area registry.</p>{areas.length ? <div className="area-list">{areas.map((area) => <span key={area.id}>{area.label}</span>)}</div> : <p className="registry-empty-state">No specific county or city is currently approved for public listing. Contact C&amp;G to confirm the property.</p>}</div></div></section>
+      <section className="experience-section areas-main-section"><div className="container experience-grid"><div><p className="eyebrow">Address-first confirmation</p><h2>Share the full property address before relying on an appointment.</h2></div><div className="experience-copy"><p>C&amp;G confirms coverage, travel, scope, and availability for each request. County and city claims remain unpublished until the owner approves the service-area registry.</p>{areas.length ? <div className="area-list">{areas.map((area) => areaPageIds.has(area.id) ? <InternalLink key={area.id} href={`/areas/${area.id}/`} onNavigate={onNavigate}>{area.label}</InternalLink> : <span key={area.id}>{area.label}</span>)}</div> : <p className="registry-empty-state">No specific county or city is currently approved for public listing. Contact C&amp;G to confirm the property.</p>}</div></div></section>
       <section className="page-section page-section-cream"><div className="container page-split-grid"><div><p className="eyebrow eyebrow-dark">What to send</p><h2>One address, a little context, and your timing.</h2></div><div className="values-list"><div><MapItem number="01" title="Full property address" copy="Coverage and travel are confirmed from the actual location." /></div><div><MapItem number="02" title="Property and inspection type" copy="Scope can vary with the property and request." /></div><div><MapItem number="03" title="Preferred timing" copy="A request is not confirmed until C&G accepts it." /></div></div></div></section>
       <BookingCallout onNavigate={onNavigate} eyebrow="Ask about your property" title="Start with the complete address." />
     </>
   );
 }
 
+function ServiceAreaDetailPage({ route, onNavigate }) {
+  const area = route.serviceArea;
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Approved inspection area" title={area.pageTitle}>
+        <p className="page-hero-lede">{area.pageContent.introduction}</p>
+      </PageHero>
+      <section className="experience-section">
+        <div className="container experience-grid">
+          <div><p className="eyebrow">Property context</p><h2>Plan from the actual address—not a county-wide assumption.</h2></div>
+          <div className="experience-copy">
+            <p>{area.pageContent.propertyContext}</p>
+            <p>{area.pageContent.accessAndTiming}</p>
+          </div>
+        </div>
+      </section>
+      <section className="page-section page-section-cream">
+        <div className="container page-split-grid">
+          <div><p className="eyebrow eyebrow-dark">Before requesting a date</p><h2>Have the details that affect scope and travel ready.</h2></div>
+          <ul className="ethics-list">{area.pageContent.planningChecklist.map((item) => <li key={item}><Check size={18} aria-hidden="true" /> {item}</li>)}</ul>
+        </div>
+      </section>
+      <BookingCallout onNavigate={onNavigate} eyebrow={`Ask about a property in ${area.label}`} title="Start with the full address and inspection purpose." />
+    </>
+  );
+}
+
 function MapItem({ number, title, copy }) {
   return <><span className="map-item-number">{number}</span><span><strong>{title}</strong><small>{copy}</small></span></>;
+}
+
+function SampleReportPage({ route, onNavigate }) {
+  const report = route.sampleReport;
+  return (
+    <>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Owner-approved redacted example" title={report.title}>
+        <p className="page-hero-lede">This sample shows one approved report format after personal, property, access, and transaction details were reviewed for redaction. A real report reflects the agreement, property, access, and conditions observed on the inspection date.</p>
+      </PageHero>
+      <section className="page-section page-section-cream">
+        <div className="container page-split-grid">
+          <div><p className="eyebrow eyebrow-dark">What to look for</p><h2>Organization, context, photographs, limitations, and next-step language.</h2></div>
+          <div>
+            <p className="page-copy">The example is educational. It does not promise that every report will have the same length, findings, photographs, systems, or recommendations.</p>
+            <ul className="ethics-list">
+              <li><Check size={18} aria-hidden="true" /> {report.pageCount} redacted pages</li>
+              <li><Check size={18} aria-hidden="true" /> Report template reference: {report.reportTemplateVersion}</li>
+              <li><Check size={18} aria-hidden="true" /> Redaction and publication approval recorded in the site registry</li>
+            </ul>
+            <a className="button button-dark" href={report.publicPath} target="_blank" rel="noreferrer">Open the redacted PDF <ArrowRight size={16} aria-hidden="true" /></a>
+          </div>
+        </div>
+      </section>
+      <BookingCallout onNavigate={onNavigate} />
+    </>
+  );
 }
 
 function FaqPage({ route, onNavigate }) {
@@ -644,20 +731,20 @@ function EthicsPage({ route, onNavigate }) {
 
 function PrivacyPage({ route, onNavigate }) {
   const sections = [
-    ["Information you choose to provide", "The site receives information only when you choose a phone, email, or prepared-email contact path. The inspection form prepares a message in your email application; the website does not receive or store the form values."],
-    ["Technical information", "GitHub Pages and network providers may receive ordinary request information such as IP address, browser details, requested URL, and timestamps. The site also requests font files from Google Fonts."],
+    ["Information you choose to provide", inspectionSecureFormEnabled ? <>The inspection form sends the details you choose to provide to the owner-approved {inspectionFormTransport.provider} processor. Review the processor’s <a href={inspectionFormTransport.publicConfig.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>. The request is not an appointment until C&amp;G confirms it.</> : "The site receives information only when you choose a phone, email, or prepared-email contact path. The inspection form prepares a message in your email application; the website does not receive or store the form values."],
+    ["Technical information", "GitHub Pages and network providers may receive ordinary request information such as IP address, browser details, requested URL, and timestamps. Adopted website fonts are delivered as same-origin static files."],
     ["Private site search", "The search feature uses a static Pagefind index delivered with this website. Search terms are processed in the visitor's browser and are not sent to an analytics, advertising, or hosted-search provider."],
     ["How request information is used", "Information sent to C&G is used to understand and respond to the inspection request, confirm scope, travel, timing, price, and access, and keep the related business record."],
-    ["Inspection reports and client confidentiality", "Do not send full reports, access codes, offer documents, financial information, or other sensitive material through the basic website form. Report sharing follows the inspection agreement and client authorization."],
+    ["Inspection reports and client confidentiality", inspectionUploadPolicy ? <>Only authorized supporting files that meet the published type and {Math.floor(inspectionUploadPolicy.maxBytes / 1_000_000)} MB size limit may use the approved protected-upload path. An uploaded file transfers before the request is submitted and remains subject to the provider’s approved retention, deletion, and orphan-file policy. Review the upload provider’s <a href={inspectionUploadPolicy.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>. Do not upload access codes, financial records, offer documents, government IDs, payment cards, claim files, or unredacted reports.</> : "Do not send full reports, access codes, offer documents, financial information, or other sensitive material through the basic website form. Report sharing follows the inspection agreement and client authorization."],
     ["Inspection and contracting separation", "Inspection-client information and report findings are not used to solicit contracting work. C&G Contracting Services cannot offer or perform repairs on a property C&G inspected during the previous 12 months."],
-    ["Service providers actually used", "The public site is delivered through GitHub Pages. Google Fonts supplies the adopted typefaces. The prepared-email path relies on the visitor's chosen email application and provider."],
-    ["Retention", "The static website does not retain form entries. If you send an email or call C&G, the resulting communication may be retained as reasonably needed for the request, business records, legal obligations, and dispute prevention."],
+    ["Service providers actually used", inspectionSecureFormEnabled ? <>The public site and fonts are delivered through GitHub Pages. Inspection requests use the owner-approved {inspectionFormTransport.provider} processor and its published <a href={inspectionFormTransport.publicConfig.privacyUrl} rel="noreferrer" target="_blank">privacy policy</a>.</> : "The public site and locally hosted fonts are delivered through GitHub Pages. The prepared-email path relies on the visitor's chosen email application and provider."],
+    ["Retention", inspectionSecureFormEnabled ? `The approved processor and C&G handle submitted details under the reviewed processor, privacy, and retention configuration. Contact C&G for a request-specific records question.` : "The static website does not retain form entries. If you send an email or call C&G, the resulting communication may be retained as reasonably needed for the request, business records, legal obligations, and dispute prevention."],
     ["Your choices", "You may contact C&G to ask about a communication you sent or to request an appropriate correction or deletion, subject to records C&G must or reasonably needs to retain."],
     ["Updates and contact", `This policy is effective July 22, 2026. Material changes should be reflected on this page. Questions may be sent to ${business.inspection.email}.`],
   ];
   return (
     <>
-      <PageHero route={route} onNavigate={onNavigate} eyebrow="Privacy" title="A plain-language policy for the site that actually exists."><p className="page-hero-lede">No analytics provider, cookie banner, user account, online payment, or server-side form service is enabled.</p></PageHero>
+      <PageHero route={route} onNavigate={onNavigate} eyebrow="Privacy" title="A plain-language policy for the site that actually exists."><p className="page-hero-lede">No analytics provider, advertising tracker, user account, or online payment is enabled. Form and upload disclosures change only when their approval registries are enabled.</p></PageHero>
       <section className="page-section page-section-cream"><div className="container policy-layout">{sections.map(([title, copy], index) => <section key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h2>{title}</h2><p>{copy}</p></div></section>)}</div></section>
     </>
   );
@@ -692,7 +779,7 @@ function MobileQuickActions({ onNavigate, currentRoute }) {
   if (!visible) return null;
   const requestAction = currentRoute.key === "contact"
     ? <a className="button button-gold" href="#inspection-request" onClick={focusInspectionRequest}><ArrowRight size={15} aria-hidden="true" /> Start request</a>
-    : <InternalLink className="button button-gold" href="/contact/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Schedule</InternalLink>;
+    : <InspectionPrimaryAction className="button button-gold" onNavigate={onNavigate} short />;
   return <div className="mobile-quick-actions" aria-label="Quick contact actions">{requestAction}<a className="button button-dark" href={business.inspection.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a></div>;
 }
 
@@ -729,6 +816,8 @@ export function App({ initialPath = null }) {
   const props = { route, onNavigate };
   let page;
   if (route.article) page = <ResourceArticlePage {...props} />;
+  else if (route.serviceArea) page = <ServiceAreaDetailPage {...props} />;
+  else if (route.sampleReport) page = <SampleReportPage {...props} />;
   else page = {
     home: <HomePage {...props} />,
     services: <ServicesPage {...props} />,

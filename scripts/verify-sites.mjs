@@ -1,14 +1,43 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
-import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimIsApproved, claims, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
-import { getApprovedReviews, reviewSlots } from "../shared/reviewRegistry.js";
+import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimCanRenderOn, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
+import {
+  bookingActionFor,
+  createFileShareAuthorization,
+  formTransportFor,
+  prepareMailto,
+  protectedUploadPolicyFor,
+  submitApprovedForm,
+  uploadProtectedFile,
+} from "../shared/integrationAdapters.js";
+import {
+  responsiveEditorialImages,
+  responsiveImageWidths,
+} from "../shared/imageVariants.js";
+import {
+  clientProjectPhotoIsApproved,
+  clientProjectPhotoSlots,
+  getAllApprovedClientProjectPhotos,
+  getApprovedProjectCaseStudies,
+  getApprovedProjectPhotos,
+  getApprovedSampleReports,
+  getApprovedServiceAreaPages,
+  projectCaseStudyIsApproved,
+  projectCaseStudySlots,
+  PUBLICATION_SURFACES,
+  sampleReportIsApproved,
+  sampleReportRegistry,
+  serviceAreaPageIsApproved,
+} from "../shared/publicationRegistry.js";
+import { getApprovedReviews, reviewEntryIsApproved, reviewSlots } from "../shared/reviewRegistry.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
-import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute } from "../inspector-site-prototype/src/content/routes.js";
+import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
 import { enabledInspectionScope } from "../inspector-site-prototype/src/content/inspectionScope.js";
 import { resourceBySlug } from "../inspector-site-prototype/src/content/resources.js";
-import { contractorRoutes, enabledContractorRoutes, contractorNotFoundRoute } from "../contractor-site-prototype/src/content/routes.js";
+import { contractorRoutes, enabledContractorRoutes, contractorNotFoundRoute, projectCaseRouteDefinitions, serviceAreaRouteDefinitions as contractorAreaRoutes } from "../contractor-site-prototype/src/content/routes.js";
 import { contractorFaqs } from "../contractor-site-prototype/src/content/faqs.js";
 import { contractorRequestCategories, contractorServices, requestCategoryFromSearch } from "../contractor-site-prototype/src/content/services.js";
 
@@ -56,43 +85,437 @@ const forbiddenDirectClaims = [
 ];
 for (const pattern of forbiddenDirectClaims) assert.equal(pattern.test(allSource), false, `Production source contains an unapproved direct claim: ${pattern}`);
 
+const now = new Date();
+const gateTestDate = new Date("2026-07-23T12:00:00Z");
 for (const [id, claim] of Object.entries(claims)) {
-  if (claim.status === "approved") assert.equal(claimIsApproved(claim, new Date("2026-07-22T12:00:00Z")), true, `Approved claim ${id} is expired or invalid`);
+  if (claim.status === "approved") assert.equal(claimIsApproved(claim, now), true, `Approved claim ${id} is expired or invalid`);
 }
-assert.equal(claimIsApproved(claims.contractorLicense, new Date("2026-07-22T12:00:00Z")), true, "Official contractor license gate is not current");
+assert.equal(claimIsApproved(claims.contractorLicense, now), true, "Official contractor license gate is not current at build time");
 assert.ok(business.contracting.license.liveVerifiedAt, "Contractor license lacks a live verification date");
 assert.match(business.contracting.license.officialLookupUrl, /^https:\/\/www\.cslb\.ca\.gov\//, "Contractor license link is not an official CSLB URL");
+assert.equal(claims.contractorPublicName.publicCopy, business.contracting.publicBrandDisclosure, "Approved contractor public-name copy drifted from the business registry");
+assert.deepEqual(
+  claims.contractorPublicName.allowedSurfaces,
+  ["inspector", "contractor", "portal"],
+  "Contractor public-name approval does not match the rendered surfaces",
+);
+assert.deepEqual(
+  claims.contractorLicense.allowedSurfaces,
+  ["inspector", "contractor", "portal"],
+  "Contractor license approval does not match the rendered surfaces",
+);
+for (const surface of ["inspector", "contractor", "portal"]) {
+  assert.equal(claimCanRenderOn(claims.contractorPublicName, surface, now), true, `Contractor public name is not approved for ${surface}`);
+  assert.equal(claimCanRenderOn(claims.contractorLicense, surface, now), true, `Contractor license is not approved for ${surface}`);
+}
 assert.equal(analytics.enabled, false, "Analytics must remain disabled until a provider is approved");
 assert.equal(integrationCanRender(integrations.siteSearch), true, "Approved Pagefind search integration is not renderable");
 assert.equal(integrationCanRender(integrations.inspectionFormTransport), true, "Inspection mailto transport is not renderable");
 assert.equal(integrationCanRender(integrations.contractorFormTransport), true, "Contractor mailto transport is not renderable");
-for (const id of ["booking", "analytics", "maps", "reviews"]) {
+const ownerGatedIntegrationIds = [
+  "booking",
+  "secureInspectionFormTransport",
+  "secureContractorFormTransport",
+  "protectedUpload",
+  "analytics",
+  "maps",
+  "reviews",
+];
+for (const id of ownerGatedIntegrationIds) {
   const integration = integrations[id];
-  assert.equal(integrationCanRender(integration), false, `Pending ${id} integration became renderable`);
-  assert.equal(integration.enabled, false, `Pending ${id} integration became enabled`);
-  assert.equal(integration.provider, null, `Pending ${id} integration contains a provider`);
-  assert.equal(integration.publicConfig, null, `Pending ${id} integration contains public configuration`);
-  assert.deepEqual(integration.allowedSurfaces, [], `Pending ${id} integration exposes an allowed surface`);
+  if (integration.status === "approved") {
+    assert.equal(integrationCanRender(integration, now), true, `Approved ${id} integration is incomplete, expired, or unsafe`);
+  } else {
+    assert.equal(integrationCanRender(integration, now), false, `Pending ${id} integration became renderable`);
+    assert.equal(integration.enabled, false, `Pending ${id} integration became enabled`);
+    assert.equal(integration.provider, null, `Pending ${id} integration contains a provider`);
+    assert.equal(integration.publicConfig, null, `Pending ${id} integration contains public configuration`);
+    assert.deepEqual(integration.allowedSurfaces, [], `Pending ${id} integration exposes an allowed surface`);
+  }
 }
-assert.deepEqual(approvedIntegrationsFor("inspector"), [{ id: "siteSearch", ...integrations.siteSearch }], "Inspector integration surface includes an unapproved provider");
-assert.deepEqual(approvedIntegrationsFor("contractor"), [{ id: "siteSearch", ...integrations.siteSearch }], "Contractor integration surface includes an unapproved provider");
-assert.deepEqual(approvedIntegrationsFor("inspector-contact"), [{ id: "inspectionFormTransport", ...integrations.inspectionFormTransport }], "Inspector form surface includes an unapproved provider");
-assert.deepEqual(approvedIntegrationsFor("contractor-estimate"), [{ id: "contractorFormTransport", ...integrations.contractorFormTransport }], "Contractor form surface includes an unapproved provider");
+for (const surface of ["inspector", "contractor", "inspector-contact", "contractor-estimate"]) {
+  const expected = Object.entries(integrations)
+    .filter(([, integration]) => integrationCanRender(integration, now) && integration.allowedSurfaces?.includes(surface))
+    .map(([id, integration]) => ({ id, ...integration }));
+  assert.deepEqual(approvedIntegrationsFor(surface), expected, `${surface} integration surface does not match approved providers`);
+}
+for (const [surface, fallbackId] of [["inspector-contact", "inspectionFormTransport"], ["contractor-estimate", "contractorFormTransport"]]) {
+  const secureId = surface === "inspector-contact" ? "secureInspectionFormTransport" : "secureContractorFormTransport";
+  const expectedId = integrationCanRender(integrations[secureId], now) ? secureId : fallbackId;
+  assert.equal(formTransportFor(surface)?.id, expectedId, `${surface} did not select the correct approved transport`);
+  const uploadExpected = integrations.protectedUpload.allowedSurfaces?.includes(surface)
+    && integrationCanRender(integrations.protectedUpload, now)
+    && expectedId === secureId;
+  assert.equal(Boolean(protectedUploadPolicyFor(surface)), uploadExpected, `${surface} protected-upload availability drifted from its gates`);
+}
+const bookingAction = bookingActionFor("inspector", { href: "/contact/", label: "Request an Inspection" });
+assert.equal(bookingAction.external, integrationCanRender(integrations.booking, now), "Booking action does not match its approval gate");
+if (!bookingAction.external) {
+  assert.deepEqual(
+    bookingAction,
+    { external: false, href: "/contact/", label: "Request an Inspection", provider: null, privacyUrl: null },
+    "Pending booking provider replaced the inspection-request fallback",
+  );
+}
+assert.match(
+  prepareMailto({ recipient: business.inspection.email, subject: "Inspection request", body: "Property details" }),
+  /^mailto:[^?]+\?subject=Inspection%20request&body=Property%20details$/,
+  "Approved mailto adapter did not encode a safe draft",
+);
+assert.equal(integrationCanRender({
+  status: "approved",
+  enabled: true,
+  capability: "booking",
+  provider: "Approved Scheduler",
+  allowedSurfaces: ["inspector"],
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  policyApprovedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    bookingUrl: "https://schedule.example.test/inspection",
+    privacyUrl: "https://schedule.example.test/privacy",
+    actionLabel: "Book an inspection online",
+    availabilityPolicy: "Displayed times remain requests until C&G confirms the property, inspection scope, travel, price, and access.",
+    cancellationPolicy: "Cancellation and rescheduling terms shown by the approved scheduler apply only after C&G confirms an appointment.",
+  },
+}, gateTestDate), true, "A fully configured booking provider cannot pass the adapter gate");
+assert.equal(integrationCanRender({
+  status: "approved",
+  enabled: true,
+  capability: "form-transport",
+  provider: "Approved Processor",
+  allowedSurfaces: ["inspector-contact"],
+  serverSubmissionEnabled: true,
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    endpoint: "https://forms.example.test/v1/submit",
+    privacyUrl: "https://forms.example.test/privacy",
+    formId: "inspection_request",
+    method: "POST",
+    encoding: "application/json",
+    retentionPolicy: "Submitted requests are retained only for the approved business-record period.",
+    deletionPolicy: "Deletion requests are handled under the approved legal and records policy.",
+    abuseControls: "The processor applies rate limiting, bot controls, and server-side validation.",
+    responseContractVersion: "form-response-v1",
+  },
+}, gateTestDate), true, "A fully configured HTTPS form processor cannot pass the adapter gate");
+assert.equal(integrationCanRender({
+  status: "approved",
+  enabled: true,
+  capability: "protected-upload",
+  provider: "Approved Upload Broker",
+  allowedSurfaces: ["inspector-contact"],
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    sessionEndpoint: "https://uploads.example.test/v1/session",
+    privacyUrl: "https://uploads.example.test/privacy",
+    maxBytes: 10_000_000,
+    maxFiles: 3,
+    allowedMimeTypes: ["image/jpeg", "application/pdf"],
+    allowedUploadHosts: ["objects.example.test"],
+    sessionTtlSeconds: 900,
+    oneTimeUploadContract: "Each upload URL accepts one file, expires after the configured session, and cannot be reused.",
+    retentionPolicy: "Linked files are retained only for the approved request-review period.",
+    deletionPolicy: "Expired, abandoned, revoked, and owner-deleted files follow the approved deletion schedule.",
+    malwareControls: "Uploaded content is quarantined and scanned before staff access.",
+  },
+}, gateTestDate), true, "A fully configured protected-upload broker cannot pass the adapter gate");
+assert.equal(integrationCanRender({
+  status: "approved",
+  enabled: true,
+  capability: "form-transport",
+  provider: "Invalid Surface Processor",
+  allowedSurfaces: "inspector-contact",
+  serverSubmissionEnabled: true,
+}), false, "A string allowedSurfaces value passed the provider gate");
+assert.deepEqual(createFileShareAuthorization(gateTestDate), {
+  confirmed: true,
+  statementVersion: "2026-07-22",
+  confirmedAt: "2026-07-23T12:00:00.000Z",
+}, "File-sharing authorization is not versioned and timestamped");
+
+const approvedSecureTransportFixture = {
+  status: "approved",
+  enabled: true,
+  capability: "form-transport",
+  provider: "Approved Processor",
+  allowedSurfaces: ["inspector-contact"],
+  serverSubmissionEnabled: true,
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    endpoint: "https://forms.example.test/v1/submit",
+    privacyUrl: "https://forms.example.test/privacy",
+    formId: "inspection_request",
+    method: "POST",
+    encoding: "application/json",
+    retentionPolicy: "Submitted requests are retained only for the approved business-record period.",
+    deletionPolicy: "Deletion requests are handled under the approved legal and records policy.",
+    abuseControls: "The processor applies rate limiting, bot controls, and server-side validation.",
+    responseContractVersion: "form-response-v1",
+  },
+};
+const approvedUploadFixture = {
+  status: "approved",
+  enabled: true,
+  capability: "protected-upload",
+  provider: "Approved Upload Broker",
+  allowedSurfaces: ["inspector-contact"],
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    sessionEndpoint: "https://uploads.example.test/v1/session",
+    privacyUrl: "https://uploads.example.test/privacy",
+    maxBytes: 10_000_000,
+    maxFiles: 3,
+    allowedMimeTypes: ["image/jpeg", "application/pdf"],
+    allowedUploadHosts: ["objects.example.test"],
+    sessionTtlSeconds: 900,
+    oneTimeUploadContract: "Each upload URL accepts one file, expires after the configured session, and cannot be reused.",
+    retentionPolicy: "Linked files are retained only for the approved request-review period.",
+    deletionPolicy: "Expired, abandoned, revoked, and owner-deleted files follow the approved deletion schedule.",
+    malwareControls: "Uploaded content is quarantined and scanned before staff access.",
+  },
+};
+const originalSecureInspectionTransport = integrations.secureInspectionFormTransport;
+const originalProtectedUpload = integrations.protectedUpload;
+try {
+  integrations.secureInspectionFormTransport = approvedSecureTransportFixture;
+  integrations.protectedUpload = approvedUploadFixture;
+
+  const formPayload = { propertyAddress: "Adapter test property" };
+  const formCalls = [];
+  const formResult = await submitApprovedForm("inspector-contact", formPayload, {
+    fetchImpl: async (url, options) => {
+      formCalls.push({ url, options });
+      return {
+        ok: true,
+        headers: { get: (name) => name.toLowerCase() === "content-type" ? "application/json" : null },
+        json: async () => ({ receipt: "receipt_123456" }),
+      };
+    },
+  });
+  assert.equal(formResult.mode, "submitted", "Approved secure form did not submit through its HTTPS adapter");
+  assert.equal(formResult.receipt, "receipt_123456", "Approved secure form lost its opaque receipt");
+  assert.equal(formCalls.length, 1, "Approved secure form made an unexpected number of requests");
+  assert.equal(formCalls[0].url, approvedSecureTransportFixture.publicConfig.endpoint, "Secure form used the wrong endpoint");
+  assert.equal(formCalls[0].options.credentials, "omit", "Secure form sent browser credentials");
+  assert.equal(formCalls[0].options.redirect, "error", "Secure form permits an unreviewed redirect");
+  assert.deepEqual(JSON.parse(formCalls[0].options.body), {
+    formId: approvedSecureTransportFixture.publicConfig.formId,
+    surface: "inspector-contact",
+    payload: formPayload,
+  }, "Secure form request body drifted from its approved contract");
+
+  const authorization = createFileShareAuthorization(new Date("2026-07-22T12:00:00Z"));
+  const testFile = {
+    name: "adapter-test.jpg",
+    size: 4_096,
+    type: "image/jpeg",
+  };
+  const uploadCalls = [];
+  const uploadResult = await uploadProtectedFile("inspector-contact", testFile, {
+    authorization,
+    fetchImpl: async (url, options) => {
+      uploadCalls.push({ url, options });
+      if (uploadCalls.length === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            uploadUrl: "https://objects.example.test/one-time-upload",
+            uploadId: "upload_12345678",
+          }),
+        };
+      }
+      return { ok: true };
+    },
+  });
+  assert.equal(uploadResult.uploadId, "upload_12345678", "Protected upload lost its opaque upload ID");
+  assert.equal(uploadCalls.length, 2, "Protected upload did not use exactly one session request and one upload");
+  assert.equal(uploadCalls[0].url, approvedUploadFixture.publicConfig.sessionEndpoint, "Upload used the wrong broker endpoint");
+  assert.equal(uploadCalls[0].options.credentials, "omit", "Upload session sent browser credentials");
+  assert.equal(uploadCalls[1].url, "https://objects.example.test/one-time-upload", "Upload ignored the broker allowlisted URL");
+  assert.equal(uploadCalls[1].options.referrerPolicy, "no-referrer", "File upload exposed a referrer");
+  assert.equal(uploadCalls[1].options.body, testFile, "Protected upload did not send the approved file object");
+  await assert.rejects(
+    uploadProtectedFile("inspector-contact", testFile, {
+      authorization: null,
+      fetchImpl: async () => {
+        throw new Error("Network should not be reached without authorization.");
+      },
+    }),
+    /Confirm authorization/,
+    "Protected upload accepted a file without current authorization",
+  );
+} finally {
+  integrations.secureInspectionFormTransport = originalSecureInspectionTransport;
+  integrations.protectedUpload = originalProtectedUpload;
+}
 
 assert.equal(reviewSlots.length, 50, "The review approval registry must contain exactly 50 slots");
 assert.equal(new Set(reviewSlots.map((review) => review.id)).size, 50, "Review registry IDs are not unique");
 for (const [index, review] of reviewSlots.entries()) {
   assert.equal(review.id, `review-slot-${String(index + 1).padStart(2, "0")}`, `Review slot ${index + 1} has the wrong ID`);
-  assert.equal(review.status, "pending", `${review.id} was enabled without verified review evidence`);
-  assert.equal(review.sourceUrl, null, `${review.id} contains an unapproved source`);
-  assert.equal(review.exactApprovedText, null, `${review.id} contains unapproved review text`);
-  assert.equal(review.publicationPermissionAt, null, `${review.id} claims publication permission`);
-  assert.equal(review.displayAttribution, null, `${review.id} contains an unapproved attribution`);
-  assert.deepEqual(review.allowedSurfaces, [], `${review.id} exposes an allowed surface`);
+  if (review.status === "approved") {
+    assert.equal(reviewEntryIsApproved(review, "inspector-home", now), true, `${review.id} is marked approved but fails the review gate`);
+  } else {
+    assert.equal(review.sourceUrl, null, `${review.id} contains an unapproved source`);
+    assert.equal(review.exactApprovedText, null, `${review.id} contains unapproved review text`);
+    assert.equal(review.publicationPermissionAt, null, `${review.id} claims publication permission`);
+    assert.equal(review.displayAttribution, null, `${review.id} contains an unapproved attribution`);
+    assert.deepEqual(review.allowedSurfaces, [], `${review.id} exposes an allowed surface`);
+  }
 }
-assert.deepEqual(getApprovedReviews("inspector-home", new Date("2026-07-22T12:00:00Z")), [], "Pending reviews became publicly renderable");
+const approvedReviews = getApprovedReviews("inspector-home", now);
+assert.ok(approvedReviews.every((review) => reviewEntryIsApproved(review, "inspector-home", now)), "An invalid review became publicly renderable");
 assert.match(inspectorSource, /<ReviewCarousel \/>/, "The gated review carousel is not mounted on the inspector home page");
 assert.match(inspectorSource, /if \(!reviewCount\) return null/, "The review carousel no longer disappears when no review is approved");
+
+assert.equal(sampleReportRegistry.length, 1, "Sample-report registry must expose one primary publication slot");
+for (const report of sampleReportRegistry) {
+  assert.equal(sampleReportIsApproved(report, undefined, now), report.status === "approved", `${report.id} status does not match its publication gate`);
+}
+assert.equal(clientProjectPhotoSlots.length, 24, "Client-project photo registry must contain 24 bounded slots");
+assert.equal(projectCaseStudySlots.length, 12, "Project case-study registry must contain 12 bounded slots");
+assert.equal(new Set(clientProjectPhotoSlots.map((record) => record.id)).size, 24, "Client-project photo IDs are not unique");
+assert.equal(new Set(projectCaseStudySlots.map((record) => record.id)).size, 12, "Project case-study IDs are not unique");
+for (const photo of clientProjectPhotoSlots) {
+  const approvedOnAllDeclaredSurfaces = photo.status === "approved"
+    && photo.allowedSurfaces.length > 0
+    && photo.allowedSurfaces.every((surface) => clientProjectPhotoIsApproved(photo, surface, now));
+  assert.equal(approvedOnAllDeclaredSurfaces, photo.status === "approved", `${photo.id} status does not match its photo rights and privacy gates`);
+}
+for (const projectCase of projectCaseStudySlots) {
+  assert.equal(projectCaseStudyIsApproved(projectCase, undefined, now), projectCase.status === "approved", `${projectCase.id} status does not match its source-backed gate`);
+}
+const approvedProjectCases = getApprovedProjectCaseStudies(undefined, now);
+assert.equal(new Set(approvedProjectCases.map((record) => record.slug)).size, approvedProjectCases.length, "Approved project case slugs are not unique");
+for (const area of serviceAreas) {
+  for (const surface of ["Inspector", "Contractor"]) {
+    if (serviceAreaPageIsApproved(area, surface, now)) {
+      assert.equal(area.status, "approved", `${area.id} ${surface} page passed without area approval`);
+    }
+  }
+}
+assert.equal(inspectorAreaRoutes.length, getApprovedServiceAreaPages("Inspector", now).length, "Inspector area routes do not match approved page records");
+assert.equal(contractorAreaRoutes.length, getApprovedServiceAreaPages("Contractor", now).length, "Contractor area routes do not match approved page records");
+assert.equal(projectCaseRouteDefinitions.length, approvedProjectCases.length, "Project case-study routes do not match approved records");
+
+for (const report of getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport)) {
+  const sourceFile = resolve(inspector, "public", report.publicPath.replace(/^\/+/, ""));
+  const content = await readFile(sourceFile);
+  assert.equal(content.byteLength, report.fileBytes, `${report.id} PDF byte size does not match its approved record`);
+  assert.equal(createHash("sha256").update(content).digest("hex"), report.sha256, `${report.id} PDF digest does not match its approved record`);
+}
+for (const photo of getAllApprovedClientProjectPhotos(now)) {
+  const sourceFile = resolve(contractor, "public", photo.publicPath.replace(/^\/contracting\/+/, ""));
+  const content = await readFile(sourceFile);
+  assert.equal(createHash("sha256").update(content).digest("hex"), photo.sha256, `${photo.id} image digest does not match its approved record`);
+}
+
+const syntheticSampleReport = {
+  id: "sample-report-primary",
+  status: "approved",
+  title: "Owner-approved redacted sample inspection report",
+  publicPath: "/assets/sample-reports/redacted-sample.pdf",
+  sha256: "a".repeat(64),
+  fileBytes: 1_000_000,
+  pageCount: 45,
+  reportTemplateVersion: "inspection-template-v1",
+  redactionApprovedAt: "2026-07-22T12:00:00Z",
+  publicationPermissionAt: "2026-07-22T12:00:00Z",
+  privacyReviewConfirmed: true,
+  allowedSurfaces: [PUBLICATION_SURFACES.sampleReport],
+};
+assert.equal(sampleReportIsApproved(syntheticSampleReport, PUBLICATION_SURFACES.sampleReport, gateTestDate), true, "A complete redacted-report record cannot pass its publication gate");
+const syntheticProjectPhoto = {
+  id: "project-photo-01",
+  status: "approved",
+  publicPath: "/contracting/assets/projects/documented-repair.webp",
+  sha256: "b".repeat(64),
+  width: 1_200,
+  height: 800,
+  alt: "Documented residential finish repair after the approved work was completed",
+  caption: "Permission-backed view of the documented finish-repair result.",
+  depictsActualClientWork: true,
+  replacesEditorialImageId: "illustrative-drywall-repair",
+  sourceEvidenceId: "source:project-001",
+  rightsEvidenceId: "rights:project-001",
+  rightsConfirmedAt: "2026-07-22T12:00:00Z",
+  privacyApprovedAt: "2026-07-22T12:00:00Z",
+  allowedSurfaces: [PUBLICATION_SURFACES.contractorCaseStudy],
+};
+assert.equal(clientProjectPhotoIsApproved(syntheticProjectPhoto, PUBLICATION_SURFACES.contractorCaseStudy, gateTestDate), true, "A complete client-project photo cannot pass its publication gate");
+const syntheticProjectCase = {
+  id: "project-case-01",
+  status: "approved",
+  slug: "documented-finish-repair",
+  title: "Documented residential finish repair",
+  summary: "A source-reviewed example showing the approved condition, bounded scope, practical constraints, and supported result without promising the same outcome elsewhere.",
+  startingCondition: "The approved source record documented a localized finish condition after the underlying source concern had been addressed.",
+  scopeItems: ["Prepare the documented area", "Complete the approved localized finish repair"],
+  constraints: ["Existing texture and lighting affected the achievable visual match"],
+  approach: ["Confirm the source status", "Protect adjacent finishes", "Document the completed scope"],
+  documentedResult: "The approved record supports completion of the bounded finish-repair scope shown in the permission-backed photograph.",
+  categoryId: contractorRequestCategoryIds[0],
+  imageIds: [syntheticProjectPhoto.id],
+  sourceEvidenceId: "case-source:project-001",
+  sourceConfirmedAt: "2026-07-22T12:00:00Z",
+  publicationPermissionAt: "2026-07-22T12:00:00Z",
+  privacyApprovedAt: "2026-07-22T12:00:00Z",
+  allowedSurfaces: [PUBLICATION_SURFACES.contractorCaseStudy],
+};
+assert.equal(
+  projectCaseStudyIsApproved(
+    syntheticProjectCase,
+    PUBLICATION_SURFACES.contractorCaseStudy,
+    gateTestDate,
+    [syntheticProjectPhoto],
+  ),
+  true,
+  "A complete source-backed project case cannot pass its publication gate",
+);
+const syntheticArea = {
+  id: "example-county",
+  label: "Example County",
+  type: "county",
+  status: "approved",
+  approvedForInspector: true,
+  approvedForContractor: true,
+  approvedForMetadata: true,
+  uniquePageEnabled: true,
+  ownerConfirmedAt: "2026-07-22T12:00:00Z",
+  inspectorPage: {
+    pageTitle: "Home inspection planning in Example County",
+    metaDescription: "Plan a home inspection request in Example County with address-first coverage, property context, access details, and timing confirmation.",
+    pageContent: {
+      introduction: "Home inspection availability in Example County begins with the exact property address, inspection purpose, property type, access conditions, and the timing the client actually needs.",
+      propertyContext: "Residential properties in Example County vary in age, construction, terrain, utilities, occupancy, and access, so the inspection scope and travel decision are confirmed for the individual property.",
+      accessAndTiming: "Share utility status, occupied or vacant condition, additional structures, access limitations, and any real transaction deadline before relying on a proposed inspection date.",
+      planningChecklist: ["Provide the complete property address", "Describe the property and requested inspection", "Identify access limits and the actual timing need"],
+    },
+  },
+  contractorPage: {
+    pageTitle: "Residential project review in Example County",
+    metaDescription: "Prepare a residential project request in Example County with eligibility, scope, access, permit, material, and timing details for review.",
+    pageContent: {
+      introduction: "A residential project request in Example County starts with inspection eligibility, authority for the property, a plain-language condition, and the result the owner wants reviewed.",
+      propertyContext: "Project fit depends on the actual residence, requested trades, source conditions, permit or design needs, access, occupancy, materials, and the contractor classification boundary.",
+      accessAndTiming: "Describe who can authorize access, occupied conditions, known hazards, material lead times, permit status, and the true deadline without treating a preferred date as scheduled.",
+      planningChecklist: ["Answer the 12-month inspection question", "Describe the condition and requested result", "Identify access, permit, material, and timing constraints"],
+    },
+  },
+};
+assert.equal(serviceAreaPageIsApproved(syntheticArea, "Inspector", gateTestDate), true, "A complete inspector area page cannot pass its publication gate");
+assert.equal(serviceAreaPageIsApproved(syntheticArea, "Contractor", gateTestDate), true, "A complete contractor area page cannot pass its publication gate");
+assert.notEqual(syntheticArea.inspectorPage.metaDescription, syntheticArea.contractorPage.metaDescription, "Inspector and contractor area metadata must remain distinct");
+assert.deepEqual(contractorRequestCategories.map((category) => category.key), contractorRequestCategoryIds, "Shared case-study categories drifted from the contractor request form");
 
 assert.ok(searchSuggestions.inspector.length >= 5, "Inspector search lacks suggested queries");
 assert.ok(searchSuggestions.contractor.length >= 5, "Contractor search lacks suggested queries");
@@ -144,7 +567,7 @@ for (const site of [inspector, contractor]) {
 const routeRecords = [
   ...enabledInspectorRoutes.map((route) => ({ route, publicPath: route.path, outputFile: routeFile(route.path), site: "inspector" })),
   ...enabledContractorRoutes.map((route) => ({ route, publicPath: contractorPublicPath(route.path), outputFile: contractorOutputFile(route.path), site: "contractor" })),
-  { route: { key: "property-services", title: "C&G Property Services", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/property-services/", outputFile: "property-services/index.html", site: "portal" },
+  { route: { key: "property-services", title: "Choose a C&G Service", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/property-services/", outputFile: "property-services/index.html", site: "portal" },
 ];
 
 const titles = new Map();
@@ -185,7 +608,26 @@ for (const record of routeRecords) {
   if (record.site === "contractor") {
     assert.match(visibleMarkup, new RegExp(`CSLB #${business.contracting.license.number}`), `${record.outputFile} lacks the visible license number`);
     assert.match(visibleMarkup, new RegExp(escapeRegex(business.contracting.contractorOfRecord)), `${record.outputFile} lacks the visible contractor of record`);
-    assert.equal(graph.some((entry) => entry["@type"] === "GeneralContractor"), false, `${record.outputFile} must not claim GeneralContractor identity until the public-name relationship is approved`);
+    const website = graph.find((entry) => entry["@type"] === "WebSite");
+    assert.equal(website?.name, business.contracting.publicName, `${record.outputFile} WebSite name is inconsistent`);
+    assert.equal(webPage?.isPartOf?.["@id"], website?.["@id"], `${record.outputFile} WebPage points to a missing WebSite entity`);
+    const contractorEntity = graph.find((entry) => entry["@type"] === "GeneralContractor");
+    if (record.route.path === "/") {
+      assert.ok(contractorEntity, `${record.outputFile} lacks the approved GeneralContractor entity`);
+      assert.equal(contractorEntity.name, business.contracting.contractorOfRecord, `${record.outputFile} schema contractor-of-record name is wrong`);
+      assert.equal(contractorEntity.alternateName, business.contracting.publicName, `${record.outputFile} schema public brand is wrong`);
+      assert.equal(contractorEntity.description, business.contracting.publicBrandDisclosure, `${record.outputFile} schema disclosure is wrong`);
+      assert.equal(contractorEntity.identifier?.propertyID, "CSLB", `${record.outputFile} schema license authority is wrong`);
+      assert.equal(contractorEntity.identifier?.value, business.contracting.license.number, `${record.outputFile} schema license number is wrong`);
+      assert.deepEqual(contractorEntity.sameAs, [business.contracting.license.officialLookupUrl], `${record.outputFile} schema official record is wrong`);
+      assert.equal(webPage?.about?.["@id"], contractorEntity["@id"], `${record.outputFile} WebPage does not reference the contractor entity`);
+    } else {
+      assert.equal(contractorEntity, undefined, `${record.outputFile} duplicates the root-only GeneralContractor entity`);
+    }
+    if (record.route.key === "about") {
+      assert.match(visibleMarkup, new RegExp(escapeRegex(escapeHtmlText(business.contracting.publicBrandDisclosure))), `${record.outputFile} lacks the approved public-brand disclosure`);
+      assert.doesNotMatch(visibleMarkup, /awaits owner confirmation|confirm the appropriate legal business-name disclosure/i, `${record.outputFile} contains stale pending identity language`);
+    }
   }
   if (record.route.article) {
     const article = graph.find((entry) => entry["@type"] === "Article");
@@ -239,13 +681,18 @@ for (const route of [...disabledInspectorRoutes, ...disabledContractorRoutes]) {
   assert.equal(rootSitemap.includes(`${expectedOrigin}${route.path}`) || contractorSitemap.includes(`${expectedOrigin}/contracting${route.path}`), false, `Disabled route ${route.path} leaked into a sitemap`);
   assert.equal(new RegExp(`href="[^"]*${escapeRegex(route.path)}"`).test(publicRouteMarkup), false, `Disabled route ${route.path} leaked into public navigation`);
 }
-await assert.rejects(stat(resolve(output, "sample-report/index.html")), "Disabled sample report route was emitted");
+if (getApprovedSampleReports().length) await stat(resolve(output, "sample-report/index.html"));
+else await assert.rejects(stat(resolve(output, "sample-report/index.html")), "Disabled sample report route was emitted");
 
 for (const [file, route] of [["404.html", inspectorNotFoundRoute], ["contracting/404.html", contractorNotFoundRoute]]) {
   const html = await read(resolve(output, file));
   assert.match(html, /<meta name="robots" content="noindex,follow"/, `${file} must be noindex,follow`);
   assert.equal(titleContent(html), escapeHtmlText(route.title), `${file} has the wrong title`);
   assert.match(html, /<h1(?:\s|>)/, `${file} lacks the intended not-found experience`);
+  assert.equal((html.match(/id="cg-page-schema"/g) || []).length, 1, `${file} must contain one JSON-LD script`);
+  const schema = JSON.parse(schemaContent(html));
+  const expected404Url = file === "404.html" ? `${expectedOrigin}/404.html` : `${expectedOrigin}/contracting/404.html`;
+  assert.equal(schema["@graph"]?.find((entry) => entry["@type"] === "WebPage")?.url, expected404Url, `${file} JSON-LD URL is wrong`);
 }
 
 const legacyInspectorRoutes = ["", "services", "about", "areas", "faq", "resources", "contact"];
@@ -265,7 +712,8 @@ const assembledContractorServices = await read(resolve(output, "contracting/serv
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
-assert.equal(/Published with permission|review-section|review-copy/i.test(assembledInspector), false, "The inspector home page rendered a review before approval");
+if (approvedReviews.length) assert.match(assembledInspector, /Published with permission|review-section|review-copy/i, "Approved reviews did not render on the inspector home page");
+else assert.equal(/Published with permission|review-section|review-copy/i.test(assembledInspector), false, "The inspector home page rendered a review before approval");
 assert.match(assembledContractorServices, /id="project-readiness-guide"/, "Contractor Services lacks the prerendered readiness guide");
 assert.match(assembledContractorServices, /id="request-worksheet"/, "Contractor Services lacks the printable request worksheet");
 assert.match(assembledContractorServices, /Private planning tool/, "Contractor Services lacks the local-only planning context");
@@ -336,21 +784,37 @@ for (const image of ["attic-inspection.jpg", "report-laptop.jpg"]) {
 
 const approvedInspectorAreas = approvedServiceAreas("Inspector").map((area) => area.label);
 const approvedContractorAreas = approvedServiceAreas("Contractor").map((area) => area.label);
-assert.deepEqual(approvedInspectorAreas, [], "Unexpected inspector service area became approved");
-assert.deepEqual(approvedContractorAreas, [], "Unexpected contractor service area became approved");
+assert.equal(new Set(approvedInspectorAreas).size, approvedInspectorAreas.length, "Inspector service-area labels are duplicated");
+assert.equal(new Set(approvedContractorAreas).size, approvedContractorAreas.length, "Contractor service-area labels are duplicated");
 for (const area of serviceAreas.filter((item) => item.status !== "approved")) {
   assert.equal(new RegExp(`\\b${escapeRegex(area.label)}\\b`, "i").test(publicRouteMarkup), false, `Unapproved service area rendered publicly: ${area.label}`);
 }
-assert.equal(/\bLos Angeles area\b/i.test(publicRouteMarkup), false, "Unapproved Los Angeles-area wording rendered publicly");
+if (!serviceAreas.some((area) => area.status === "approved" && /Los Angeles/i.test(area.label))) {
+  assert.equal(/\bLos Angeles area\b/i.test(publicRouteMarkup), false, "Unapproved Los Angeles-area wording rendered publicly");
+}
 
 const placeholderPatterns = [/\bTODO\b/, /\bTBD\b/, /lorem ipsum/i, /\[city\]/i, /\[insert[^\]]*\]/i, /555[-.) ]?\d{3}[- ]?\d{4}/];
 for (const pattern of placeholderPatterns) assert.equal(pattern.test(publicRouteMarkup), false, `Public output contains placeholder content: ${pattern}`);
-assert.equal(/(?:form|request|message) (?:was|has been) sent/i.test(publicRouteMarkup), false, "Public mailto flow falsely claims server receipt");
+if (
+  formTransportFor("inspector-contact")?.provider === "mailto"
+  && formTransportFor("contractor-estimate")?.provider === "mailto"
+) assert.equal(/(?:form|request|message) (?:was|has been) sent/i.test(publicRouteMarkup), false, "Public mailto flow falsely claims server receipt");
 assert.equal(/(?:same-day|next-day) reports? (?:are )?(?:available|guaranteed)|free (?:estimate|site visit)s? (?:are )?(?:available|included)|emergency service (?:is )?available/i.test(publicRouteMarkup), false, "Public output contains an unsupported schedule, price, or emergency promise");
 assert.ok(contractorSource.includes("Nothing has been sent or received"), "Mailto transport truth is missing from the eligible state");
-assert.ok(assembledEstimate.includes("Nothing is uploaded or sent"), "Estimate submit control lacks transport truth");
-assert.equal(/class="[^"]*testimonial|itemprop="review"|reviewRating|"@type":"Review"/i.test(publicRouteMarkup), false, "Unapproved testimonial content rendered publicly");
-assert.equal(/calendly|formspree|typeform|jotform|google\.com\/maps\/embed|review-widget|googletagmanager|google-analytics|plausible\.io|cdn\.usefathom/i.test(publicRouteMarkup), false, "A pending booking, form, map, review, or analytics provider leaked into public output");
+if (formTransportFor("contractor-estimate")?.provider === "mailto") {
+  assert.ok(assembledEstimate.includes("Nothing is uploaded or sent"), "Estimate submit control lacks mailto transport truth");
+} else {
+  assert.ok(assembledEstimate.includes("Send request securely"), "Approved contractor processor lacks secure submit copy");
+}
+if (!approvedReviews.length) assert.equal(/class="[^"]*testimonial|itemprop="review"|reviewRating|"@type":"Review"/i.test(publicRouteMarkup), false, "Unapproved testimonial content rendered publicly");
+if (!integrationCanRender(integrations.booking, now)) assert.equal(/calendly/i.test(publicRouteMarkup), false, "A pending booking provider leaked into public output");
+if (
+  !integrationCanRender(integrations.secureInspectionFormTransport, now)
+  && !integrationCanRender(integrations.secureContractorFormTransport, now)
+) assert.equal(/formspree|typeform|jotform/i.test(publicRouteMarkup), false, "A pending form provider leaked into public output");
+if (!integrationCanRender(integrations.maps, now)) assert.equal(/google\.com\/maps\/embed/i.test(publicRouteMarkup), false, "A pending map provider leaked into public output");
+if (!integrationCanRender(integrations.reviews, now)) assert.equal(/review-widget/i.test(publicRouteMarkup), false, "A pending review provider leaked into public output");
+if (!integrationCanRender(integrations.analytics, now)) assert.equal(/googletagmanager|google-analytics|plausible\.io|cdn\.usefathom/i.test(publicRouteMarkup), false, "A pending analytics provider leaked into public output");
 
 for (const [surface, expectedCount] of [["inspector", enabledInspectorRoutes.length], ["contractor", enabledContractorRoutes.length]]) {
   const directory = resolve(output, "pagefind", surface);
@@ -373,6 +837,9 @@ assert.ok(inspectorFaqItems.length >= 20, "Inspector FAQ registry is incomplete"
 assert.ok(contractorFaqs.length >= 15, "Contractor FAQ registry is incomplete");
 
 const provenanceByBasename = new Map(imageProvenance.map((record) => [basename(record.file), record]));
+const approvedClientPhotosByPublicPath = new Map(
+  getAllApprovedClientProjectPhotos(now).map((record) => [record.publicPath, record]),
+);
 for (const record of imageProvenance) {
   assert.equal(record.status, "approved", `Pending image ${record.id} is registered for production`);
   assert.ok(record.source && record.licenseOrPermission && record.approvedAt, `Image ${record.id} lacks complete provenance fields`);
@@ -380,6 +847,42 @@ for (const record of imageProvenance) {
   const { size } = await stat(resolve(root, record.file));
   assert.ok(size < 450_000, `${record.file} exceeds the 450 KB editorial image budget`);
 }
+
+assert.equal(Object.keys(responsiveEditorialImages).length, imageProvenance.length, "Responsive-image registry does not cover every approved editorial image");
+assert.deepEqual(responsiveImageWidths, [640, 960, 1440], "Responsive-image width contract drifted");
+for (const image of Object.values(responsiveEditorialImages)) {
+  assert.equal(image.classification, "generated_editorial", `${image.id} responsive variants changed the source classification`);
+  assert.equal(image.depictsActualClientWork, false, `${image.id} responsive variants imply actual client work`);
+  const sourceRoot = image.surface === "contractor" ? resolve(contractor, "public") : resolve(inspector, "public");
+  const outputRoot = image.surface === "contractor" ? resolve(output, "contracting") : output;
+  for (const format of ["avif", "webp"]) {
+    assert.deepEqual(image.variants[format].map((variant) => variant.width), responsiveImageWidths, `${image.id} ${format} widths are incomplete`);
+    for (const variant of image.variants[format]) {
+      const sourceStats = await stat(resolve(sourceRoot, variant.path));
+      const outputStats = await stat(resolve(outputRoot, variant.path));
+      assert.ok(sourceStats.size > 0, `${image.id} ${format} source variant is empty`);
+      assert.equal(outputStats.size, sourceStats.size, `${image.id} ${format} variant changed during assembly`);
+    }
+  }
+}
+for (const [site, fontFiles] of [
+  ["inspector", ["dm-sans-variable.woff2", "libre-baskerville-variable.woff2", "libre-baskerville-italic-variable.woff2"]],
+  ["contractor", ["dm-sans-variable.woff2", "newsreader-variable.woff2"]],
+]) {
+  const sourceRoot = site === "inspector" ? resolve(inspector, "public/assets/fonts") : resolve(contractor, "public/assets/fonts");
+  const outputRoot = site === "inspector" ? resolve(output, "assets/fonts") : resolve(output, "contracting/assets/fonts");
+  for (const font of fontFiles) {
+    const sourceStats = await stat(resolve(sourceRoot, font));
+    const outputStats = await stat(resolve(outputRoot, font));
+    assert.ok(sourceStats.size > 0, `${site} font ${font} is empty`);
+    assert.equal(outputStats.size, sourceStats.size, `${site} font ${font} changed during assembly`);
+  }
+}
+assert.equal(/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(allSource), false, "A production stylesheet still requests third-party fonts");
+assert.match(assembledInspector, /<source type="image\/avif"[^>]*srcSet="\/assets\/optimized\/hero-inspector-/, "Inspector hero lacks AVIF responsive sources");
+assert.match(assembledInspector, /<source type="image\/webp"[^>]*srcSet="\/assets\/optimized\/hero-inspector-/, "Inspector hero lacks WebP responsive sources");
+assert.match(assembledContractor, /<source type="image\/avif"[^>]*srcSet="\/contracting\/assets\/optimized\/contractor-hero-/, "Contractor hero lacks AVIF responsive sources");
+assert.match(assembledContractor, /<source type="image\/webp"[^>]*srcSet="\/contracting\/assets\/optimized\/contractor-hero-/, "Contractor hero lacks WebP responsive sources");
 
 for (const record of routeRecords) {
   const html = await read(resolve(output, record.outputFile));
@@ -390,7 +893,11 @@ for (const record of routeRecords) {
     assert.notEqual(alt, undefined, `${record.outputFile} image ${source} lacks alt text`);
     assert.match(attributes, /width="\d+"/, `${record.outputFile} image ${source} lacks width`);
     assert.match(attributes, /height="\d+"/, `${record.outputFile} image ${source} lacks height`);
-    if (source.endsWith(".jpg")) {
+    if (source.startsWith("/contracting/assets/projects/")) {
+      const approvedPhoto = approvedClientPhotosByPublicPath.get(source);
+      assert.ok(approvedPhoto, `${record.outputFile} client-project image ${source} lacks an approved publication record`);
+      assert.ok(alt, `${record.outputFile} client-project image ${source} has empty alt text`);
+    } else if (/\.(?:jpg|jpeg)$/i.test(source)) {
       const provenance = provenanceByBasename.get(basename(source));
       assert.ok(provenance, `${record.outputFile} image ${source} lacks a provenance record`);
       assert.equal(provenance.status, "approved", `${record.outputFile} image ${source} is not approved`);
@@ -408,6 +915,7 @@ assert.match(inspectorPrivacy, /GitHub Pages/i, "Inspector privacy lacks the act
 assert.match(contractorPrivacy, /GitHub Pages/i, "Contractor privacy lacks the actual static host");
 
 assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/sitemap\\.xml`), "Root robots.txt has the wrong sitemap");
+assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Root robots.txt does not advertise the contractor sitemap");
 assert.match(await read(resolve(output, "contracting/robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Contractor robots.txt has the wrong sitemap");
 
 console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, and legacy redirects.`);

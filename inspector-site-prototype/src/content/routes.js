@@ -1,3 +1,12 @@
+import {
+  getApprovedSampleReports,
+  getApprovedServiceAreaPages,
+  PUBLICATION_SURFACES,
+} from "../../../shared/publicationRegistry.js";
+
+const approvedSampleReport = getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport)[0] || null;
+const approvedAreaPages = getApprovedServiceAreaPages("Inspector");
+
 const coreRoutes = [
   {
     key: "home",
@@ -75,7 +84,7 @@ const coreRoutes = [
     key: "contact",
     path: "/contact/",
     label: "Contact",
-    title: "Schedule a Home Inspection | C&G",
+    title: "Request a Home Inspection | C&G",
     description:
       "Contact C&G with the property address, inspection type, timing, and access details to request a home inspection.",
     enabled: true,
@@ -116,13 +125,31 @@ const coreRoutes = [
     title: "Sample Home Inspection Report | C&G",
     description:
       "See how a C&G home inspection report organizes photographs, observations, limitations, and practical follow-up recommendations.",
-    enabled: false,
+    enabled: Boolean(approvedSampleReport),
     navigation: false,
-    sitemap: false,
+    footer: Boolean(approvedSampleReport),
+    sitemap: Boolean(approvedSampleReport),
     disabledReason: "Owner-approved, properly redacted sample report is required.",
+    sampleReport: approvedSampleReport,
     breadcrumbs: [{ label: "Sample Report", path: "/sample-report/" }],
   },
 ];
+
+export const serviceAreaRouteDefinitions = approvedAreaPages.map((area) => ({
+  key: `area-${area.id}`,
+  path: `/areas/${area.id}/`,
+  label: area.label,
+  title: area.pageTitle,
+  description: area.metaDescription,
+  enabled: true,
+  navigation: false,
+  sitemap: true,
+  serviceArea: area,
+  breadcrumbs: [
+    { label: "Areas We Serve", path: "/areas/" },
+    { label: area.label, path: `/areas/${area.id}/` },
+  ],
+}));
 
 export const articleRouteDefinitions = [
   ["preparing-for-a-home-inspection", "Preparing for a Home Inspection | C&G", "Prepare access, utilities, systems, pets, and property details so a home inspection can begin with fewer preventable limitations."],
@@ -152,7 +179,7 @@ export const articleRouteDefinitions = [
   ],
 }));
 
-export const inspectorRoutes = [...coreRoutes, ...articleRouteDefinitions];
+export const inspectorRoutes = [...coreRoutes, ...serviceAreaRouteDefinitions, ...articleRouteDefinitions];
 export const enabledInspectorRoutes = inspectorRoutes.filter((route) => route.enabled);
 export const inspectorNavigation = inspectorRoutes.filter((route) => route.enabled && route.navigation);
 export const inspectorFooterRoutes = inspectorRoutes.filter((route) => route.enabled && route.footer);

@@ -16,13 +16,16 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 20
     env:
       CI: true
+      HOME: /root
       SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://www.cginspection.net' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -39,22 +42,36 @@ jobs:
         run: npm ci
         working-directory: contractor-site-prototype
       - name: Build and run deterministic quality gates
+        id: deterministic
         run: npm run quality
-      - name: Install the pinned browser
-        run: npx playwright install --with-deps chromium
+      - name: Run cross-browser and visual regression suite
+        run: npm run test:browsers
       - name: Resolve the pinned browser path
+        if: ${{ always() && steps.deterministic.outcome == 'success' }}
         run: |
           chrome_path="$(node --input-type=module -e "import { chromium } from 'playwright'; process.stdout.write(chromium.executablePath())")"
           echo "CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
       - name: Run axe accessibility audit
+        if: ${{ always() && steps.deterministic.outcome == 'success' }}
         run: npm run audit:a11y
       - name: Run Lighthouse audit
+        if: ${{ always() && steps.deterministic.outcome == 'success' }}
         run: npm run audit:lighthouse
       - name: Preserve Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lighthouse-reports
           path: .lighthouseci/reports
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Preserve automated browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: automated-browser-regression-evidence
+          path: |
+            playwright-report
+            test-results/playwright
           if-no-files-found: ignore
           retention-days: 7
