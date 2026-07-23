@@ -9,6 +9,8 @@ import {
   formTransportFor,
   prepareMailto,
   protectedUploadPolicyFor,
+  submitApprovedForm,
+  uploadProtectedFile,
 } from "../shared/integrationAdapters.js";
 import {
   responsiveEditorialImages,
@@ -220,6 +222,126 @@ assert.deepEqual(createFileShareAuthorization(gateTestDate), {
   statementVersion: "2026-07-22",
   confirmedAt: "2026-07-23T12:00:00.000Z",
 }, "File-sharing authorization is not versioned and timestamped");
+
+const approvedSecureTransportFixture = {
+  status: "approved",
+  enabled: true,
+  capability: "form-transport",
+  provider: "Approved Processor",
+  allowedSurfaces: ["inspector-contact"],
+  serverSubmissionEnabled: true,
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    endpoint: "https://forms.example.test/v1/submit",
+    privacyUrl: "https://forms.example.test/privacy",
+    formId: "inspection_request",
+    method: "POST",
+    encoding: "application/json",
+    retentionPolicy: "Submitted requests are retained only for the approved business-record period.",
+    deletionPolicy: "Deletion requests are handled under the approved legal and records policy.",
+    abuseControls: "The processor applies rate limiting, bot controls, and server-side validation.",
+    responseContractVersion: "form-response-v1",
+  },
+};
+const approvedUploadFixture = {
+  status: "approved",
+  enabled: true,
+  capability: "protected-upload",
+  provider: "Approved Upload Broker",
+  allowedSurfaces: ["inspector-contact"],
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    sessionEndpoint: "https://uploads.example.test/v1/session",
+    privacyUrl: "https://uploads.example.test/privacy",
+    maxBytes: 10_000_000,
+    maxFiles: 3,
+    allowedMimeTypes: ["image/jpeg", "application/pdf"],
+    allowedUploadHosts: ["objects.example.test"],
+    sessionTtlSeconds: 900,
+    oneTimeUploadContract: "Each upload URL accepts one file, expires after the configured session, and cannot be reused.",
+    retentionPolicy: "Linked files are retained only for the approved request-review period.",
+    deletionPolicy: "Expired, abandoned, revoked, and owner-deleted files follow the approved deletion schedule.",
+    malwareControls: "Uploaded content is quarantined and scanned before staff access.",
+  },
+};
+const originalSecureInspectionTransport = integrations.secureInspectionFormTransport;
+const originalProtectedUpload = integrations.protectedUpload;
+try {
+  integrations.secureInspectionFormTransport = approvedSecureTransportFixture;
+  integrations.protectedUpload = approvedUploadFixture;
+
+  const formPayload = { propertyAddress: "Adapter test property" };
+  const formCalls = [];
+  const formResult = await submitApprovedForm("inspector-contact", formPayload, {
+    fetchImpl: async (url, options) => {
+      formCalls.push({ url, options });
+      return {
+        ok: true,
+        headers: { get: (name) => name.toLowerCase() === "content-type" ? "application/json" : null },
+        json: async () => ({ receipt: "receipt_123456" }),
+      };
+    },
+  });
+  assert.equal(formResult.mode, "submitted", "Approved secure form did not submit through its HTTPS adapter");
+  assert.equal(formResult.receipt, "receipt_123456", "Approved secure form lost its opaque receipt");
+  assert.equal(formCalls.length, 1, "Approved secure form made an unexpected number of requests");
+  assert.equal(formCalls[0].url, approvedSecureTransportFixture.publicConfig.endpoint, "Secure form used the wrong endpoint");
+  assert.equal(formCalls[0].options.credentials, "omit", "Secure form sent browser credentials");
+  assert.equal(formCalls[0].options.redirect, "error", "Secure form permits an unreviewed redirect");
+  assert.deepEqual(JSON.parse(formCalls[0].options.body), {
+    formId: approvedSecureTransportFixture.publicConfig.formId,
+    surface: "inspector-contact",
+    payload: formPayload,
+  }, "Secure form request body drifted from its approved contract");
+
+  const authorization = createFileShareAuthorization(new Date("2026-07-22T12:00:00Z"));
+  const testFile = {
+    name: "adapter-test.jpg",
+    size: 4_096,
+    type: "image/jpeg",
+  };
+  const uploadCalls = [];
+  const uploadResult = await uploadProtectedFile("inspector-contact", testFile, {
+    authorization,
+    fetchImpl: async (url, options) => {
+      uploadCalls.push({ url, options });
+      if (uploadCalls.length === 1) {
+        return {
+          ok: true,
+          json: async () => ({
+            uploadUrl: "https://objects.example.test/one-time-upload",
+            uploadId: "upload_12345678",
+          }),
+        };
+      }
+      return { ok: true };
+    },
+  });
+  assert.equal(uploadResult.uploadId, "upload_12345678", "Protected upload lost its opaque upload ID");
+  assert.equal(uploadCalls.length, 2, "Protected upload did not use exactly one session request and one upload");
+  assert.equal(uploadCalls[0].url, approvedUploadFixture.publicConfig.sessionEndpoint, "Upload used the wrong broker endpoint");
+  assert.equal(uploadCalls[0].options.credentials, "omit", "Upload session sent browser credentials");
+  assert.equal(uploadCalls[1].url, "https://objects.example.test/one-time-upload", "Upload ignored the broker allowlisted URL");
+  assert.equal(uploadCalls[1].options.referrerPolicy, "no-referrer", "File upload exposed a referrer");
+  assert.equal(uploadCalls[1].options.body, testFile, "Protected upload did not send the approved file object");
+  await assert.rejects(
+    uploadProtectedFile("inspector-contact", testFile, {
+      authorization: null,
+      fetchImpl: async () => {
+        throw new Error("Network should not be reached without authorization.");
+      },
+    }),
+    /Confirm authorization/,
+    "Protected upload accepted a file without current authorization",
+  );
+} finally {
+  integrations.secureInspectionFormTransport = originalSecureInspectionTransport;
+  integrations.protectedUpload = originalProtectedUpload;
+}
 
 assert.equal(reviewSlots.length, 50, "The review approval registry must contain exactly 50 slots");
 assert.equal(new Set(reviewSlots.map((review) => review.id)).size, 50, "Review registry IDs are not unique");

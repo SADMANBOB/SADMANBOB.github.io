@@ -423,8 +423,8 @@ const browserA11yChecks = async () => {
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
-      const blocking = results.violations.filter((violation) => violation.impact === "critical"
-        || (violation.impact === "serious" && violation.id !== "color-contrast"));
+      const blocking = results.violations.filter((violation) =>
+        violation.impact === "critical" || violation.impact === "serious");
       warnings += results.violations.length - blocking.length;
       for (const violation of blocking) {
         const targets = violation.nodes.flatMap((node) => node.target).slice(0, 4).join(", ");
@@ -443,7 +443,7 @@ const browserA11yChecks = async () => {
     return;
   }
   console.log(`Browser accessibility audit passed across ${routes.length} sitemap routes.`);
-  if (warnings) console.log(`- ${warnings} non-blocking contrast/moderate/minor axe finding${warnings === 1 ? "" : "s"} reported for follow-up`);
+  if (warnings) console.log(`- ${warnings} non-blocking moderate/minor axe finding${warnings === 1 ? "" : "s"} reported for follow-up`);
 };
 
 if (mode === "static") await staticChecks();
