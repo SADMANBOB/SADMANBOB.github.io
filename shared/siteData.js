@@ -19,6 +19,9 @@ export const business = {
   contracting: {
     publicName: "C&G Contracting Services",
     contractorOfRecord: "Coastal Construction Services",
+    publicBrandDisclosure:
+      "C&G Contracting Services is the public-facing brand for contracting work performed by Coastal Construction Services, CSLB #987643.",
+    publicBrandAuthorizedAt: "2026-07-23",
     phoneDisplay: "(310) 505-6581",
     phoneHref: "tel:+13105056581",
     phoneE164: "+1-310-505-6581",
@@ -28,9 +31,8 @@ export const business = {
       number: "987643",
       classification: "B — General Building",
       status: "approved",
-      officialLookupUrl:
-        "https://www.cslb.ca.gov/OnlineServices/CheckLicenseII/LicenseDetail.aspx?LicNum=987643",
-      liveVerifiedAt: "2026-07-22",
+      officialLookupUrl: "https://www.cslb.ca.gov/987643",
+      liveVerifiedAt: "2026-07-23",
       expiresAt: "2027-10-31",
     },
   },
@@ -152,14 +154,16 @@ export const claims = {
     evidenceUrl: business.contracting.license.officialLookupUrl,
     verifiedAt: business.contracting.license.liveVerifiedAt,
     expiresAt: business.contracting.license.expiresAt,
-    allowedSurfaces: ["contractor"],
+    allowedSurfaces: ["inspector", "contractor", "portal"],
   },
   contractorPublicName: {
-    status: "pending",
-    evidenceType: "legal-name, DBA, or approved public-brand explanation",
-    verifiedAt: null,
+    status: "approved",
+    publicCopy: business.contracting.publicBrandDisclosure,
+    evidenceType: "explicit publisher authorization of the public-brand and contractor-of-record wording",
+    evidenceReference: "Site-owner publishing workflow authorization recorded 2026-07-23",
+    verifiedAt: business.contracting.publicBrandAuthorizedAt,
     expiresAt: null,
-    allowedSurfaces: [],
+    allowedSurfaces: ["inspector", "contractor", "portal"],
   },
   customerTestimonials: {
     status: "pending",
@@ -173,6 +177,12 @@ export const claims = {
 export function claimIsApproved(claim, onDate = new Date()) {
   if (!claim || claim.status !== "approved") return false;
   if (!(onDate instanceof Date) || !Number.isFinite(onDate.getTime())) return false;
+  if (
+    !Array.isArray(claim.allowedSurfaces)
+    || claim.allowedSurfaces.length === 0
+    || new Set(claim.allowedSurfaces).size !== claim.allowedSurfaces.length
+    || claim.allowedSurfaces.some((surface) => typeof surface !== "string" || !surface.trim())
+  ) return false;
   if (typeof claim.verifiedAt !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(claim.verifiedAt)) return false;
   const verifiedAt = new Date(`${claim.verifiedAt}T00:00:00Z`);
   if (!Number.isFinite(verifiedAt.getTime()) || verifiedAt > onDate) return false;
@@ -181,6 +191,11 @@ export function claimIsApproved(claim, onDate = new Date()) {
   const endOfDate = new Date(`${claim.expiresAt}T23:59:59Z`);
   return Number.isFinite(endOfDate.getTime()) && endOfDate >= onDate;
 }
+
+export const claimCanRenderOn = (claim, surface, onDate = new Date()) =>
+  claimIsApproved(claim, onDate)
+  && typeof surface === "string"
+  && claim.allowedSurfaces.includes(surface);
 
 export const serviceAreas = [
   {

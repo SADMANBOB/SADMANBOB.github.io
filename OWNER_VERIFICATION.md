@@ -11,9 +11,12 @@ expiration or recheck date have been recorded.
 
 ## Business identity and credentials
 
-- Confirm the legal relationship between the public-facing name
-  `C&G Contracting Services` and contractor of record
-  `Coastal Construction Services`, including any required DBA disclosure.
+- Approved for website publication on 2026-07-23:
+  `C&G Contracting Services is the public-facing brand for contracting work
+  performed by Coastal Construction Services, CSLB #987643.` This approval
+  does not assert that C&G is a DBA, division, company, or separate legal
+  entity. Reopen this item before using any of those terms or if the public
+  brand, contractor of record, or license changes.
 - Confirm any home-inspector certification or directory claim from a current
   primary record.
 - Approve exact wording and current evidence for general-liability and

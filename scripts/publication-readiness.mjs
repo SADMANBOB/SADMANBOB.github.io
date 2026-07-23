@@ -1,4 +1,6 @@
 import {
+  business,
+  claimCanRenderOn,
   claimIsApproved,
   claims,
   integrationCanRender,
@@ -21,6 +23,7 @@ import {
 } from "../shared/publicationRegistry.js";
 
 const now = new Date();
+const publicIdentitySurfaces = ["inspector", "contractor", "portal"];
 const pendingIntegrations = Object.entries(integrations)
   .filter(([, integration]) => !integrationCanRender(integration, now))
   .map(([id, integration]) => ({
@@ -31,8 +34,12 @@ const pendingIntegrations = Object.entries(integrations)
 const report = {
   generatedAt: now.toISOString(),
   publicationCritical: {
-    contractorLicenseCurrent: claimIsApproved(claims.contractorLicense, now),
-    contractorPublicNameApproved: claimIsApproved(claims.contractorPublicName, now),
+    contractorLicenseCurrent: publicIdentitySurfaces.every((surface) =>
+      claimCanRenderOn(claims.contractorLicense, surface, now)),
+    contractorPublicNameApproved:
+      claims.contractorPublicName.publicCopy === business.contracting.publicBrandDisclosure
+      && publicIdentitySurfaces.every((surface) =>
+        claimCanRenderOn(claims.contractorPublicName, surface, now)),
   },
   publicReady: {
     reviews: getApprovedReviews("inspector-home", now).length,

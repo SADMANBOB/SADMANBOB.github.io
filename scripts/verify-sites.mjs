@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
-import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
+import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimCanRenderOn, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
 import {
   bookingActionFor,
   createFileShareAuthorization,
@@ -93,6 +93,21 @@ for (const [id, claim] of Object.entries(claims)) {
 assert.equal(claimIsApproved(claims.contractorLicense, now), true, "Official contractor license gate is not current at build time");
 assert.ok(business.contracting.license.liveVerifiedAt, "Contractor license lacks a live verification date");
 assert.match(business.contracting.license.officialLookupUrl, /^https:\/\/www\.cslb\.ca\.gov\//, "Contractor license link is not an official CSLB URL");
+assert.equal(claims.contractorPublicName.publicCopy, business.contracting.publicBrandDisclosure, "Approved contractor public-name copy drifted from the business registry");
+assert.deepEqual(
+  claims.contractorPublicName.allowedSurfaces,
+  ["inspector", "contractor", "portal"],
+  "Contractor public-name approval does not match the rendered surfaces",
+);
+assert.deepEqual(
+  claims.contractorLicense.allowedSurfaces,
+  ["inspector", "contractor", "portal"],
+  "Contractor license approval does not match the rendered surfaces",
+);
+for (const surface of ["inspector", "contractor", "portal"]) {
+  assert.equal(claimCanRenderOn(claims.contractorPublicName, surface, now), true, `Contractor public name is not approved for ${surface}`);
+  assert.equal(claimCanRenderOn(claims.contractorLicense, surface, now), true, `Contractor license is not approved for ${surface}`);
+}
 assert.equal(analytics.enabled, false, "Analytics must remain disabled until a provider is approved");
 assert.equal(integrationCanRender(integrations.siteSearch), true, "Approved Pagefind search integration is not renderable");
 assert.equal(integrationCanRender(integrations.inspectionFormTransport), true, "Inspection mailto transport is not renderable");
@@ -552,7 +567,7 @@ for (const site of [inspector, contractor]) {
 const routeRecords = [
   ...enabledInspectorRoutes.map((route) => ({ route, publicPath: route.path, outputFile: routeFile(route.path), site: "inspector" })),
   ...enabledContractorRoutes.map((route) => ({ route, publicPath: contractorPublicPath(route.path), outputFile: contractorOutputFile(route.path), site: "contractor" })),
-  { route: { key: "property-services", title: "C&G Property Services", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/property-services/", outputFile: "property-services/index.html", site: "portal" },
+  { route: { key: "property-services", title: "Choose a C&G Service", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/property-services/", outputFile: "property-services/index.html", site: "portal" },
 ];
 
 const titles = new Map();
@@ -593,7 +608,26 @@ for (const record of routeRecords) {
   if (record.site === "contractor") {
     assert.match(visibleMarkup, new RegExp(`CSLB #${business.contracting.license.number}`), `${record.outputFile} lacks the visible license number`);
     assert.match(visibleMarkup, new RegExp(escapeRegex(business.contracting.contractorOfRecord)), `${record.outputFile} lacks the visible contractor of record`);
-    assert.equal(graph.some((entry) => entry["@type"] === "GeneralContractor"), false, `${record.outputFile} must not claim GeneralContractor identity until the public-name relationship is approved`);
+    const website = graph.find((entry) => entry["@type"] === "WebSite");
+    assert.equal(website?.name, business.contracting.publicName, `${record.outputFile} WebSite name is inconsistent`);
+    assert.equal(webPage?.isPartOf?.["@id"], website?.["@id"], `${record.outputFile} WebPage points to a missing WebSite entity`);
+    const contractorEntity = graph.find((entry) => entry["@type"] === "GeneralContractor");
+    if (record.route.path === "/") {
+      assert.ok(contractorEntity, `${record.outputFile} lacks the approved GeneralContractor entity`);
+      assert.equal(contractorEntity.name, business.contracting.contractorOfRecord, `${record.outputFile} schema contractor-of-record name is wrong`);
+      assert.equal(contractorEntity.alternateName, business.contracting.publicName, `${record.outputFile} schema public brand is wrong`);
+      assert.equal(contractorEntity.description, business.contracting.publicBrandDisclosure, `${record.outputFile} schema disclosure is wrong`);
+      assert.equal(contractorEntity.identifier?.propertyID, "CSLB", `${record.outputFile} schema license authority is wrong`);
+      assert.equal(contractorEntity.identifier?.value, business.contracting.license.number, `${record.outputFile} schema license number is wrong`);
+      assert.deepEqual(contractorEntity.sameAs, [business.contracting.license.officialLookupUrl], `${record.outputFile} schema official record is wrong`);
+      assert.equal(webPage?.about?.["@id"], contractorEntity["@id"], `${record.outputFile} WebPage does not reference the contractor entity`);
+    } else {
+      assert.equal(contractorEntity, undefined, `${record.outputFile} duplicates the root-only GeneralContractor entity`);
+    }
+    if (record.route.key === "about") {
+      assert.match(visibleMarkup, new RegExp(escapeRegex(escapeHtmlText(business.contracting.publicBrandDisclosure))), `${record.outputFile} lacks the approved public-brand disclosure`);
+      assert.doesNotMatch(visibleMarkup, /awaits owner confirmation|confirm the appropriate legal business-name disclosure/i, `${record.outputFile} contains stale pending identity language`);
+    }
   }
   if (record.route.article) {
     const article = graph.find((entry) => entry["@type"] === "Article");
