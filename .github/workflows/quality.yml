@@ -1,0 +1,60 @@
+name: Website quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: true
+      SITE_ORIGIN: ${{ vars.CG_SITE_ORIGIN || 'https://www.cginspection.net' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            inspector-site-prototype/package-lock.json
+            contractor-site-prototype/package-lock.json
+      - name: Install root quality dependencies
+        run: npm ci
+      - name: Install inspector dependencies
+        run: npm ci
+        working-directory: inspector-site-prototype
+      - name: Install contractor dependencies
+        run: npm ci
+        working-directory: contractor-site-prototype
+      - name: Build and run deterministic quality gates
+        run: npm run quality
+      - name: Install the pinned browser
+        run: npx playwright install --with-deps chromium
+      - name: Resolve the pinned browser path
+        run: |
+          chrome_path="$(node --input-type=module -e "import { chromium } from 'playwright'; process.stdout.write(chromium.executablePath())")"
+          echo "CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
+      - name: Run axe accessibility audit
+        run: npm run audit:a11y
+      - name: Run Lighthouse audit
+        run: npm run audit:lighthouse
+      - name: Preserve Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci/reports
+          if-no-files-found: ignore
+          retention-days: 7

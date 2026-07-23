@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, resolve } from "node:path";
-import { analytics, approvedServiceAreas, business, claimIsApproved, claims, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
+import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimIsApproved, claims, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
+import { getApprovedReviews, reviewSlots } from "../shared/reviewRegistry.js";
+import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
 import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
 import { enabledInspectionScope } from "../inspector-site-prototype/src/content/inspectionScope.js";
@@ -70,6 +72,37 @@ for (const id of ["booking", "analytics", "maps", "reviews"]) {
   assert.equal(integration.enabled, false, `Pending ${id} integration became enabled`);
   assert.equal(integration.provider, null, `Pending ${id} integration contains a provider`);
   assert.equal(integration.publicConfig, null, `Pending ${id} integration contains public configuration`);
+  assert.deepEqual(integration.allowedSurfaces, [], `Pending ${id} integration exposes an allowed surface`);
+}
+assert.deepEqual(approvedIntegrationsFor("inspector"), [{ id: "siteSearch", ...integrations.siteSearch }], "Inspector integration surface includes an unapproved provider");
+assert.deepEqual(approvedIntegrationsFor("contractor"), [{ id: "siteSearch", ...integrations.siteSearch }], "Contractor integration surface includes an unapproved provider");
+assert.deepEqual(approvedIntegrationsFor("inspector-contact"), [{ id: "inspectionFormTransport", ...integrations.inspectionFormTransport }], "Inspector form surface includes an unapproved provider");
+assert.deepEqual(approvedIntegrationsFor("contractor-estimate"), [{ id: "contractorFormTransport", ...integrations.contractorFormTransport }], "Contractor form surface includes an unapproved provider");
+
+assert.equal(reviewSlots.length, 50, "The review approval registry must contain exactly 50 slots");
+assert.equal(new Set(reviewSlots.map((review) => review.id)).size, 50, "Review registry IDs are not unique");
+for (const [index, review] of reviewSlots.entries()) {
+  assert.equal(review.id, `review-slot-${String(index + 1).padStart(2, "0")}`, `Review slot ${index + 1} has the wrong ID`);
+  assert.equal(review.status, "pending", `${review.id} was enabled without verified review evidence`);
+  assert.equal(review.sourceUrl, null, `${review.id} contains an unapproved source`);
+  assert.equal(review.exactApprovedText, null, `${review.id} contains unapproved review text`);
+  assert.equal(review.publicationPermissionAt, null, `${review.id} claims publication permission`);
+  assert.equal(review.displayAttribution, null, `${review.id} contains an unapproved attribution`);
+  assert.deepEqual(review.allowedSurfaces, [], `${review.id} exposes an allowed surface`);
+}
+assert.deepEqual(getApprovedReviews("inspector-home", new Date("2026-07-22T12:00:00Z")), [], "Pending reviews became publicly renderable");
+assert.match(inspectorSource, /<ReviewCarousel \/>/, "The gated review carousel is not mounted on the inspector home page");
+assert.match(inspectorSource, /if \(!reviewCount\) return null/, "The review carousel no longer disappears when no review is approved");
+
+assert.ok(searchSuggestions.inspector.length >= 5, "Inspector search lacks suggested queries");
+assert.ok(searchSuggestions.contractor.length >= 5, "Contractor search lacks suggested queries");
+assert.ok(expandedSearchTerms("inspector", "breaker box").includes("electrical panel"), "Inspector search synonym expansion is missing");
+assert.ok(expandedSearchTerms("contractor", "quote").includes("estimate process"), "Contractor search synonym expansion is missing");
+assert.deepEqual(dedupeSearchRecords([{ url: "/one/" }, { url: "/one/" }, { url: "/two/" }]).map((record) => record.url), ["/one/", "/two/"], "Search-result deduplication failed");
+for (const source of [inspectorSource, contractorSource]) {
+  assert.match(source, /Suggested searches/, "A site search dialog lacks suggested searches");
+  assert.match(source, /search-recovery/, "A site search dialog lacks cross-service recovery");
+  assert.match(source, /separationPolicy\.notice/, "A site search dialog lacks registry-backed separation context");
 }
 
 assert.deepEqual(evaluateContractorEligibility("no"), { state: "eligible", canPrepareOrdinaryRequest: true });
@@ -97,6 +130,9 @@ assert.match(contractorSource, /Nothing has been sent or received/, "Truthful ma
 assert.match(contractorSource, /id="inspection-eligibility"/, "The shared 12-month-rule anchor target is missing");
 assert.match(contractorSource, /eligibility\.state === "validation-error"/, "The unanswered eligibility path has no visible validation action");
 assert.match(contractorSource, /key=\{categoryKey \|\| "unclassified"\}/, "Category-query changes do not reset the estimate form state");
+assert.match(contractorSource, /ProjectReadinessGuide/, "Contractor Services lacks the project-readiness guide");
+assert.match(contractorSource, /mobile-conversion-rail/, "Contractor site lacks the mobile conversion rail");
+assert.match(contractorSource, /Nothing is uploaded or sent while you use this guide/, "Project-readiness guide lacks local-only transport truth");
 
 for (const site of [inspector, contractor]) {
   await stat(resolve(site, "dist/index.html"));
@@ -229,6 +265,11 @@ const assembledContractorServices = await read(resolve(output, "contracting/serv
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
+assert.equal(/Published with permission|review-section|review-copy/i.test(assembledInspector), false, "The inspector home page rendered a review before approval");
+assert.match(assembledContractorServices, /id="project-readiness-guide"/, "Contractor Services lacks the prerendered readiness guide");
+assert.match(assembledContractorServices, /id="request-worksheet"/, "Contractor Services lacks the printable request worksheet");
+assert.match(assembledContractorServices, /Private planning tool/, "Contractor Services lacks the local-only planning context");
+assert.match(assembledContractorServices, /Print blank worksheet/, "Contractor Services lacks the worksheet print action");
 assert.ok(assembledEstimate.includes("previous 12 months"), "Contractor estimate path lacks the 12-month eligibility boundary");
 assert.match(assembledEstimate, /Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
 assert.equal(/Full name/.test(assembledEstimate), false, "Contractor estimate prerender collects contact details before eligibility");

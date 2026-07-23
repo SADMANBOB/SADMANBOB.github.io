@@ -40,6 +40,7 @@ import {
 import { Breadcrumbs } from "./components/Breadcrumbs.jsx";
 import { ContactRequestForm } from "./components/ContactRequestForm.jsx";
 import { DisclosureGroup } from "./components/DisclosureGroup.jsx";
+import { ReviewCarousel } from "./components/ReviewCarousel.jsx";
 import { Seo } from "./components/Seo.jsx";
 import { SiteSearchDialog } from "./components/SiteSearchDialog.jsx";
 import { inspectorFaqGroups } from "./content/faqs.js";
@@ -253,6 +254,8 @@ function HomePage({ route, onNavigate }) {
           <div className="why-cg-grid">{reasons.map(([number, title, copy]) => <article key={number}><span>{number}</span><ShieldCheck size={22} aria-hidden="true" /><h3>{title}</h3><p>{copy}</p></article>)}</div>
         </div>
       </section>
+
+      <ReviewCarousel />
 
       <section className="scope-explainer-section">
         <div className="container scope-explainer-grid">

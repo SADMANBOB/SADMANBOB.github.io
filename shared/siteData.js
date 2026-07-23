@@ -319,6 +319,7 @@ export const integrations = {
     status: "approved",
     enabled: true,
     provider: "Pagefind",
+    allowedSurfaces: ["inspector", "contractor"],
     publicConfig: {
       inspectorBundle: "/pagefind/inspector/pagefind.js",
       contractorBundle: "/pagefind/contractor/pagefind.js",
@@ -330,6 +331,7 @@ export const integrations = {
     enabled: false,
     provider: null,
     publicConfig: null,
+    allowedSurfaces: [],
     fallback: "/contact/",
     ownerGate: "approved scheduling provider, public booking URL, availability policy, and privacy review",
   },
@@ -338,6 +340,7 @@ export const integrations = {
     enabled: true,
     provider: "mailto",
     publicConfig: null,
+    allowedSurfaces: ["inspector-contact"],
     serverSubmissionEnabled: false,
   },
   contractorFormTransport: {
@@ -345,6 +348,7 @@ export const integrations = {
     enabled: true,
     provider: "mailto",
     publicConfig: null,
+    allowedSurfaces: ["contractor-estimate"],
     serverSubmissionEnabled: false,
   },
   analytics: {
@@ -352,6 +356,7 @@ export const integrations = {
     enabled: false,
     provider: null,
     publicConfig: null,
+    allowedSurfaces: [],
     ownerGate: "approved provider, site ID, consent decision, event taxonomy, and privacy wording",
   },
   maps: {
@@ -359,6 +364,7 @@ export const integrations = {
     enabled: false,
     provider: null,
     publicConfig: null,
+    allowedSurfaces: [],
     ownerGate: "approved public business address or service-area policy and privacy review",
   },
   reviews: {
@@ -366,6 +372,7 @@ export const integrations = {
     enabled: false,
     provider: null,
     publicConfig: null,
+    allowedSurfaces: [],
     ownerGate: "verifiable source, customer permission, exact approved text, and display policy",
   },
 };
@@ -375,6 +382,12 @@ export function integrationCanRender(integration) {
   if (integration.provider === "Pagefind") return Boolean(integration.publicConfig?.inspectorBundle && integration.publicConfig?.contractorBundle);
   if (integration.provider === "mailto") return integration.serverSubmissionEnabled === false;
   return Boolean(integration.provider && integration.publicConfig);
+}
+
+export function approvedIntegrationsFor(surface) {
+  return Object.entries(integrations)
+    .filter(([, integration]) => integrationCanRender(integration) && integration.allowedSurfaces?.includes(surface))
+    .map(([id, integration]) => ({ id, ...integration }));
 }
 
 export function evaluateContractorEligibility(value) {

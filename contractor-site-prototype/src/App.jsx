@@ -4,6 +4,7 @@ import { approvedServiceAreas, business, separationPolicy } from "../../shared/s
 import { Breadcrumbs } from "./components/Breadcrumbs.jsx";
 import { DisclosureGroup } from "./components/DisclosureGroup.jsx";
 import { EstimateRequestForm } from "./components/EstimateRequestForm.jsx";
+import { ProjectReadinessGuide } from "./components/ProjectReadinessGuide.jsx";
 import { Seo } from "./components/Seo.jsx";
 import { SiteSearchDialog } from "./components/SiteSearchDialog.jsx";
 import { contractorFaqs } from "./content/faqs.js";
@@ -128,7 +129,7 @@ function Services({ route, onNavigate }) {
     if (!event.defaultPrevented) return;
     requestAnimationFrame(() => document.getElementById("service-directory")?.focus({ preventScroll: true }));
   };
-  return <><PageHero route={route} compact title="Residential work with a clear, practical scope." lead="Service categories help start the conversation. Final acceptance depends on the property, inspection eligibility, required trades, permits, access, materials, schedule, and the contractor's license and capabilities." actions={<><InternalLink className="button button-copper" href="/services/#service-directory" onNavigate={navigateToDirectory}>Choose a category <ArrowRight size={15} aria-hidden="true" /></InternalLink><InternalLink className="button button-outline" href="/estimate/" onNavigate={onNavigate}>Review eligibility</InternalLink></>} /><ServiceDirectory onNavigate={onNavigate} /><section className="services-section services-page-section" aria-label="Detailed service scopes and boundaries"><div className="container"><ServiceList detailed onNavigate={onNavigate} /></div></section><section className="third-party-report"><div className="container"><h2>Eligible work based on a third-party inspection report</h2><p>A report prepared by an independent inspector may help describe a requested project. C&amp;G still performs its own scope review and does not adopt the inspector's conclusions, guarantee that every related condition is visible, or treat the report as construction drawings. Remove confidential client information or confirm that you are authorized to share it.</p></div></section><SeparationNotice onNavigate={onNavigate} /><section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Ready to describe the scope?</h2><p>Choose a category and review the eligibility guard before preparing an email.</p></div><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request review</InternalLink></div></section></>;
+  return <><PageHero route={route} compact title="Residential work with a clear, practical scope." lead="Service categories help start the conversation. Final acceptance depends on the property, inspection eligibility, required trades, permits, access, materials, schedule, and the contractor's license and capabilities." actions={<><InternalLink className="button button-copper" href="/services/#service-directory" onNavigate={navigateToDirectory}>Choose a category <ArrowRight size={15} aria-hidden="true" /></InternalLink><InternalLink className="button button-outline" href="/estimate/" onNavigate={onNavigate}>Review eligibility</InternalLink></>} /><ServiceDirectory onNavigate={onNavigate} /><ProjectReadinessGuide estimateHref={pageUrl("/estimate/")} /><section className="services-section services-page-section" aria-label="Detailed service scopes and boundaries"><div className="container"><ServiceList detailed onNavigate={onNavigate} /></div></section><section className="third-party-report"><div className="container"><h2>Eligible work based on a third-party inspection report</h2><p>A report prepared by an independent inspector may help describe a requested project. C&amp;G still performs its own scope review and does not adopt the inspector's conclusions, guarantee that every related condition is visible, or treat the report as construction drawings. Remove confidential client information or confirm that you are authorized to share it.</p></div></section><SeparationNotice onNavigate={onNavigate} /><section className="estimate-cta"><div className="container estimate-cta-inner"><div><h2>Ready to describe the scope?</h2><p>Choose a category and review the eligibility guard before preparing an email.</p></div><InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}>Request review</InternalLink></div></section></>;
 }
 
 function Process({ route, onNavigate }) {
@@ -163,6 +164,21 @@ function NotFound({ onNavigate }) {
 function Footer({ onNavigate }) {
   const areas = approvedServiceAreas("Contractor");
   return <footer className="site-footer"><div className="container"><div className="footer-grid"><div><Brand onNavigate={onNavigate} /><p>Residential project requests reviewed for eligibility, license fit, scope, access, permits, materials, and schedule. Representative editorial images are not client project photographs.</p></div><nav className="footer-links" aria-label="Contractor footer"><span>Contracting</span>{contractorFooterRoutes.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}</nav><div className="footer-links"><span>Separate services</span><a href="/">Home inspection</a><a href="/property-services/">Property-services chooser</a><a href={business.contracting.phoneHref}>{business.contracting.phoneDisplay}</a><a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a>{areas.length ? <p>{areas.map((area) => area.label).join(", ")}</p> : <p>Service-area publication awaits owner verification.</p>}</div></div><div className="footer-license"><span>Contractor of record: {business.contracting.contractorOfRecord} · CSLB #{business.contracting.license.number} · {business.contracting.license.classification}</span><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">Official CSLB lookup <ExternalLink size={11} aria-hidden="true" /></a></div><p className="footer-policy">{separationPolicy.notice}</p><div className="footer-bottom"><span>© {new Date().getFullYear()} C&amp;G. Public-facing service information.</span><InternalLink href="/privacy/" onNavigate={onNavigate}>Privacy</InternalLink></div></div></footer>;
+}
+
+function MobileQuickActions({ currentRoute, onNavigate }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setVisible(window.scrollY > 260);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  if (!visible) return null;
+  const primaryAction = currentRoute.key === "estimate"
+    ? <a className="button button-copper" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" /> Call</a>
+    : <InternalLink className="button button-copper" href="/estimate/" onNavigate={onNavigate}><ArrowRight size={15} aria-hidden="true" /> Start request</InternalLink>;
+  return <nav className="mobile-conversion-rail" aria-label="Quick contractor actions"><InternalLink className="button button-graphite" href="/services/#service-directory" onNavigate={onNavigate}><Wrench size={15} aria-hidden="true" /> Services</InternalLink>{primaryAction}</nav>;
 }
 
 export function App({ initialPath }) {
@@ -218,7 +234,7 @@ export function App({ initialPath }) {
   else if (route.key === "estimate") page = <Estimate route={route} categoryKey={requestCategoryFromSearch(search)} />;
   else if (route.key === "privacy") page = <Privacy route={route} />;
   else page = <NotFound onNavigate={navigate} />;
-  return <div className="site-shell"><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
+  return <div className="site-shell"><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><MobileQuickActions currentRoute={route} onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
 }
 
 export { enabledContractorRoutes };
