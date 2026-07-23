@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { openStablePage, representativeRoutes } from "./site-fixture.js";
+import { enabledRoutes, openStablePage } from "./site-fixture.js";
 
 test.describe("cross-browser production-route smoke @smoke", () => {
-  for (const route of representativeRoutes) {
+  for (const route of enabledRoutes) {
     test(`${route.name} renders its prerendered identity without overflow`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
       await openStablePage(page, route);

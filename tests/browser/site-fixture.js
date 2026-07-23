@@ -1,4 +1,6 @@
 import { expect } from "@playwright/test";
+import { enabledContractorRoutes } from "../../contractor-site-prototype/src/content/routes.js";
+import { enabledInspectorRoutes } from "../../inspector-site-prototype/src/content/routes.js";
 
 export const responsiveViewports = Object.freeze([
   { name: "phone-360x800", width: 360, height: 800 },
@@ -16,6 +18,26 @@ export const representativeRoutes = Object.freeze([
   { name: "inspector-contact", path: "/contact/" },
   { name: "contractor-services", path: "/contracting/services/" },
   { name: "contractor-estimate", path: "/contracting/estimate/" },
+]);
+
+const routeName = (surface, path) => {
+  const slug = path === "/" ? "home" : path.replace(/^\/+|\/+$/g, "").replaceAll("/", "-");
+  return `${surface}-${slug}`;
+};
+
+export const enabledRoutes = Object.freeze([
+  ...enabledInspectorRoutes.map((route) => Object.freeze({
+    name: routeName("inspector", route.path),
+    path: route.path,
+  })),
+  Object.freeze({
+    name: "property-services",
+    path: "/property-services/",
+  }),
+  ...enabledContractorRoutes.map((route) => Object.freeze({
+    name: routeName("contractor", route.path),
+    path: `/contracting${route.path}`,
+  })),
 ]);
 
 export async function openStablePage(page, route) {
