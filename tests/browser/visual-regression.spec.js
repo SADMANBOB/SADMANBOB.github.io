@@ -17,16 +17,20 @@ test.describe("automated responsive regression matrix @visual", () => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await openStablePage(page, route);
 
+        await expect(page.locator("main")).toBeVisible();
+        await expect(page.locator("main h1")).toHaveCount(1);
+        const layout = await page.evaluate(() => ({
+          bodyOverflow: document.body.scrollWidth - document.body.clientWidth,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          fonts: document.fonts.status,
+        }));
+        expect(layout, `${route.path} has an unstable responsive layout at ${viewport.name}`).toEqual({
+          bodyOverflow: 0,
+          documentOverflow: 0,
+          fonts: "loaded",
+        });
+
         if (browserName === "firefox") {
-          const overflow = await page.evaluate(() => ({
-            body: document.body.scrollWidth - document.body.clientWidth,
-            document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-          }));
-          expect(overflow, `${route.path} has horizontal overflow at ${viewport.name}`).toEqual({
-            body: 0,
-            document: 0,
-          });
-          await expect(page.locator("main")).toBeVisible();
           return;
         }
 

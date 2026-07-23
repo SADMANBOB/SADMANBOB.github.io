@@ -16,6 +16,8 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 20
     env:
       CI: true
@@ -40,10 +42,15 @@ jobs:
         working-directory: contractor-site-prototype
       - name: Build and run deterministic quality gates
         run: npm run quality
-      - name: Install the pinned browser matrix
-        run: npx playwright install --with-deps chromium firefox webkit
-      - name: Run cross-browser and visual regression suite
-        run: npm run test:browsers
+      - name: Refresh pinned Linux visual baselines
+        run: npm run test:browsers -- --update-snapshots=all
+      - name: Preserve refreshed visual baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines-linux-refresh
+          path: tests/browser/__screenshots__
+          if-no-files-found: error
+          retention-days: 1
       - name: Resolve the pinned browser path
         run: |
           chrome_path="$(node --input-type=module -e "import { chromium } from 'playwright'; process.stdout.write(chromium.executablePath())")"

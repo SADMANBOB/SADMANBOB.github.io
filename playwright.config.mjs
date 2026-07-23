@@ -23,7 +23,7 @@ export default defineConfig({
     },
   },
   outputDir: resultDirectory,
-  snapshotPathTemplate: "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}{ext}",
+  snapshotPathTemplate: "{testDir}/__screenshots__/{testFileName}/{arg}-{projectName}-{platform}{ext}",
   reporter: ci
     ? [["line"], ["html", { open: "never", outputFolder: "playwright-report" }]]
     : [["list"], ["html", { open: "never", outputFolder: reportDirectory }]],
