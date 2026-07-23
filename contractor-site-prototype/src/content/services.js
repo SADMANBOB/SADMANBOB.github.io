@@ -49,3 +49,19 @@ export const contractorServices = [
     boundaries: ["Small does not remove permit, contract, license, or safety requirements", "Structural design, architecture, engineering, hazardous materials, and specialty-only work are separate", "Subcontractors, allowances, owner-supplied materials, permits, and exclusions must be identified in writing"],
   },
 ];
+
+export const contractorRequestCategories = [
+  ...contractorServices.map(({ id, title }) => ({ key: id, label: title })),
+  { key: "other-or-not-sure", label: "Other or not sure" },
+];
+
+export const contractorServiceById = new Map(contractorServices.map((service) => [service.id, service]));
+export const contractorRequestCategoryByKey = new Map(contractorRequestCategories.map((category) => [category.key, category]));
+
+export function requestCategoryFromSearch(search = "") {
+  const params = new URLSearchParams(search);
+  if ([...params.keys()].some((key) => key !== "category")) return "";
+  const values = params.getAll("category");
+  if (values.length !== 1) return "";
+  return contractorRequestCategoryByKey.has(values[0]) ? values[0] : "";
+}

@@ -8,7 +8,7 @@ import { enabledInspectionScope } from "../inspector-site-prototype/src/content/
 import { resourceBySlug } from "../inspector-site-prototype/src/content/resources.js";
 import { contractorRoutes, enabledContractorRoutes, contractorNotFoundRoute } from "../contractor-site-prototype/src/content/routes.js";
 import { contractorFaqs } from "../contractor-site-prototype/src/content/faqs.js";
-import { contractorServices } from "../contractor-site-prototype/src/content/services.js";
+import { contractorRequestCategories, contractorServices, requestCategoryFromSearch } from "../contractor-site-prototype/src/content/services.js";
 
 const root = resolve(import.meta.dirname, "..");
 const inspector = resolve(root, "inspector-site-prototype");
@@ -82,6 +82,21 @@ assert.match(contractorSource, /Prepare eligibility review email/, "Manual eligi
 assert.match(contractorSource, /separationPolicy\.blocked/, "Blocked independent-contractor message is not wired to the registry");
 assert.match(separationPolicy.blocked, /independent contractor/i, "Blocked registry copy lacks the independent-contractor direction");
 assert.equal(/inspection report.{0,120}(?:project category|estimate form).{0,120}(?:prefill|auto)/is.test(contractorSource), false, "Inspection report data appears to auto-populate a contracting request");
+assert.equal(contractorRequestCategories.length, contractorServices.length + 1, "Contractor request category allowlist is incomplete");
+assert.equal(new Set(contractorRequestCategories.map((category) => category.key)).size, contractorRequestCategories.length, "Contractor request category keys are not unique");
+for (const category of contractorRequestCategories) {
+  assert.equal(requestCategoryFromSearch(`?category=${encodeURIComponent(category.key)}`), category.key, `Allowed contractor category ${category.key} is not accepted`);
+}
+assert.equal(requestCategoryFromSearch(""), "", "A missing category query must remain empty");
+assert.equal(requestCategoryFromSearch("?category=unknown-category"), "", "An unknown contractor category query was accepted");
+assert.equal(requestCategoryFromSearch("?category=drywall-surface-repair&category=exterior-details"), "", "Duplicate contractor category queries were accepted");
+assert.equal(requestCategoryFromSearch("?category=drywall-surface-repair&email=visitor%40example.com"), "", "A query containing personal data was accepted for category prefill");
+assert.ok(contractorSource.indexOf("Eligibility comes first") < contractorSource.indexOf("Contact and property"), "Estimate flow does not present eligibility before contact and property details");
+assert.match(contractorSource, /manualReviewFields/, "Limited manual eligibility-review fields are missing");
+assert.match(contractorSource, /Nothing has been sent or received/, "Truthful mailto preparation status is missing");
+assert.match(contractorSource, /id="inspection-eligibility"/, "The shared 12-month-rule anchor target is missing");
+assert.match(contractorSource, /eligibility\.state === "validation-error"/, "The unanswered eligibility path has no visible validation action");
+assert.match(contractorSource, /key=\{categoryKey \|\| "unclassified"\}/, "Category-query changes do not reset the estimate form state");
 
 for (const site of [inspector, contractor]) {
   await stat(resolve(site, "dist/index.html"));
@@ -212,6 +227,9 @@ const assembledEstimate = await read(resolve(output, "contracting/estimate/index
 const assembledPortal = await read(resolve(output, "property-services/index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
 assert.ok(assembledEstimate.includes("previous 12 months"), "Contractor estimate path lacks the 12-month eligibility boundary");
+assert.match(assembledEstimate, /Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
+assert.equal(/Full name/.test(assembledEstimate), false, "Contractor estimate prerender collects contact details before eligibility");
+assert.match(assembledEstimate, /Nothing is uploaded or sent while you use this guide/, "Contractor estimate lacks first-step transport truth");
 assert.match(assembledInspector, /Know what you’re/, "Inspector is not mounted at the site root");
 assert.match(assembledContractor, /Practical repairs\. <em>Built to last\.<\/em>/, "Contractor is not mounted at /contracting/");
 assert.match(assembledPortal, /Which service are/, "Property-services chooser is missing its single decision question");
@@ -264,6 +282,7 @@ for (const service of contractorServices) {
   assert.ok(service.examples.length >= 4, `${service.title} lacks detailed examples`);
   assert.ok(service.boundaries.length >= 3, `${service.title} lacks detailed boundaries`);
   assert.ok(publicRouteMarkup.includes(service.title), `${service.title} did not render`);
+  assert.match(publicRouteMarkup, new RegExp(`\\?category=${escapeRegex(service.id)}`), `${service.title} lacks a category-aware estimate link`);
 }
 assert.ok(inspectorFaqItems.length >= 20, "Inspector FAQ registry is incomplete");
 assert.ok(contractorFaqs.length >= 15, "Contractor FAQ registry is incomplete");

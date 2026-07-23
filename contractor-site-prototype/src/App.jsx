@@ -8,17 +8,20 @@ import { Seo } from "./components/Seo.jsx";
 import { SiteSearchDialog } from "./components/SiteSearchDialog.jsx";
 import { contractorFaqs } from "./content/faqs.js";
 import { contractorFooterRoutes, contractorNavigation, contractorNotFoundRoute, enabledContractorRoutes, findContractorRoute } from "./content/routes.js";
-import { contractorServices } from "./content/services.js";
+import { contractorServices, requestCategoryFromSearch } from "./content/services.js";
 
 const appBase = import.meta.env.BASE_URL;
 const origin = (import.meta.env.VITE_SITE_ORIGIN || "https://www.cginspection.net").replace(/\/+$/, "");
 const contractorOrigin = `${origin}/contracting`;
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
 const pageUrl = (path) => {
-  const [pathname, fragment] = path.split("#", 2);
+  const [pathAndQuery, fragment] = path.split("#", 2);
+  const queryIndex = pathAndQuery.indexOf("?");
+  const pathname = queryIndex === -1 ? pathAndQuery : pathAndQuery.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : pathAndQuery.slice(queryIndex);
   const relative = pathname.replace(/^\/+|\/+$/g, "");
   const route = relative ? `${appBase}${relative}/` : appBase;
-  return fragment ? `${route}#${fragment}` : route;
+  return `${route}${query}${fragment ? `#${fragment}` : ""}`;
 };
 const normalizePath = (pathname = "/") => {
   const base = appBase.replace(/\/+$/, "");
@@ -60,7 +63,7 @@ function PageHero({ title, lead, route, onNavigate, actions }) {
 }
 
 function ServiceList({ onNavigate, detailed = false, limit }) {
-  return <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>{contractorServices.slice(0, limit || contractorServices.length).map((service, index) => <article className="service-row" id={service.id} key={service.id}><span className="service-number">{String(index + 1).padStart(2, "0")}</span><span className="service-icon"><Wrench size={20} aria-hidden="true" /></span><div className="service-copy"><h2>{service.title}</h2><p>{service.summary}</p>{detailed ? <div className="service-detail-grid"><div><h3>Potentially eligible examples</h3><ul>{service.examples.map((item) => <li key={item}><Check size={13} aria-hidden="true" />{item}</li>)}</ul></div><div><h3>Boundaries</h3><ul>{service.boundaries.map((item) => <li key={item}>{item}</li>)}</ul></div></div> : <InternalLink className="text-link service-section-link" href={`/services/#${service.id}`} onNavigate={onNavigate}>Review category <ArrowRight size={14} aria-hidden="true" /></InternalLink>}</div></article>)}</div>;
+  return <div className={`service-rows ${detailed ? "service-rows-detailed" : ""}`}>{contractorServices.slice(0, limit || contractorServices.length).map((service, index) => <article className="service-row" id={service.id} key={service.id}><span className="service-number">{String(index + 1).padStart(2, "0")}</span><span className="service-icon"><Wrench size={20} aria-hidden="true" /></span><div className="service-copy"><h2>{service.title}</h2><p>{service.summary}</p>{detailed ? <><div className="service-detail-grid"><div><h3>Potentially eligible examples</h3><ul>{service.examples.map((item) => <li key={item}><Check size={13} aria-hidden="true" />{item}</li>)}</ul></div><div><h3>Boundaries</h3><ul>{service.boundaries.map((item) => <li key={item}>{item}</li>)}</ul></div></div><InternalLink className="button button-graphite service-request-link" href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></> : <InternalLink className="text-link service-section-link" href={`/services/#${service.id}`} onNavigate={onNavigate}>Review category <ArrowRight size={14} aria-hidden="true" /></InternalLink>}</div></article>)}</div>;
 }
 
 const processSteps = [
@@ -79,9 +82,9 @@ function ProcessList({ limit }) {
 }
 
 const projects = [
-  { title: "Drywall and surface repair", image: "illustrative-drywall-repair.jpg", alt: "Repair professional smoothing a small drywall patch in a protected living space", details: ["Describe the source condition and whether it is resolved", "Show the damaged area and surrounding finish", "Note matching goals, access, moisture, or movement"] },
-  { title: "Exterior details", image: "illustrative-exterior-trim.jpg", alt: "Contractor measuring weathered wood trim beneath an exterior window", details: ["Show the detail and its wider weather exposure", "Describe any active leak or concealed-damage concern", "Note material, access, height, and finish condition"] },
-  { title: "Doors, trim, and finish carpentry", image: "illustrative-finish-carpentry.jpg", alt: "Finish carpenter checking trim alignment beside an interior doorway", details: ["Describe fit, movement, hardware, and desired result", "Show existing profiles and adjacent finishes", "Note settlement, rated assembly, or egress concerns"] },
+  { category: "drywall-surface-repair", title: "Drywall and surface repair", image: "illustrative-drywall-repair.jpg", alt: "Repair professional smoothing a small drywall patch in a protected living space", details: ["Describe the source condition and whether it is resolved", "Show the damaged area and surrounding finish", "Note matching goals, access, moisture, or movement"] },
+  { category: "exterior-details", title: "Exterior details", image: "illustrative-exterior-trim.jpg", alt: "Contractor measuring weathered wood trim beneath an exterior window", details: ["Show the detail and its wider weather exposure", "Describe any active leak or concealed-damage concern", "Note material, access, height, and finish condition"] },
+  { category: "doors-trim-finish-carpentry", title: "Doors, trim, and finish carpentry", image: "illustrative-finish-carpentry.jpg", alt: "Finish carpenter checking trim alignment beside an interior doorway", details: ["Describe fit, movement, hardware, and desired result", "Show existing profiles and adjacent finishes", "Note settlement, rated assembly, or egress concerns"] },
 ];
 
 const contractorReasons = [
@@ -124,15 +127,15 @@ function About({ route, onNavigate }) {
 }
 
 function Projects({ route, onNavigate }) {
-  return <><PageHero route={route} title="Project Types" lead="Representative categories can help you describe a request without implying that these images show completed C&G work." /><section className="representative-work"><div className="container"><p className="illustrative-disclosure project-disclosure"><strong>Illustrative material</strong>The images on this page are representative editorial illustrations of project types. They are not photographs of completed C&amp;G client projects.</p><div className="representative-grid">{projects.map((project) => <article className="representative-card" key={project.title}><div className="representative-media"><img src={assetUrl(`assets/${project.image}`)} alt={project.alt} width="960" height="640" /></div><div className="project-card-copy"><h2>{project.title}</h2><ul>{project.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><InternalLink className="text-link text-link-dark" href="/estimate/" onNavigate={onNavigate}>Describe this project type <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></article>)}</div></div></section><section className="project-type-index"><div className="container"><div className="section-heading split-heading"><div><span>All current categories</span><h2>Find the closest starting point.</h2></div><p>A category organizes the first conversation. It does not accept the work or replace property-specific review.</p></div><div className="project-type-grid">{contractorServices.map((service, index) => <article key={service.id}><span>{String(index + 1).padStart(2, "0")}</span><h3>{service.title}</h3><p>{service.summary}</p><ul>{service.examples.slice(0, 2).map((item) => <li key={item}>{item}</li>)}</ul><InternalLink href={`/services/#${service.id}`} onNavigate={onNavigate}>Review scope and boundaries <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><section className="planning-examples-section"><div className="container"><div className="section-heading split-heading"><div><span>Illustrative planning examples</span><h2>Turn a symptom into a better project brief.</h2></div><p>These are educational scenarios—not customer stories, completed work, estimates, schedules, or promises about a property.</p></div><div className="planning-example-grid">{planningExamples.map((example, index) => <article key={example.title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{example.title}</h3><dl><div><dt>Starting condition</dt><dd>{example.condition}</dd></div><div><dt>What helps</dt><dd>{example.helps}</dd></div><div><dt>Scope boundary</dt><dd>{example.boundary}</dd></div></dl><InternalLink className="text-link text-link-dark" href="/estimate/" onNavigate={onNavigate}>Prepare an eligible request <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><SeparationNotice onNavigate={onNavigate} /></>;
+  return <><PageHero route={route} title="Project Types" lead="Representative categories can help you describe a request without implying that these images show completed C&G work." /><section className="representative-work"><div className="container"><p className="illustrative-disclosure project-disclosure"><strong>Illustrative material</strong>The images on this page are representative editorial illustrations of project types. They are not photographs of completed C&amp;G client projects.</p><div className="representative-grid">{projects.map((project) => <article className="representative-card" key={project.title}><div className="representative-media"><img src={assetUrl(`assets/${project.image}`)} alt={project.alt} width="960" height="640" /></div><div className="project-card-copy"><h2>{project.title}</h2><ul>{project.details.map((detail) => <li key={detail}>{detail}</li>)}</ul><InternalLink className="text-link text-link-dark" href={`/estimate/?category=${project.category}`} onNavigate={onNavigate}>Describe this project type <ArrowRight size={14} aria-hidden="true" /></InternalLink></div></article>)}</div></div></section><section className="project-type-index"><div className="container"><div className="section-heading split-heading"><div><span>All current categories</span><h2>Find the closest starting point.</h2></div><p>A category organizes the first conversation. It does not accept the work or replace property-specific review.</p></div><div className="project-type-grid">{contractorServices.map((service, index) => <article key={service.id}><span>{String(index + 1).padStart(2, "0")}</span><h3>{service.title}</h3><p>{service.summary}</p><ul>{service.examples.slice(0, 2).map((item) => <li key={item}>{item}</li>)}</ul><InternalLink href={`/services/#${service.id}`} onNavigate={onNavigate}>Review scope and boundaries <ArrowRight size={14} aria-hidden="true" /></InternalLink><InternalLink href={`/estimate/?category=${service.id}`} onNavigate={onNavigate}>Start request with this category <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><section className="planning-examples-section"><div className="container"><div className="section-heading split-heading"><div><span>Illustrative planning examples</span><h2>Turn a symptom into a better project brief.</h2></div><p>These are educational scenarios—not customer stories, completed work, estimates, schedules, or promises about a property.</p></div><div className="planning-example-grid">{planningExamples.map((example, index) => <article key={example.title}><span>{String(index + 1).padStart(2, "0")}</span><h3>{example.title}</h3><dl><div><dt>Starting condition</dt><dd>{example.condition}</dd></div><div><dt>What helps</dt><dd>{example.helps}</dd></div><div><dt>Scope boundary</dt><dd>{example.boundary}</dd></div></dl><InternalLink className="text-link text-link-dark" href="/estimate/" onNavigate={onNavigate}>Prepare an eligible request <ArrowRight size={14} aria-hidden="true" /></InternalLink></article>)}</div></div></section><SeparationNotice onNavigate={onNavigate} /></>;
 }
 
 function Faq({ route, onNavigate }) {
   return <><PageHero route={route} title="Contractor questions, answered before a request." lead="Review project fit, eligibility, estimates, materials, permits, concealed conditions, specialty work, and scheduling boundaries." /><section className="faq-section"><div className="container faq-layout"><aside><h2>Before you submit</h2><p>An answer describes the current review process; it does not accept work or promise a result.</p><InternalLink className="button button-graphite" href="/estimate/" onNavigate={onNavigate}>Review the form</InternalLink></aside><div>{contractorFaqs.map(([question, answer], index) => <DisclosureGroup key={question} title={question} defaultOpen={index === 0}><p>{answer}</p></DisclosureGroup>)}</div></div></section><SeparationNotice onNavigate={onNavigate} /></>;
 }
 
-function Estimate({ route }) {
-  return <><PageHero route={route} title="Tell us what needs attention." lead="The details below help C&G decide whether the request is eligible, whether it fits the contractor's license and current services, and whether an estimate visit is the right next step. This form does not create a contract, promise a price, or reserve a work date." /><section className="estimate-page-section"><div className="container estimate-page-grid"><div className="estimate-form-wrap"><h2>Project review details</h2><EstimateRequestForm /></div><aside className="estimate-sidebar"><div><span>Current contact</span><a href={business.contracting.phoneHref}><Phone size={17} aria-hidden="true" />{business.contracting.phoneDisplay}</a><a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a></div><div className="estimate-policy"><ShieldCheck aria-hidden="true" /><p>{separationPolicy.notice}</p></div><div><span>Transport truth</span><p>This page validates information locally and prepares a mailto draft. It does not upload files or send data to a server.</p></div></aside></div></section></>;
+function Estimate({ route, categoryKey }) {
+  return <><PageHero route={route} title="Tell us what needs attention." lead="The details below help C&G decide whether the request is eligible, whether it fits the contractor's license and current services, and whether an estimate visit is the right next step. This form does not create a contract, promise a price, or reserve a work date." /><section className="estimate-page-section"><div className="container estimate-page-grid"><div className="estimate-form-wrap"><h2>Project review details</h2><EstimateRequestForm key={categoryKey || "unclassified"} initialCategoryKey={categoryKey} /></div><aside className="estimate-sidebar"><div><span>Current contact</span><a href={business.contracting.phoneHref}><Phone size={17} aria-hidden="true" />{business.contracting.phoneDisplay}</a><a href={`mailto:${business.contracting.email}`}>{business.contracting.email}</a></div><div className="estimate-policy"><ShieldCheck aria-hidden="true" /><p>{separationPolicy.notice}</p></div><div><span>Transport truth</span><p>This page validates information locally and prepares a mailto draft. It does not upload files or send data to a server.</p></div></aside></div></section></>;
 }
 
 function Privacy({ route }) {
@@ -151,10 +154,11 @@ function Footer({ onNavigate }) {
 export function App({ initialPath }) {
   const initial = normalizePath(initialPath ?? (typeof window === "undefined" ? "/" : window.location.pathname));
   const [path, setPath] = useState(initial);
+  const [search, setSearch] = useState(() => typeof window === "undefined" ? "" : window.location.search);
   const [searchOpen, setSearchOpen] = useState(false);
   const route = findContractorRoute(path);
   useEffect(() => {
-    const pop = () => { setPath(normalizePath(window.location.pathname)); window.scrollTo(0, 0); };
+    const pop = () => { setPath(normalizePath(window.location.pathname)); setSearch(window.location.search); window.scrollTo(0, 0); };
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
   }, []);
@@ -168,6 +172,7 @@ export function App({ initialPath }) {
     const href = pageUrl(nextPath);
     window.history.pushState({}, "", href);
     setPath(normalizePath(nextPath));
+    setSearch(new URL(href, window.location.origin).search);
     const fragment = nextPath.split("#", 2)[1];
     if (fragment) requestAnimationFrame(() => document.getElementById(fragment)?.scrollIntoView());
     else window.scrollTo({ top: 0, behavior: "auto" });
@@ -179,7 +184,7 @@ export function App({ initialPath }) {
   else if (route.key === "about") page = <About route={route} onNavigate={navigate} />;
   else if (route.key === "projects") page = <Projects route={route} onNavigate={navigate} />;
   else if (route.key === "faq") page = <Faq route={route} onNavigate={navigate} />;
-  else if (route.key === "estimate") page = <Estimate route={route} />;
+  else if (route.key === "estimate") page = <Estimate route={route} categoryKey={requestCategoryFromSearch(search)} />;
   else if (route.key === "privacy") page = <Privacy route={route} />;
   else page = <NotFound onNavigate={navigate} />;
   return <div className="site-shell"><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
