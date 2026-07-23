@@ -452,6 +452,16 @@ details p { max-width: 600px; margin: -3px 0 22px; color: #746d62; font-size: 13
 .about-philosophy { padding: 34px; background: #e9e2d7; border-top: 2px solid var(--gold); }
 .about-philosophy blockquote { margin: 0 0 24px; color: var(--ink); font-family: var(--serif); font-size: clamp(24px, 3vw, 35px); line-height: 1.45; }
 .about-philosophy p { margin: 0; color: #746d62; font-size: 12px; line-height: 1.65; }
+.about-scope-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px 22px; }
+.about-expectations-section { padding: 104px 0; }
+.about-expectations-grid { display: grid; grid-template-columns: .72fr 1.28fr; gap: clamp(60px, 10vw, 145px); align-items: start; }
+.about-expectations-copy { max-width: 510px; }
+.about-expectations-copy > p:not(.eyebrow) { margin: 27px 0 0; color: #c3bdb2; font-size: 14px; line-height: 1.75; }
+.about-expectations-list { margin: 0; padding: 0; border-top: 1px solid #514e47; list-style: none; }
+.about-expectations-list li { display: grid; grid-template-columns: 43px 1fr; gap: 17px; padding: 23px 0; border-bottom: 1px solid #514e47; }
+.about-expectations-number { padding-top: 4px; color: var(--gold-bright); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.about-expectations-list h3 { margin: 0 0 8px; color: var(--cream); font-family: var(--serif); font-size: 22px; font-weight: 400; line-height: 1.25; }
+.about-expectations-list p { max-width: 650px; margin: 0; color: #bdb7ad; font-size: 12px; line-height: 1.65; }
 .registry-empty-state { margin-top: 24px; padding: 18px; color: #e8e0d4 !important; border: 1px solid #514e47; }
 .map-item-number { flex: 0 0 32px; padding-top: 4px; color: #94752f; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 
@@ -629,6 +639,8 @@ details p { max-width: 600px; margin: -3px 0 22px; color: #746d62; font-size: 13
   .audience-cards-four { grid-template-columns: 1fr 1fr; }
   .contact-page-section { padding: 50px 0 78px; }
   .areas-main-section, .faq-page-section, .page-process-section { padding: 78px 0; }
+  .about-expectations-section { padding: 80px 0; }
+  .about-expectations-grid { grid-template-columns: 1fr; gap: 42px; }
   .feature-grid { grid-template-columns: 1fr; }
   .inspection-area-grid { grid-template-columns: 1fr; }
   .inspection-area-card summary { padding: 21px 18px; }
@@ -724,6 +736,8 @@ details p { max-width: 600px; margin: -3px 0 22px; color: #746d62; font-size: 13
   .form-grid-two { grid-template-columns: 1fr; }
   .request-form-group { padding: 18px 15px; }
   .request-form > .button { width: 100%; }
+  .about-scope-actions { align-items: stretch; flex-direction: column; }
+  .about-scope-actions .button, .about-scope-actions .text-link { width: 100%; justify-content: center; }
   .article-aside ol { grid-template-columns: 1fr; }
   .policy-layout > section { grid-template-columns: 36px 1fr; gap: 10px; }
 }

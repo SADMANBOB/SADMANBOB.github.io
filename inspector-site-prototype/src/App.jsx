@@ -462,19 +462,55 @@ function ScopeAtlas({ sections, onScopeRequest }) {
   );
 }
 
+const aboutValues = [
+  ["Observe carefully", "Follow visible evidence across connected systems."],
+  ["Explain plainly", "Use direct language instead of alarm or jargon."],
+  ["Document honestly", "State limitations instead of pretending concealed conditions were inspected."],
+  ["Stay independent", "Do not turn inspection conclusions into prohibited repair work."],
+  ["Remain available for questions", "Help the client understand the report without making the decision for them."],
+];
+
+const aboutExpectations = [
+  ["01", "Confirm the scope", "Property details, access, timing, price, the agreement, and any approved optional service are clarified before the appointment."],
+  ["02", "Inspect what is visible and accessible", "The review follows observable conditions across connected systems while unsafe, obstructed, concealed, or out-of-scope areas remain clearly limited."],
+  ["03", "Make the report useful", "Findings are written in plain language, supported with photographs where useful, and separated into meaningful concerns, maintenance observations, and qualified follow-up."],
+  ["04", "Review the next questions", "The client can ask about report language and visible context without being told what decision to make or being steered into repair work."],
+];
+
 function AboutPage({ route, onNavigate }) {
-  const values = [
-    ["Observe carefully", "Follow visible evidence across connected systems."],
-    ["Explain plainly", "Use direct language instead of alarm or jargon."],
-    ["Document honestly", "State limitations instead of pretending concealed conditions were inspected."],
-    ["Stay independent", "Do not turn inspection conclusions into prohibited repair work."],
-    ["Remain available for questions", "Help the client understand the report without making the decision for them."],
-  ];
   return (
     <>
       <PageHero route={route} onNavigate={onNavigate} eyebrow="About Clarence" title="Experience matters most when it can be explained clearly."><p className="page-hero-lede">C&amp;G is built around a straightforward idea: the client should leave the inspection with more clarity, not more confusion.</p></PageHero>
-      <section className="process-section page-process-section"><div className="container process-grid"><div className="process-lede"><p className="eyebrow eyebrow-dark">A connected view of the home</p><h2>Follow the evidence from one system to the next.</h2><p>Clarence approaches the home as a connected set of systems. An exterior drainage condition may affect a crawlspace. An attic stain may need context from the roof. A recommendation is most useful when the client understands where it came from and what kind of follow-up makes sense.</p><InternalLink className="button button-dark" href="/services/" onNavigate={onNavigate}>See What the Inspection Covers <ArrowRight size={17} aria-hidden="true" /></InternalLink></div><div className="about-philosophy"><blockquote>“The inspector's job is not to tell a client whether to buy a home. It is to document visible conditions, identify material concerns, explain uncertainty, and help the client ask the next right question.”</blockquote><p>Pending biography, credential, insurance, and years-of-experience modules remain hidden until their evidence is approved.</p></div></div></section>
-      <section className="page-section page-section-cream"><div className="container values-grid"><div><p className="eyebrow eyebrow-dark">What guides the work</p><h2>Careful, plain-spoken, and independent.</h2></div><div className="values-list">{values.map(([title, copy]) => <div key={title}><ShieldCheck size={19} aria-hidden="true" /><span><strong>{title}</strong><small>{copy}</small></span></div>)}</div></div></section>
+      <section className="process-section page-process-section">
+        <div className="container process-grid">
+          <div className="process-lede">
+            <p className="eyebrow eyebrow-dark">A connected view of the home</p>
+            <h2>Follow the evidence from one system to the next.</h2>
+            <p>Clarence approaches the home as a connected set of systems. An exterior drainage condition may affect a crawlspace. An attic stain may need context from the roof. A recommendation is most useful when the client understands where it came from and what kind of follow-up makes sense.</p>
+            <div className="about-scope-actions">
+              <InternalLink className="button button-dark" href="/services/" onNavigate={onNavigate}>See What the Inspection Covers <ArrowRight size={17} aria-hidden="true" /></InternalLink>
+              <InternalLink className="text-link text-link-dark" href="/ethics/" onNavigate={onNavigate}>Read the independence policy <ArrowRight size={15} aria-hidden="true" /></InternalLink>
+            </div>
+          </div>
+          <div className="about-philosophy">
+            <blockquote>“The inspector's job is not to tell a client whether to buy a home. It is to document visible conditions, identify material concerns, explain uncertainty, and help the client ask the next right question.”</blockquote>
+            <p>That construction-informed perspective shapes both the on-site conversation and the report. Findings are documented in plain language, supported with photographs where useful, and separated into meaningful concerns, maintenance observations, and recommendations for qualified follow-up.</p>
+          </div>
+        </div>
+      </section>
+      <section className="experience-section about-expectations-section" aria-labelledby="about-expectations-title">
+        <div className="container about-expectations-grid">
+          <div className="about-expectations-copy">
+            <p className="eyebrow">What clients can expect</p>
+            <h2 id="about-expectations-title">Clarity at each part of the inspection.</h2>
+            <p>The useful result is not a longer list. It is a documented path from the visible condition to the next sensible question.</p>
+          </div>
+          <ol className="about-expectations-list">
+            {aboutExpectations.map(([number, title, copy]) => <li key={title}><span className="about-expectations-number">{number}</span><div><h3>{title}</h3><p>{copy}</p></div></li>)}
+          </ol>
+        </div>
+      </section>
+      <section className="page-section page-section-cream"><div className="container values-grid"><div><p className="eyebrow eyebrow-dark">What guides the work</p><h2>Careful, plain-spoken, and independent.</h2></div><div className="values-list">{aboutValues.map(([title, copy]) => <div key={title}><ShieldCheck size={19} aria-hidden="true" /><span><strong>{title}</strong><small>{copy}</small></span></div>)}</div></div></section>
       <BookingCallout onNavigate={onNavigate} />
     </>
   );

@@ -222,6 +222,7 @@ for (const route of legacyInspectorRoutes) {
 
 const assembledInspector = await read(resolve(output, "index.html"));
 const assembledInspectorServices = await read(resolve(output, "services/index.html"));
+const assembledInspectorAbout = await read(resolve(output, "about/index.html"));
 const assembledInspectorContact = await read(resolve(output, "contact/index.html"));
 const assembledContractor = await read(resolve(output, "contracting/index.html"));
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
@@ -247,6 +248,13 @@ assert.match(inspectorSource, /errorSummaryRef\.current\?\.focus\(\)/, "Inspecto
 assert.match(inspectorSource, /href=\{`#inspection-\$\{field\}`\}/, "Inspector Contact error summary no longer links to invalid fields");
 assert.match(inspectorSource, /onChange=\{handleChange\}/, "Inspector Contact does not clear stale prepared state after edits");
 assert.match(inspectorSource, /name === "phone" && preferredContact === "phone"/, "Inspector Contact does not expose phone as conditionally required");
+
+assert.equal(/Pending biography|modules remain hidden|years-of-experience modules/i.test(assembledInspectorAbout), false, "Inspector About exposes internal implementation-status copy");
+assert.match(assembledInspectorAbout, /That construction-informed perspective shapes both the on-site conversation and the report/, "Inspector About lacks the approved construction-informed baseline");
+assert.match(assembledInspectorAbout, /What clients can expect/, "Inspector About lacks the client-expectations section");
+for (const expectation of ["Confirm the scope", "Inspect what is visible and accessible", "Make the report useful", "Review the next questions"]) assert.ok(assembledInspectorAbout.includes(expectation), `Inspector About lacks the ${expectation} expectation`);
+assert.match(assembledInspectorAbout, /href="\/services\/"[^>]*>See What the Inspection Covers/, "Inspector About lacks its Services pathway");
+assert.match(assembledInspectorAbout, /href="\/ethics\/"[^>]*>Read the independence policy/, "Inspector About lacks its Ethics pathway");
 
 assert.match(assembledInspectorServices, /data-scope-atlas="true"/, "Inspector Services lacks the visual scope atlas");
 assert.match(assembledInspectorServices, /Representative editorial imagery; not C&amp;G client or project photography\./, "Inspector Services lacks the editorial-image disclosure");
