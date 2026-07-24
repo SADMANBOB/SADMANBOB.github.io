@@ -215,9 +215,24 @@ const staticChecks = async () => {
 
     const labels = elements(document, "label");
     const labelTargets = new Set(labels.map((label) => attr(label, "for")).filter(Boolean));
+    // An element inside an aria-hidden="true" subtree is removed from the
+    // accessibility tree entirely, so it is never announced and an accessible
+    // name would be meaningless. The spam honeypot is the only such control.
+    const isAriaHidden = (node) => {
+      for (let current = node; current; current = current.parentNode) {
+        if (current.tagName && attr(current, "aria-hidden") === "true") return true;
+      }
+      return false;
+    };
     for (const control of descendants(document, (node) => ["input", "select", "textarea"].includes(node.tagName))) {
       const type = (attr(control, "type") || "").toLowerCase();
       if (["button", "hidden", "reset", "submit"].includes(type)) continue;
+      if (isAriaHidden(control)) {
+        // Such a control must also be unreachable by keyboard, otherwise it is
+        // a focusable element with no announced name.
+        check(attr(control, "tabindex") === "-1", `${relative} has an aria-hidden control that is still keyboard reachable`);
+        continue;
+      }
       const id = attr(control, "id");
       const named = Boolean(
         attr(control, "aria-label")

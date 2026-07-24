@@ -1,5 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { business, evaluateContractorEligibility, separationPolicy } from "../../../shared/siteData.js";
+import {
+  HONEYPOT_FIELD,
+  evaluateSubmissionSignals,
+  honeypotFieldProps,
+} from "../../../shared/formSpamControls.js";
 import { OWNER_REVIEW_STAGING_VISIBLE, preferredEmails } from "../../../shared/ownerReview.js";
 import {
   createFileShareAuthorization,
@@ -128,6 +133,10 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   const [uploadTransferOccurred, setUploadTransferOccurred] = useState(false);
   const summaryRef = useRef(null);
   const stepHeadingRef = useRef(null);
+  const formLoadedAtRef = useRef(Date.now());
+  const inFlightRef = useRef(false);
+
+  useEffect(() => { formLoadedAtRef.current = Date.now(); }, []);
 
   const eligibility = evaluateContractorEligibility(values.eligibility);
   const currentService = contractorServiceById.get(values.category);
@@ -206,6 +215,20 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    // Guards a second submit slipping through before the disabled state renders.
+    if (inFlightRef.current) return;
+    // Bot signals are checked before any transport work, but the eligibility
+    // gate below is unaffected: a blocked submission never becomes an accepted
+    // project request.
+    const submissionSignals = evaluateSubmissionSignals({
+      honeypotValue: new FormData(event.currentTarget).get(HONEYPOT_FIELD),
+      elapsedMilliseconds: Date.now() - formLoadedAtRef.current,
+    });
+    if (submissionSignals.blocked) {
+      setResult({ state: "blocked" });
+      focusSummary();
+      return;
+    }
     if (eligibility.state === "manual-review") {
       const nextErrors = validateFields(values, manualReviewFields);
       if (Object.keys(nextErrors).length) {
@@ -222,6 +245,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
         focusSummary();
         return;
       }
+      inFlightRef.current = true;
       setSubmitting(true);
       try {
         const submitted = await submitApprovedForm(surface, {
@@ -239,6 +263,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       } catch {
         setResult({ state: "submission-error" });
       } finally {
+        inFlightRef.current = false;
         setSubmitting(false);
         focusSummary();
       }
@@ -272,6 +297,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       focusSummary();
       return;
     }
+    inFlightRef.current = true;
     setSubmitting(true);
     try {
       const submitted = await submitApprovedForm(surface, {
@@ -288,6 +314,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     } catch {
       setResult({ state: "submission-error" });
     } finally {
+      inFlightRef.current = false;
       setSubmitting(false);
       focusSummary();
     }
@@ -327,10 +354,15 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
 
   return (
     <form className="estimate-form" noValidate onSubmit={handleSubmit}>
+      {/* Hidden from sight and from assistive technology. Any value here came
+          from an automated agent filling every input on the page. */}
+      <div className="form-honeypot" aria-hidden="true"><input {...honeypotFieldProps} id="contractor-contact-reference" /></div>
       {Object.keys(errors).length ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>Please review these fields.</strong><ul>{Object.entries(errors).map(([field, message]) => <li key={field}><a href={`#${field}`}>{message}</a></li>)}</ul></div> : null}
       {result?.state === "eligible" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>Ready to send your project details.</strong><p>Open your email app to send the draft. We’ll review the property, project scope, location, and eligibility before confirming the next step. Nothing has been sent yet.</p><a className="button button-graphite" href={result.href}>Open your email app</a></div> : null}
       {result?.state === "submitted" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>The approved processor received your project request.</strong><p>This is not acceptance, an estimate, a contract, or a schedule reservation.{result.receipt ? ` Receipt: ${result.receipt}.` : ""}</p></div> : null}
-      {result?.state === "submission-error" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>The request could not be submitted.</strong><p>No project or appointment was created. Call C&amp;G or try again later.</p></div> : null}
+      {result?.state === "submission-error" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>The request could not be submitted.</strong><p>No project or appointment was created. Your answers are still filled in, so you can try again. You can also call {business.contracting.phoneDisplay} or email {business.contracting.email}.</p><button type="button" className="button button-outline-dark" onClick={() => { setResult(null); focusStep(); }} data-testid="contractor-retry">Try again</button></div> : null}
+
+      {result?.state === "blocked" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert" data-testid="contractor-blocked-state"><strong>This request could not be sent.</strong><p>No project or appointment was created. Please call {business.contracting.phoneDisplay} or email {business.contracting.email} and it will be handled the same way.</p></div> : null}
 
       {values.eligibility !== "unsure" ? <Progress step={step} /> : <p className="manual-track-label">Eligibility review only · no ordinary estimate request</p>}
 

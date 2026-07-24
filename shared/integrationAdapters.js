@@ -81,7 +81,14 @@ export function prepareMailto({ recipient, subject, body }) {
   return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-export async function submitApprovedForm(surface, payload, { fetchImpl = globalThis.fetch, signal } = {}) {
+export const FORM_SUBMISSION_TIMEOUT_MS = 15000;
+
+export async function submitApprovedForm(surface, payload, {
+  fetchImpl = globalThis.fetch,
+  signal,
+  timeoutMilliseconds = FORM_SUBMISSION_TIMEOUT_MS,
+  verificationToken = null,
+} = {}) {
   const transport = formTransportFor(surface);
   if (!transport) throw new Error("No approved form transport is available.");
   if (transport.provider === "mailto") {
@@ -89,23 +96,48 @@ export async function submitApprovedForm(surface, payload, { fetchImpl = globalT
   }
   if (typeof fetchImpl !== "function") throw new Error("Secure form submission is unavailable in this browser.");
 
-  const response = await fetchImpl(transport.publicConfig.endpoint, {
-    method: "POST",
-    mode: "cors",
-    credentials: "omit",
-    redirect: "error",
-    referrerPolicy: "strict-origin-when-cross-origin",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      formId: transport.publicConfig.formId,
-      surface,
-      payload,
-    }),
-    signal,
-  });
+  // Without a deadline a stalled endpoint leaves the submit button disabled
+  // forever and the visitor cannot retry, which loses the lead silently.
+  const timeoutController = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = timeoutController && Number.isFinite(timeoutMilliseconds)
+    ? setTimeout(() => timeoutController.abort(new Error("timeout")), timeoutMilliseconds)
+    : null;
+  const abortIfCallerCancels = () => timeoutController?.abort(signal?.reason);
+  if (signal && timeoutController) {
+    if (signal.aborted) abortIfCallerCancels();
+    else signal.addEventListener("abort", abortIfCallerCancels, { once: true });
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(transport.publicConfig.endpoint, {
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "strict-origin-when-cross-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        formId: transport.publicConfig.formId,
+        surface,
+        payload,
+        // Populated only once a CAPTCHA or similar human-verification provider
+        // is approved. The adapter carries it so the integration point exists
+        // without requiring a provider today.
+        ...(verificationToken ? { verificationToken } : {}),
+      }),
+      signal: timeoutController ? timeoutController.signal : signal,
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+    signal?.removeEventListener?.("abort", abortIfCallerCancels);
+  }
+  // The processor's own status text is never surfaced to the visitor. It can
+  // echo submitted values or internal detail, so callers only ever see a
+  // generic failure.
   if (!response.ok) throw new Error("The approved form processor did not accept the request.");
 
   let result = {};
