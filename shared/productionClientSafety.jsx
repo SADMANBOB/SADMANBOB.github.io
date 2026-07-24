@@ -45,12 +45,6 @@ export const provisionalBusinessDetails = Object.freeze({
   manufacturedHomes: emptyRecord,
   infrared: emptyRecord,
   moistureMeters: emptyRecord,
-  sampleReportPlaceholder: Object.freeze({
-    status: "",
-    title: "",
-    copy: "",
-    productionNavigation: false,
-  }),
 });
 
 export const typicalContractorProjects = Object.freeze({

@@ -78,6 +78,12 @@ import { readingMinutes, resourceBySlug, resourceGroups } from "./content/resour
 const contractorUrl = "/contracting/";
 const propertyServicesUrl = "/property-services/";
 const appBase = import.meta.env.BASE_URL;
+const PUBLIC_CLIENT_BUNDLE =
+  typeof __CG_PUBLIC_CLIENT_BUNDLE__ !== "undefined"
+  && __CG_PUBLIC_CLIENT_BUNDLE__;
+const SAMPLE_REPORT_CLIENT_ENABLED =
+  typeof __CG_SAMPLE_REPORT_CLIENT_ENABLED__ !== "undefined"
+  && __CG_SAMPLE_REPORT_CLIENT_ENABLED__;
 const siteOrigin = (import.meta.env.VITE_SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
 const inspectionFormTransport = formTransportFor("inspector-contact");
 const inspectionSecureFormEnabled = Boolean(inspectionFormTransport && inspectionFormTransport.provider !== "mailto");
@@ -721,9 +727,9 @@ function MapItem({ number, title, copy }) {
   return <><span className="map-item-number">{number}</span><span><strong>{title}</strong><small>{copy}</small></span></>;
 }
 
-function SampleReportPage({ route, onNavigate }) {
+const SampleReportPage = SAMPLE_REPORT_CLIENT_ENABLED ? function SampleReportPage({ route, onNavigate }) {
   const report = route.sampleReport;
-  const isPlaceholder = Boolean(report?.provisional);
+  const isPlaceholder = !PUBLIC_CLIENT_BUNDLE && Boolean(report?.provisional);
   return (
     <>
       <PageHero
@@ -768,7 +774,7 @@ function SampleReportPage({ route, onNavigate }) {
       <BookingCallout onNavigate={onNavigate} />
     </>
   );
-}
+} : null;
 
 function FaqPage({ route, onNavigate }) {
   return (
@@ -965,7 +971,7 @@ export function App({ initialPath = null }) {
   let page;
   if (route.article) page = <ResourceArticlePage {...props} />;
   else if (route.serviceArea) page = <ServiceAreaDetailPage {...props} />;
-  else if (route.sampleReport) page = <SampleReportPage {...props} />;
+  else if (SAMPLE_REPORT_CLIENT_ENABLED && route.sampleReport) page = <SampleReportPage {...props} />;
   else page = {
     home: <HomePage {...props} />,
     services: <ServicesPage {...props} />,

@@ -711,6 +711,22 @@ const disabledContractorRoutes = contractorRoutes.filter((route) => !route.enabl
 const publicRouteMarkup = (await Promise.all(routeRecords.map((record) => read(resolve(output, record.outputFile))))).join("\n");
 const publicJavaScriptFiles = (await listFiles(output)).filter((file) => file.endsWith(".js"));
 const publicJavaScript = (await Promise.all(publicJavaScriptFiles.map(read))).join("\n");
+const disabledSampleReportBundleStrings = getApprovedSampleReports().length
+  ? []
+  : [
+      "sample-report-primary",
+      "sampleReportPlaceholder",
+      "Owner-review placeholder",
+      "Owner-approved redacted example",
+      "No fabricated inspection report is published here.",
+      "Production navigation stays off until a PDF is approved",
+      "Client and property identifiers must be removed before publication",
+      "Open the redacted PDF",
+      "/sample-report/",
+      "Sample Home Inspection Report | C&G",
+      "See how a C&G home inspection report organizes photographs, observations, limitations, and practical follow-up recommendations.",
+      "Owner-approved, properly redacted sample report is required.",
+    ];
 const forbiddenProductionBundleStrings = [
   CONTENT_STATE.provisionalOwnerReview,
   CONTENT_STATE.legacyPendingOwnerConfirmation,
@@ -732,6 +748,7 @@ const forbiddenProductionBundleStrings = [
   provisionalBusinessDetails.responseTime.copy,
   provisionalBusinessDetails.weekendAppointments.copy,
   ...legacyOwnerReviewSlots.map((review) => review.legacyText),
+  ...disabledSampleReportBundleStrings,
 ].filter(Boolean);
 if (OWNER_REVIEW_STAGING_VISIBLE) {
   for (const expected of [

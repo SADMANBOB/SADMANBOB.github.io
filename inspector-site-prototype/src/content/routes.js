@@ -8,9 +8,16 @@ import {
   provisionalBusinessDetails,
 } from "../../../shared/ownerReview.js";
 
-const approvedSampleReport = getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport)[0] || null;
+const SAMPLE_REPORT_CLIENT_ENABLED =
+  typeof __CG_SAMPLE_REPORT_CLIENT_ENABLED__ !== "undefined"
+    ? __CG_SAMPLE_REPORT_CLIENT_ENABLED__
+    : OWNER_REVIEW_STAGING_VISIBLE
+      || getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport).length > 0;
+const approvedSampleReport = SAMPLE_REPORT_CLIENT_ENABLED
+  ? getApprovedSampleReports(PUBLICATION_SURFACES.sampleReport)[0] || null
+  : null;
 const approvedAreaPages = getApprovedServiceAreaPages("Inspector");
-const sampleReportPlaceholder = OWNER_REVIEW_STAGING_VISIBLE
+const sampleReportPlaceholder = SAMPLE_REPORT_CLIENT_ENABLED && OWNER_REVIEW_STAGING_VISIBLE
   ? {
       provisional: true,
       title: provisionalBusinessDetails.sampleReportPlaceholder.title,
@@ -130,7 +137,7 @@ const coreRoutes = [
     sitemap: true,
     breadcrumbs: [{ label: "Privacy", path: "/privacy/" }],
   },
-  {
+  ...(SAMPLE_REPORT_CLIENT_ENABLED ? [{
     key: "sample-report",
     path: "/sample-report/",
     label: "Sample Report",
@@ -145,7 +152,7 @@ const coreRoutes = [
     disabledReason: "Owner-approved, properly redacted sample report is required.",
     sampleReport: sampleReportForRoute,
     breadcrumbs: [{ label: "Sample Report", path: "/sample-report/" }],
-  },
+  }] : []),
 ];
 
 export const serviceAreaRouteDefinitions = approvedAreaPages.map((area) => ({
