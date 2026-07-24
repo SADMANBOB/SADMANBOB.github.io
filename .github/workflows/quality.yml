@@ -54,15 +54,20 @@ jobs:
       - name: Run axe accessibility audit
         if: ${{ always() && steps.deterministic.outcome == 'success' }}
         run: npm run audit:a11y
-      - name: Run Lighthouse audit
+      - name: Run desktop Lighthouse audit
         if: ${{ always() && steps.deterministic.outcome == 'success' }}
         run: npm run audit:lighthouse
+      - name: Run mobile Lighthouse audit
+        if: ${{ always() && steps.deterministic.outcome == 'success' }}
+        run: npm run audit:lighthouse:mobile
       - name: Preserve Lighthouse reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: lighthouse-reports
-          path: .lighthouseci/reports
+          path: |
+            .lighthouseci/reports
+            .lighthouseci/reports-mobile
           if-no-files-found: ignore
           retention-days: 7
       - name: Preserve automated browser failure evidence

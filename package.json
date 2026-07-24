@@ -17,6 +17,7 @@
     "quality:owner-review": "OWNER_REVIEW_STAGING=1 VITE_OWNER_REVIEW_STAGING=1 npm run quality",
     "audit:a11y": "node scripts/quality-gates.mjs browser-a11y",
     "audit:lighthouse": "lhci autorun --config=./lighthouserc.json",
+    "audit:lighthouse:mobile": "lhci autorun --config=./lighthouserc.mobile.json",
     "readiness": "node scripts/publication-readiness.mjs",
     "owner-review:report": "OWNER_REVIEW_STAGING=1 VITE_OWNER_REVIEW_STAGING=1 node scripts/owner-review-report.mjs",
     "release:verify": "node scripts/publication-readiness.mjs --require-publication",
