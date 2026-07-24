@@ -34,15 +34,31 @@ const readStagingFlag = () => {
 /** Staging builds may render provisional/legacy content with explicit labels. Defaults false. */
 export const OWNER_REVIEW_STAGING_VISIBLE = readStagingFlag();
 
+/** Short homepage / hero service-area line. */
+export const serviceAreaShort = "Serving Los Angeles County and Riverside County.";
+
+/** Canonical public qualification used across both sites. */
 export const serviceAreaQualification =
-  "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address.";
+  "Serving Los Angeles County and Riverside County, subject to address, scheduling, travel, and project-scope confirmation.";
+
+/**
+ * Evidence-safe Clarence biography for production.
+ * Does not assert years, employers, degrees, certifications, or awards.
+ */
+export const clarenceBiographyPublic = Object.freeze({
+  short:
+    "Clarence combines inspection discipline, construction knowledge, and straightforward communication to help property owners make informed decisions.",
+  full:
+    "Clarence Gloss brings a practical, construction-informed perspective to inspections and residential improvement work. His approach focuses on careful observation, clear communication, and helping clients understand what needs attention now, what can wait, and what may require a specialist.",
+});
 
 export const preferredEmails = Object.freeze({
   status: CONTENT_STATE.provisionalOwnerReview,
   inspections: "inspections@cginspection.net",
   contracting: "contracting@cginspection.net",
   contact: "contact@cginspection.net",
-  note: "Preferred domain mailboxes stay provisional until confirmed operational. Public forms continue to use the current Gmail fallback.",
+  liveFallback: "clarencegloss@gmail.com",
+  note: "Preferred domain mailboxes stay provisional until confirmed operational. Public forms and pages continue to use the Gmail fallback until domain delivery is verified.",
 });
 
 export const provisionalBusinessDetails = Object.freeze({
@@ -78,8 +94,8 @@ export const provisionalBusinessDetails = Object.freeze({
   }),
   biography: Object.freeze({
     status: CONTENT_STATE.provisionalOwnerReview,
-    short: "Clarence Gloss combines inspection discipline, construction knowledge, and clear communication to help property owners make informed decisions.",
-    full: "Clarence Gloss brings a practical, construction-informed perspective to property inspections and residential improvement work. His approach emphasizes careful observation, clear communication, and helping clients understand which findings require immediate attention and which can be planned for over time. Through C&G Certified Home Inspector and C&G Contracting Services, Clarence works with homeowners, buyers, sellers, agents, investors, and property professionals across Los Angeles and Riverside counties.",
+    short: clarenceBiographyPublic.short,
+    full: `${clarenceBiographyPublic.full} Through C&G Certified Home Inspector and C&G Contracting Services, Clarence works with homeowners, buyers, sellers, agents, investors, and property professionals across Los Angeles and Riverside counties.`,
   }),
   poolSpa: Object.freeze({
     status: CONTENT_STATE.provisionalOwnerReview,
@@ -109,10 +125,11 @@ export const provisionalBusinessDetails = Object.freeze({
   }),
 });
 
+/** Planning categories shown publicly; not a promise that every item fits every property. */
 export const typicalContractorProjects = Object.freeze({
-  status: CONTENT_STATE.provisionalOwnerReview,
+  status: "planning",
   qualification:
-    "Project acceptance depends on scope, location, scheduling, licensing requirements, access, and the relationship between the property and any prior C&G inspection.",
+    "Project acceptance depends on scope, location, scheduling, licensing requirements, access, materials, and the relationship between the property and any prior C&G inspection.",
   categories: Object.freeze([
     "Interior repairs",
     "Drywall repair and patching",
@@ -126,19 +143,19 @@ export const typicalContractorProjects = Object.freeze({
     "Exterior repairs",
     "Property maintenance",
     "Pre-sale repair preparation",
-    "Inspection-related repairs performed only when ethically and legally eligible",
+    "Eligible inspection-related repairs after the separation period",
   ]),
 });
 
 export const photographyReplacementSlots = Object.freeze([
-  Object.freeze({ id: "clarence-portrait", label: "Clarence portrait", intendedSurface: "inspector-about" }),
-  Object.freeze({ id: "inspector-at-work", label: "Inspector at work", intendedSurface: "inspector-home" }),
-  Object.freeze({ id: "exterior-inspection", label: "Exterior inspection", intendedSurface: "inspector-services" }),
-  Object.freeze({ id: "electrical-panel-inspection", label: "Electrical panel inspection", intendedSurface: "inspector-services" }),
-  Object.freeze({ id: "roof-or-attic-observation", label: "Roof or attic observation", intendedSurface: "inspector-services" }),
-  Object.freeze({ id: "contractor-project", label: "Contractor project", intendedSurface: "contractor-projects" }),
-  Object.freeze({ id: "before-and-after-project", label: "Before-and-after project", intendedSurface: "contractor-projects" }),
-  Object.freeze({ id: "finished-detail-work", label: "Finished detail work", intendedSurface: "contractor-home" }),
+  Object.freeze({ id: "clarence-portrait", label: "Clarence portrait", intendedSurface: "inspector-about", priority: "high" }),
+  Object.freeze({ id: "inspector-at-work", label: "Inspector at work", intendedSurface: "inspector-home", priority: "high" }),
+  Object.freeze({ id: "exterior-inspection", label: "Exterior inspection", intendedSurface: "inspector-services", priority: "medium" }),
+  Object.freeze({ id: "electrical-panel-inspection", label: "Electrical panel inspection", intendedSurface: "inspector-services", priority: "medium" }),
+  Object.freeze({ id: "roof-or-attic-observation", label: "Roof or attic observation", intendedSurface: "inspector-services", priority: "medium" }),
+  Object.freeze({ id: "contractor-project", label: "Contractor project", intendedSurface: "contractor-projects", priority: "high" }),
+  Object.freeze({ id: "before-and-after-project", label: "Before-and-after project", intendedSurface: "contractor-projects", priority: "high" }),
+  Object.freeze({ id: "finished-detail-work", label: "Finished detail work", intendedSurface: "contractor-home", priority: "medium" }),
 ]);
 
 export const ownerReviewBannerCopy =

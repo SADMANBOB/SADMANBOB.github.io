@@ -15,7 +15,7 @@ export const business = {
     email: "clarencegloss@gmail.com",
     schedulingUrl: null,
     origin: "https://www.cginspection.net",
-    positioning: "Home inspections across Los Angeles County and Riverside County.",
+    positioning: "Serving Los Angeles County and Riverside County.",
   },
   contracting: {
     publicName: "C&G Contracting Services",
@@ -29,7 +29,7 @@ export const business = {
     email: "clarencegloss@gmail.com",
     origin: "https://www.cginspection.net/contracting/",
     positioning:
-      "Residential repair and improvement services across Los Angeles County and Riverside County, subject to project review.",
+      "Serving Los Angeles County and Riverside County, subject to address, scheduling, travel, and project-scope confirmation.",
     license: {
       number: "987643",
       classification: "B — General Building",
@@ -252,7 +252,7 @@ export function claimDraftForOwnerReview(claim) {
 }
 
 const SERVICE_AREA_QUALIFICATION =
-  "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address.";
+  "Serving Los Angeles County and Riverside County, subject to address, scheduling, travel, and project-scope confirmation.";
 
 const losAngelesCommunities = Object.freeze([
   "Los Angeles",
@@ -313,14 +313,14 @@ export const serviceAreas = [
     inspectorPage: {
       pageTitle: "Home Inspections in Los Angeles County | C&G",
       metaDescription:
-        "Request a C&G home inspection in Los Angeles County. Coverage is confirmed address by address across Central LA, South LA, the San Gabriel Valley, Gateway Cities, and South Bay.",
+        "Request a C&G home inspection in Los Angeles County. Serving Los Angeles County and Riverside County, subject to address and scheduling confirmation.",
       pageContent: {
         introduction:
           "C&G Certified Home Inspector serves residential clients throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities. Share the full property address so coverage, travel, and timing can be confirmed before an appointment is accepted.",
         propertyContext:
           "Los Angeles County includes a wide range of housing ages, access patterns, and neighborhood conditions. A request for Compton, Long Beach, Pasadena, Torrance, or another listed community begins with the specific address—not a county-wide assumption that every property is automatically accepted.",
         accessAndTiming:
-          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. Provide occupancy, access notes, and preferred timing so the inspection conversation starts with accurate logistics.",
+          `${SERVICE_AREA_QUALIFICATION} Share occupancy, access notes, and preferred timing so the inspection conversation starts with accurate logistics.`,
         planningChecklist: [
           "Full street address and city within Los Angeles County",
           "Property type, approximate size, and inspection purpose",
@@ -331,14 +331,14 @@ export const serviceAreas = [
     contractorPage: {
       pageTitle: "Residential Contracting in Los Angeles County | C&G",
       metaDescription:
-        "Request residential repair and finish-work review from C&G Contracting Services in Los Angeles County. Project acceptance depends on scope, travel, scheduling, and eligibility.",
+        "Request residential repair review from C&G Contracting Services in Los Angeles County. Serving Los Angeles and Riverside counties, subject to project confirmation.",
       pageContent: {
         introduction:
-          "C&G Contracting Services reviews residential repair, finish-work, punch-list, and small multi-trade projects throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities. Every request is evaluated for the property, scope, and license fit.",
+          "C&G Contracting Services reviews residential repair, finish-work, punch-list, and small multi-trade projects throughout Los Angeles County, including Central Los Angeles, South Los Angeles, the San Gabriel Valley, the Gateway Cities, the South Bay, and nearby communities. Tell us what needs attention and we will review whether it fits our current services.",
         propertyContext:
           "Communities such as Compton, Downey, Hawthorne, Long Beach, and Torrance may present different access, finish, and permit contexts. A clear description of the current condition and desired result helps C&G decide whether the project fits current capabilities.",
         accessAndTiming:
-          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. Projects are not accepted until eligibility, scope, and written estimate steps are complete.",
+          `${SERVICE_AREA_QUALIFICATION} We review eligibility, scope, and next steps before any estimate visit is scheduled.`,
         planningChecklist: [
           "Full property address and authority to request work",
           "Plain-language description of the condition and desired result",
@@ -365,14 +365,14 @@ export const serviceAreas = [
     inspectorPage: {
       pageTitle: "Home Inspections in Riverside County | C&G",
       metaDescription:
-        "Request a C&G home inspection in Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities.",
+        "Request a C&G home inspection in Riverside County, including Riverside, Moreno Valley, Corona, and nearby communities. Coverage confirmed address by address.",
       pageContent: {
         introduction:
           "C&G Certified Home Inspector serves residential clients throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities. Coverage is confirmed from the actual property address before an appointment is accepted.",
         propertyContext:
           "Riverside County properties vary in age, access, and travel distance from the Los Angeles County core. Sharing the complete address, property type, and timing needs early helps C&G confirm whether the inspection can be scheduled.",
         accessAndTiming:
-          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. A submitted request is not a confirmed appointment until C&G accepts the scope and timing.",
+          `${SERVICE_AREA_QUALIFICATION} A submitted request is not a confirmed appointment until C&G accepts the scope and timing.`,
         planningChecklist: [
           "Full street address and city within Riverside County",
           "Property type, approximate size, and inspection purpose",
@@ -383,14 +383,14 @@ export const serviceAreas = [
     contractorPage: {
       pageTitle: "Residential Contracting in Riverside County | C&G",
       metaDescription:
-        "Share a residential repair or finish-work request with C&G Contracting Services in Riverside County. Acceptance depends on scope, travel, scheduling, and eligibility review.",
+        "Share a residential repair request with C&G Contracting Services in Riverside County. Serving Los Angeles and Riverside counties, subject to project confirmation.",
       pageContent: {
         introduction:
-          "C&G Contracting Services reviews residential repair and improvement requests throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities. Travel, trades, permits, and eligibility are part of every review.",
+          "C&G Contracting Services reviews residential repair and improvement requests throughout Riverside County, including Riverside, Moreno Valley, Corona, Jurupa Valley, Eastvale, Perris, and surrounding communities. Tell us about the property and the result you want, and we will review the next step.",
         propertyContext:
           "A clear project brief matters as much as location. Describe the condition, desired result, access, and any known source issues so C&G can decide whether the work fits the current B — General Building practice.",
         accessAndTiming:
-          "Availability varies by property location, project scope, scheduling, and travel requirements. Contact C&G to confirm service for your address. No price or work date is promised by the website request form.",
+          `${SERVICE_AREA_QUALIFICATION} We confirm eligibility and scope before discussing price or scheduling.`,
         planningChecklist: [
           "Full property address and requester authority",
           "Condition summary, affected areas, and desired result",

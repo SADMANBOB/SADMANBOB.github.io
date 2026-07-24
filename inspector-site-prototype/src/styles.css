@@ -393,7 +393,6 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 .scope-atlas-figure figcaption { position: absolute; right: 16px; bottom: 16px; left: 16px; display: flex; align-items: end; justify-content: space-between; gap: 18px; padding: 15px 17px; color: #f4eee4; background: rgba(29,29,28,.92); }
 .scope-atlas-figure figcaption span { font-family: var(--serif); font-size: 16px; }
 .scope-atlas-figure figcaption small { color: var(--gold-bright); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.scope-atlas-media-note { margin: 13px 0 0; color: #4d463d; font-size: 12px; letter-spacing: .02em; }
 .scope-atlas-groups { display: grid; gap: 64px; margin-top: 72px; }
 .scope-atlas-group-header { display: grid; grid-template-columns: 42px minmax(220px, .52fr) 1fr; gap: 22px; align-items: start; margin-bottom: 25px; padding-bottom: 22px; border-bottom: 1px solid #bfb4a4; }
 .scope-atlas-group-header > span { padding-top: 8px; color: #6d4f16; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
@@ -607,8 +606,16 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 .policy-layout > section > span { color: var(--gold-ink); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .policy-layout h2 { margin-bottom: 12px; font-size: clamp(26px, 3vw, 38px); }
 .policy-layout p { max-width: 760px; margin: 0; color: #615b51; font-size: 14px; line-height: 1.75; }
-.footer-disclosures { display: grid; grid-template-columns: 1fr 1fr; gap: 35px; padding: 22px 0; border-top: 1px solid #302f2b; }
+.scope-atlas-media-note,
+.editorial-caption-note { margin: 8px 0 0; color: #554f46; font-size: 11px; letter-spacing: .02em; }
+.trust-expectation-band { padding: 72px 0 36px; color: var(--ink); background: var(--cream); }
+.trust-expectation-band .review-header { margin-bottom: 0; }
+.trust-expectation-band .eyebrow { color: #3f2c08; }
+.trust-expectation-band .review-intro { color: #554f46; }
+.trust-expectation-band h2 { color: var(--ink); }
+.footer-disclosures { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 16px 0; border-top: 1px solid #302f2b; }
 .footer-disclosures p { max-width: none; color: #858077; font-size: 10px; line-height: 1.65; }
+.footer-editorial-note { color: #9a9286; }
 
 @media (max-width: 1040px) {
   .header-inner { gap: 16px; }

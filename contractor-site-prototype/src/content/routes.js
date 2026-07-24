@@ -5,13 +5,13 @@ import {
 } from "../../../shared/publicationRegistry.js";
 
 const coreContractorRoutes = [
-  { key: "home", path: "/", label: "Home", title: "C&G Contracting Services | Los Angeles & Riverside Counties", description: "Residential repair and improvement services across Los Angeles County and Riverside County, subject to project review.", enabled: true },
+  { key: "home", path: "/", label: "Home", title: "C&G Contracting Services | Los Angeles & Riverside Counties", description: "Serving Los Angeles County and Riverside County. Tell us what needs attention—we’ll review the project, confirm whether it fits our current services, and explain the next step.", enabled: true },
   { key: "services", path: "/services/", label: "Services", title: "Residential Contracting Services | C&G", description: "Review residential repair, drywall, finish carpentry, punch-list, maintenance, exterior-detail, and small multi-trade project categories.", enabled: true },
   { key: "process", path: "/process/", label: "Process", title: "Contracting Process | C&G", description: "See how a C&G project moves from eligibility and scope review through a written estimate, scheduling, work, and final walkthrough.", enabled: true },
-  { key: "about", path: "/about/", label: "About", title: "About C&G Contracting Services", description: "Learn how C&G Contracting Services defines residential project scope, identifies the contractor of record, and keeps inspection work separate.", enabled: true },
+  { key: "about", path: "/about/", label: "About", title: "About C&G Contracting Services", description: "Learn how C&G Contracting Services defines residential project scope, identifies the contractor of record, and keeps inspection work separate. Serving Los Angeles County and Riverside County.", enabled: true },
   { key: "projects", path: "/projects/", label: "Project Types", title: "Residential Project Types | C&G Contracting Services", description: "See representative residential repair and finish-work categories and learn what information helps C&G evaluate a project request.", enabled: true },
-  { key: "faq", path: "/faq/", label: "FAQ", title: "Contractor FAQ | C&G Contracting Services", description: "Answers about project fit, estimates, eligibility, materials, permits, concealed conditions, specialty work, and scheduling.", enabled: true },
-  { key: "estimate", path: "/estimate/", label: "Request Estimate", title: "Request a Residential Project Estimate | C&G", description: "Share project, property, access, timing, material, permit, and inspection-eligibility details for C&G review.", enabled: true },
+  { key: "faq", path: "/faq/", label: "FAQ", title: "Contractor FAQ | C&G Contracting Services", description: "Answers about project fit, estimates, eligibility, materials, permits, concealed conditions, specialty work, and scheduling. Serving Los Angeles County and Riverside County.", enabled: true },
+  { key: "estimate", path: "/estimate/", label: "Request Estimate", title: "Request a Residential Project Estimate | C&G", description: "Tell us what needs attention. We’ll review the property, project scope, location, and eligibility before confirming the next step.", enabled: true },
   { key: "privacy", path: "/privacy/", label: "Privacy", title: "Contractor Privacy | C&G", description: "Read how information supplied in a C&G contracting project request is handled in the current website flow.", enabled: true },
 ];
 

@@ -54,6 +54,7 @@ export function ReviewCarousel({
   surface = "inspector-home",
   heading = "Client feedback",
   intro,
+  emptyCopy = "Approved client reviews will appear here after owner confirmation. Until then, the report focuses on clear findings, photographs, and practical next steps.",
 }) {
   const headingId = useId();
   const trackId = useId();
@@ -113,7 +114,23 @@ export function ReviewCarousel({
     return () => window.clearInterval(timer);
   }, [reviewCount, shouldAdvance]);
 
-  if (!reviewCount) return null;
+  const resolvedIntro = intro || renderable.intro || emptyCopy;
+
+  if (!reviewCount) {
+    return (
+      <section className="trust-expectation-band" aria-labelledby={headingId}>
+        <div className="container">
+          <header className="review-header">
+            <div>
+              <p className="eyebrow">What the report is designed to provide</p>
+              <h2 id={headingId}>{heading}</h2>
+            </div>
+            <p className="review-intro">{resolvedIntro}</p>
+          </header>
+        </div>
+      </section>
+    );
+  }
 
   const showPrevious = reviewCount > 2;
   const previousReview = showPrevious
@@ -132,8 +149,6 @@ export function ReviewCarousel({
     playbackTouchedRef.current = true;
     setIsPlaying((playing) => !playing);
   };
-
-  const resolvedIntro = intro || renderable.intro;
 
   return (
     <section
