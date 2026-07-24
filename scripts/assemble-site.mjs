@@ -1,6 +1,7 @@
 import { copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { business, separationPolicy } from "../shared/siteData.js";
+import { isLocalFilesystemArtifact } from "../shared/outputHygiene.js";
 import { enabledInspectorRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { enabledContractorRoutes } from "../contractor-site-prototype/src/content/routes.js";
 
@@ -53,12 +54,16 @@ const redirectPage = (target) => {
 `;
 };
 
+// macOS sidecars must never reach the deployed artifact, so every copy into _site is filtered.
+const copyWithoutLocalArtifacts = (from, to) =>
+  cp(from, to, { recursive: true, filter: (source) => !isLocalFilesystemArtifact(source) });
+
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-await cp(inspectorDist, output, { recursive: true });
+await copyWithoutLocalArtifacts(inspectorDist, output);
 
 await mkdir(resolve(output, "contracting"), { recursive: true });
-await cp(contractorDist, resolve(output, "contracting"), { recursive: true });
+await copyWithoutLocalArtifacts(contractorDist, resolve(output, "contracting"));
 
 await mkdir(resolve(output, "property-services"), { recursive: true });
 const portalHtml = (await readFile(resolve(portal, "index.html"), "utf8"))
@@ -80,8 +85,10 @@ for (const [legacyRoute, target] of legacyInspectorRoutes) {
   await writeFile(resolve(directory, "index.html"), redirectPage(target));
 }
 
+// Robots directives are only honoured at the origin root, so a single authoritative
+// /robots.txt advertises both sitemaps. A nested /contracting/robots.txt is never read
+// by a crawler and is therefore not emitted.
 await writeFile(resolve(output, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${siteOrigin}/sitemap.xml\nSitemap: ${siteOrigin}/contracting/sitemap.xml\n`);
 await writeFile(resolve(output, "sitemap.xml"), sitemap([...inspectorRoutes, "/property-services/"]));
-await writeFile(resolve(output, "contracting/robots.txt"), `User-agent: *\nAllow: /contracting/\n\nSitemap: ${siteOrigin}/contracting/sitemap.xml\n`);
 await writeFile(resolve(output, "contracting/sitemap.xml"), sitemap(contractorRoutes));
 await writeFile(resolve(output, ".nojekyll"), "");

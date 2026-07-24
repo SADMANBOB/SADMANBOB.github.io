@@ -133,7 +133,7 @@ function EditorialPicture({ id, sizes, loading, fetchPriority }) {
 function BrandMark({ onNavigate }) {
   return (
     <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.inspection.publicName} home`}>
-      <span className="brand-mark-wrap"><img src={assetUrl("assets/cg-logo-mark.png")} alt="" className="brand-mark" width="54" height="54" /></span>
+      <span className="brand-mark-wrap"><img src={assetUrl("assets/optimized/cg-logo-mark-162.png")} alt="" className="brand-mark" width="162" height="216" /></span>
       <span className="brand-copy"><strong>C&amp;G Certified</strong><span>Home Inspector</span></span>
     </InternalLink>
   );

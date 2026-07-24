@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
+import { isLocalFilesystemArtifact } from "../shared/outputHygiene.js";
 import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimCanRenderOn, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
 import {
   bookingActionFor,
@@ -595,8 +597,6 @@ assert.match(contractorSource, /Nothing is uploaded or sent while you use this g
 for (const site of [inspector, contractor]) {
   await stat(resolve(site, "dist/index.html"));
   await stat(resolve(site, "dist/404.html"));
-  await stat(resolve(site, "dist/robots.txt"));
-  await stat(resolve(site, "dist/sitemap.xml"));
 }
 
 const routeRecords = [
@@ -1049,6 +1049,36 @@ assert.match(contractorPrivacy, /GitHub Pages/i, "Contractor privacy lacks the a
 
 assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/sitemap\\.xml`), "Root robots.txt has the wrong sitemap");
 assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Root robots.txt does not advertise the contractor sitemap");
-assert.match(await read(resolve(output, "contracting/robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Contractor robots.txt has the wrong sitemap");
+// Crawlers only read /robots.txt at the origin root; a nested copy is inert and must not ship.
+assert.equal(existsSync(resolve(output, "contracting/robots.txt")), false, "A nested contracting/robots.txt is inert and must not be emitted");
+
+// Brand and icon assets must exist at the origin root so no entry point requests a missing favicon.
+for (const iconFile of ["favicon.ico", "apple-touch-icon.png", "assets/optimized/cg-logo-mark-162.png"]) {
+  await stat(resolve(output, iconFile));
+}
+const headerLogoBytes = (await stat(resolve(output, "assets/optimized/cg-logo-mark-162.png"))).size;
+assert.ok(headerLogoBytes < 40_000, `The globally loaded header logo must stay small (${headerLogoBytes} bytes)`);
+for (const entryPoint of ["index.html", "contracting/index.html", "property-services/index.html"]) {
+  const entryHtml = await read(resolve(output, entryPoint));
+  assert.match(entryHtml, /<link rel="icon" href="\/favicon\.ico"/, `${entryPoint} does not reference the root favicon`);
+  assert.match(entryHtml, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"/, `${entryPoint} does not reference the apple touch icon`);
+}
+assert.equal(
+  /<link[^>]*rel="icon"[^>]*cg-logo-mark\.png/.test(await read(resolve(output, "index.html"))),
+  false,
+  "The full-size logo master must not be used as a favicon",
+);
+
+// macOS filesystem sidecars must never reach the deployed artifact.
+const localArtifacts = [];
+const scanForLocalArtifacts = async (directory) => {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = resolve(directory, entry.name);
+    if (isLocalFilesystemArtifact(entry.name)) localArtifacts.push(relative(output, entryPath));
+    else if (entry.isDirectory()) await scanForLocalArtifacts(entryPath);
+  }
+};
+await scanForLocalArtifacts(output);
+assert.deepEqual(localArtifacts, [], `Local filesystem metadata leaked into the deployed output: ${localArtifacts.join(", ")}`);
 
 console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, and legacy redirects.`);
