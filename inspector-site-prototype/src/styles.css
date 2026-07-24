@@ -971,3 +971,18 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 @media (max-width: 800px) {
   .home-area-card-grid { grid-template-columns: 1fr; }
 }
+
+/* Mobile legibility floor.
+   Lighthouse measured only 39% of the text on /contact/ at 12px or larger, with
+   form labels at 11px and the optional-field hint at 9px. These are reading and
+   form-control text on the highest-intent conversion page, so they are raised to
+   a 12px minimum on small viewports. Desktop sizing and all decorative
+   micro-labels are deliberately unchanged. */
+@media (max-width: 800px) {
+  .contact-preflight-list p,
+  .request-form label,
+  .form-choice-row > span,
+  .form-privacy-note,
+  .field-optional,
+  .footer-disclosures p { font-size: 12px; }
+}
