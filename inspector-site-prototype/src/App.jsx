@@ -746,7 +746,7 @@ function SampleReportPage({ route, onNavigate }) {
               <>
                 <p className="page-copy">No fabricated inspection report is published here. When a real redacted PDF is approved, this page will link to the file and record its digest, page count, and publication permissions in the registry.</p>
                 <ul className="ethics-list">
-                  <li><Check size={18} aria-hidden="true" /> Status: provisional_owner_review</li>
+                  <li><Check size={18} aria-hidden="true" /> Status: {provisionalBusinessDetails.sampleReportPlaceholder.status}</li>
                   <li><Check size={18} aria-hidden="true" /> Production navigation stays off until a PDF is approved</li>
                   <li><Check size={18} aria-hidden="true" /> Client and property identifiers must be removed before publication</li>
                 </ul>

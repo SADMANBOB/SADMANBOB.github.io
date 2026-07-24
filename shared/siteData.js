@@ -1,3 +1,7 @@
+const PUBLIC_CLIENT_BUNDLE =
+  typeof __CG_PUBLIC_CLIENT_BUNDLE__ !== "undefined"
+  && __CG_PUBLIC_CLIENT_BUNDLE__;
+
 export const separationPolicy = {
   notice:
     "Home inspection and construction are separate services. C&G Contracting Services does not offer or perform repairs on a property for which C&G prepared a home inspection report during the previous 12 months. If you are unsure whether this applies, contact C&G before submitting a project request.",
@@ -53,6 +57,7 @@ export const contractorRequestCategoryIds = Object.freeze([
 ]);
 
 export const claims = {
+  ...(PUBLIC_CLIENT_BUNDLE ? {} : {
   internachiCertification: {
     status: "provisional_owner_review",
     evidenceType: "current directory listing or certificate",
@@ -194,6 +199,7 @@ export const claims = {
     productionVisible: false,
     draftCopy: "Infrared imaging may be used when available and appropriate as a supplemental observation tool. It does not replace invasive testing or specialist evaluation.",
   },
+  }),
   contractorLicense: {
     status: "approved",
     evidenceType: "official CSLB license detail",
@@ -211,6 +217,7 @@ export const claims = {
     expiresAt: null,
     allowedSurfaces: ["inspector", "contractor", "portal"],
   },
+  ...(PUBLIC_CLIENT_BUNDLE ? {} : {
   customerTestimonials: {
     status: "legacy_pending_owner_confirmation",
     evidenceType: "verifiable source, permission, and exact approved text",
@@ -219,6 +226,7 @@ export const claims = {
     allowedSurfaces: [],
     note: "Legacy feedback imported for owner-review staging. Production getApprovedReviews remains empty until each review is approved.",
   },
+  }),
 };
 
 export function claimIsApproved(claim, onDate = new Date()) {
@@ -293,6 +301,24 @@ const riversideDescription =
 
 const mapsLinkFor = (query) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+const pendingServiceAreas = PUBLIC_CLIENT_BUNDLE ? [] : [
+  {
+    id: "city-of-compton",
+    label: "City of Compton",
+    type: "city",
+    status: "pending",
+    contentState: "legacy_pending_owner_confirmation",
+    approvedForInspector: false,
+    approvedForContractor: false,
+    approvedForMetadata: false,
+    uniquePageEnabled: false,
+    ownerConfirmedAt: null,
+    inspectorPage: null,
+    contractorPage: null,
+    note: "Compton is listed as a representative Los Angeles County community. A separate city landing page remains unpublished.",
+  },
+];
 
 export const serviceAreas = [
   {
@@ -399,21 +425,7 @@ export const serviceAreas = [
       },
     },
   },
-  {
-    id: "city-of-compton",
-    label: "City of Compton",
-    type: "city",
-    status: "pending",
-    contentState: "legacy_pending_owner_confirmation",
-    approvedForInspector: false,
-    approvedForContractor: false,
-    approvedForMetadata: false,
-    uniquePageEnabled: false,
-    ownerConfirmedAt: null,
-    inspectorPage: null,
-    contractorPage: null,
-    note: "Compton is listed as a representative Los Angeles County community. A separate city landing page remains unpublished.",
-  },
+  ...pendingServiceAreas,
 ];
 
 export const approvedServiceAreas = (surface) =>

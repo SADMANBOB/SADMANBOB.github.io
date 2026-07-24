@@ -32,7 +32,13 @@ import {
   serviceAreaPageIsApproved,
 } from "../shared/publicationRegistry.js";
 import { getApprovedReviews, getLegacyOwnerReviewReviews, getRenderableReviews, reviewEntryIsApproved, reviewEntryIsLegacyOwnerReview, reviewSlots } from "../shared/reviewRegistry.js";
-import { CONTENT_STATE, OWNER_REVIEW_STAGING_VISIBLE } from "../shared/ownerReview.js";
+import {
+  CONTENT_STATE,
+  OWNER_REVIEW_STAGING_VISIBLE,
+  ownerReviewBannerCopy,
+  preferredEmails,
+  provisionalBusinessDetails,
+} from "../shared/ownerReview.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
 import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
@@ -703,6 +709,44 @@ assert.equal(contractorSitemap.some((url) => !url.startsWith(`${expectedOrigin}/
 const disabledInspectorRoutes = inspectorRoutes.filter((route) => !route.enabled);
 const disabledContractorRoutes = contractorRoutes.filter((route) => !route.enabled);
 const publicRouteMarkup = (await Promise.all(routeRecords.map((record) => read(resolve(output, record.outputFile))))).join("\n");
+const publicJavaScriptFiles = (await listFiles(output)).filter((file) => file.endsWith(".js"));
+const publicJavaScript = (await Promise.all(publicJavaScriptFiles.map(read))).join("\n");
+const forbiddenProductionBundleStrings = [
+  CONTENT_STATE.provisionalOwnerReview,
+  CONTENT_STATE.legacyPendingOwnerConfirmation,
+  "owner-review-banner",
+  "provisional-label",
+  "Legacy feedback pending owner confirmation",
+  ownerReviewBannerCopy,
+  preferredEmails.inspections,
+  preferredEmails.contracting,
+  preferredEmails.contact,
+  provisionalBusinessDetails.sampleReportPlaceholder.title,
+  provisionalBusinessDetails.sampleReportPlaceholder.copy,
+  provisionalBusinessDetails.inspectorCertification.copy,
+  provisionalBusinessDetails.insurance.copy,
+  provisionalBusinessDetails.reportTurnaround.short,
+  provisionalBusinessDetails.reportTurnaround.full,
+  provisionalBusinessDetails.businessHours.weekdaysAndSaturday,
+  provisionalBusinessDetails.businessHours.sunday,
+  provisionalBusinessDetails.responseTime.copy,
+  provisionalBusinessDetails.weekendAppointments.copy,
+  ...legacyOwnerReviewSlots.map((review) => review.legacyText),
+].filter(Boolean);
+if (OWNER_REVIEW_STAGING_VISIBLE) {
+  for (const expected of [
+    ownerReviewBannerCopy,
+    legacyOwnerReviewSlots[0]?.legacyText,
+    provisionalBusinessDetails.sampleReportPlaceholder.title,
+    preferredEmails.inspections,
+  ].filter(Boolean)) {
+    assert.ok(publicJavaScript.includes(expected), `Owner-review staging bundle lost required registry content: ${expected}`);
+  }
+} else {
+  for (const forbidden of forbiddenProductionBundleStrings) {
+    assert.equal(publicJavaScript.includes(forbidden), false, `Production JavaScript bundle leaked owner-review content: ${forbidden}`);
+  }
+}
 for (const record of routeRecords.filter((item) => item.site === "inspector")) {
   const html = await read(resolve(output, record.outputFile));
   assert.match(html, /href="\/contracting\/"/, `${record.outputFile} lacks the top-level contractor link`);
