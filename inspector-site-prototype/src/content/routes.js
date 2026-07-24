@@ -26,7 +26,7 @@ const coreRoutes = [
     label: "Home",
     title: "C&G Certified Home Inspector | Los Angeles & Riverside Counties",
     description:
-      "Home inspections across Los Angeles County and Riverside County with clear explanations, detailed photos, and practical next steps for buyers, sellers, and homeowners.",
+      "Serving Los Angeles County and Riverside County. Clear home inspections with practical next steps for buyers, sellers, and homeowners.",
     enabled: true,
     navigation: true,
     sitemap: true,
@@ -62,7 +62,7 @@ const coreRoutes = [
     label: "Areas We Serve",
     title: "Home Inspection Service Areas | Los Angeles & Riverside Counties | C&G",
     description:
-      "C&G schedules home inspections across Los Angeles County and Riverside County. Coverage is confirmed address by address based on travel, scope, and availability.",
+      "Serving Los Angeles County and Riverside County, subject to address, scheduling, travel, and project-scope confirmation.",
     enabled: true,
     navigation: true,
     sitemap: true,
@@ -98,7 +98,7 @@ const coreRoutes = [
     label: "Contact",
     title: "Request a Home Inspection | C&G",
     description:
-      "Contact C&G with the property address, inspection type, timing, and access details to request a home inspection.",
+      "Tell us about the property, your timing, and the type of inspection you need. We’ll review the details and follow up about availability.",
     enabled: true,
     navigation: true,
     sitemap: true,

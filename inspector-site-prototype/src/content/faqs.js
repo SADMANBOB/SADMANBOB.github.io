@@ -3,7 +3,7 @@ export const inspectorFaqGroups = [
     title: "Planning and scheduling",
     items: [
       ["What does a home inspection include?", "A home inspection is a visual, non-invasive review of major visible and accessible systems and components. The property-specific agreement defines the final scope. Common areas include the site, exterior, roof, structure, electrical, plumbing, heating and cooling, water heater, interior rooms, kitchen, bathrooms, laundry, attic, crawlspace, and garage."],
-      ["How much does an inspection cost?", "Pricing depends on details such as property type, size, age, location, occupancy, additional structures, and any approved optional service. Share the address and known property details for a quote before scheduling."],
+      ["How much does an inspection cost?", "Pricing depends on details such as property type, size, age, location, occupancy, additional structures, and any optional add-ons. Share the address and known property details for a quote before scheduling."],
       ["How long does an inspection take?", "The time depends on the property's size, age, condition, systems, access, and inspection scope. C&G will provide a scheduling window rather than a universal duration promise."],
       ["How do I schedule?", "Use the contact page, call (310) 505-6581, or email clarencegloss@gmail.com. Provide the property address, property type, approximate size, desired date, and reason for the inspection. A request is not confirmed until C&G accepts the time and scope."],
       ["Do you offer weekend appointments?", "Weekend availability depends on the property, travel, and existing schedule. Share the timing you need and C&G will confirm what can be offered for that request."],
@@ -52,7 +52,7 @@ export const inspectorFaqGroups = [
   {
     title: "Service area and follow-up",
     items: [
-      ["What areas do you serve?", "C&G currently serves Los Angeles County and Riverside County. Coverage is confirmed address by address. Availability varies by property location, project scope, scheduling, and travel requirements."],
+      ["What areas do you serve?", "Serving Los Angeles County and Riverside County, subject to address, scheduling, travel, and project-scope confirmation."],
       ["What are your business hours?", "Contact C&G by phone or email with the property details and preferred timing. Availability and response expectations are confirmed for each request."],
       ["Can C&G repair items found in the inspection?", "No repair offer or work may be provided by C&G Contracting Services on a property for which C&G prepared a home inspection report during the previous 12 months. Use independent contractors during that period."],
       ["Can my agent receive the report?", "The client controls report sharing subject to the agreement and applicable transaction requirements. Obtain clear client authorization before sending the report to another person."],

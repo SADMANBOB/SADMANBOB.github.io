@@ -32,7 +32,13 @@ import {
   serviceAreaPageIsApproved,
 } from "../shared/publicationRegistry.js";
 import { getApprovedReviews, getLegacyOwnerReviewReviews, getRenderableReviews, reviewEntryIsApproved, reviewEntryIsLegacyOwnerReview, reviewSlots } from "../shared/reviewRegistry.js";
-import { CONTENT_STATE, OWNER_REVIEW_STAGING_VISIBLE } from "../shared/ownerReview.js";
+import {
+  CONTENT_STATE,
+  OWNER_REVIEW_STAGING_VISIBLE,
+  ownerReviewBannerCopy,
+  preferredEmails,
+  provisionalBusinessDetails,
+} from "../shared/ownerReview.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
 import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
@@ -395,7 +401,16 @@ if (OWNER_REVIEW_STAGING_VISIBLE) {
   assert.equal(getRenderableReviews("inspector-home").mode, "none", "Production renderable feedback must stay empty while reviews remain unapproved");
 }
 assert.match(inspectorSource, /<ReviewCarousel/, "The gated review carousel is not mounted on the inspector home page");
-assert.match(inspectorSource, /if \(!reviewCount\) return null/, "The review carousel no longer disappears when no review is approved");
+assert.match(
+  inspectorSource,
+  /trust-expectation-band/,
+  "The review carousel must render a production-safe empty trust band when no review is approved",
+);
+assert.doesNotMatch(
+  inspectorSource,
+  /AggregateRating|pending reviews|fake aggregate/i,
+  "Review carousel source must not introduce pending or aggregate-rating claims",
+);
 
 assert.equal(sampleReportRegistry.length, 1, "Sample-report registry must expose one primary publication slot");
 for (const report of sampleReportRegistry) {
@@ -694,6 +709,44 @@ assert.equal(contractorSitemap.some((url) => !url.startsWith(`${expectedOrigin}/
 const disabledInspectorRoutes = inspectorRoutes.filter((route) => !route.enabled);
 const disabledContractorRoutes = contractorRoutes.filter((route) => !route.enabled);
 const publicRouteMarkup = (await Promise.all(routeRecords.map((record) => read(resolve(output, record.outputFile))))).join("\n");
+const publicJavaScriptFiles = (await listFiles(output)).filter((file) => file.endsWith(".js"));
+const publicJavaScript = (await Promise.all(publicJavaScriptFiles.map(read))).join("\n");
+const forbiddenProductionBundleStrings = [
+  CONTENT_STATE.provisionalOwnerReview,
+  CONTENT_STATE.legacyPendingOwnerConfirmation,
+  "owner-review-banner",
+  "provisional-label",
+  "Legacy feedback pending owner confirmation",
+  ownerReviewBannerCopy,
+  preferredEmails.inspections,
+  preferredEmails.contracting,
+  preferredEmails.contact,
+  provisionalBusinessDetails.sampleReportPlaceholder.title,
+  provisionalBusinessDetails.sampleReportPlaceholder.copy,
+  provisionalBusinessDetails.inspectorCertification.copy,
+  provisionalBusinessDetails.insurance.copy,
+  provisionalBusinessDetails.reportTurnaround.short,
+  provisionalBusinessDetails.reportTurnaround.full,
+  provisionalBusinessDetails.businessHours.weekdaysAndSaturday,
+  provisionalBusinessDetails.businessHours.sunday,
+  provisionalBusinessDetails.responseTime.copy,
+  provisionalBusinessDetails.weekendAppointments.copy,
+  ...legacyOwnerReviewSlots.map((review) => review.legacyText),
+].filter(Boolean);
+if (OWNER_REVIEW_STAGING_VISIBLE) {
+  for (const expected of [
+    ownerReviewBannerCopy,
+    legacyOwnerReviewSlots[0]?.legacyText,
+    provisionalBusinessDetails.sampleReportPlaceholder.title,
+    preferredEmails.inspections,
+  ].filter(Boolean)) {
+    assert.ok(publicJavaScript.includes(expected), `Owner-review staging bundle lost required registry content: ${expected}`);
+  }
+} else {
+  for (const forbidden of forbiddenProductionBundleStrings) {
+    assert.equal(publicJavaScript.includes(forbidden), false, `Production JavaScript bundle leaked owner-review content: ${forbidden}`);
+  }
+}
 for (const record of routeRecords.filter((item) => item.site === "inspector")) {
   const html = await read(resolve(output, record.outputFile));
   assert.match(html, /href="\/contracting\/"/, `${record.outputFile} lacks the top-level contractor link`);
@@ -778,7 +831,7 @@ assert.match(assembledContractorServices, /id="request-worksheet"/, "Contractor 
 assert.match(assembledContractorServices, /Private planning tool/, "Contractor Services lacks the local-only planning context");
 assert.match(assembledContractorServices, /Print blank worksheet/, "Contractor Services lacks the worksheet print action");
 assert.ok(assembledEstimate.includes("previous 12 months"), "Contractor estimate path lacks the 12-month eligibility boundary");
-assert.match(assembledEstimate, /Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
+assert.match(assembledEstimate, /First, confirm inspection eligibility|Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
 assert.equal(/Full name/.test(assembledEstimate), false, "Contractor estimate prerender collects contact details before eligibility");
 assert.match(assembledEstimate, /Nothing is uploaded or sent while you use this guide/, "Contractor estimate lacks first-step transport truth");
 assert.match(assembledInspector, /Know what you’re/, "Inspector is not mounted at the site root");
@@ -799,7 +852,7 @@ assert.match(inspectorSource, /onChange=\{handleChange\}/, "Inspector Contact do
 assert.match(inspectorSource, /name === "phone" && preferredContact === "phone"/, "Inspector Contact does not expose phone as conditionally required");
 
 assert.equal(/Pending biography|modules remain hidden|years-of-experience modules/i.test(assembledInspectorAbout), false, "Inspector About exposes internal implementation-status copy");
-assert.match(assembledInspectorAbout, /That construction-informed perspective shapes both the on-site conversation and the report/, "Inspector About lacks the approved construction-informed baseline");
+assert.match(assembledInspectorAbout, /Clarence Gloss brings a practical, construction-informed perspective|That construction-informed perspective shapes both the on-site conversation/, "Inspector About lacks the approved construction-informed baseline");
 assert.match(assembledInspectorAbout, /What clients can expect/, "Inspector About lacks the client-expectations section");
 for (const expectation of ["Confirm the scope", "Inspect what is visible and accessible", "Make the report useful", "Review the next questions"]) assert.ok(assembledInspectorAbout.includes(expectation), `Inspector About lacks the ${expectation} expectation`);
 assert.match(assembledInspectorAbout, /href="\/services\/"[^>]*>See What the Inspection Covers/, "Inspector About lacks its Services pathway");
@@ -827,7 +880,7 @@ for (const service of contractorServices) {
 }
 
 assert.match(assembledInspectorServices, /data-scope-atlas="true"/, "Inspector Services lacks the visual scope atlas");
-assert.match(assembledInspectorServices, /Representative editorial imagery; not C&amp;G client or project photography\./, "Inspector Services lacks the editorial-image disclosure");
+assert.match(assembledInspectorServices, /Editorial illustrations · not C&amp;G client photography|Representative editorial imagery; not C&amp;G client or project photography\./, "Inspector Services lacks the editorial-image disclosure");
 assert.equal(enabledInspectionScope.length, 19, "Inspector scope registry does not contain the expected enabled sections");
 for (const section of enabledInspectionScope) {
   assert.ok(assembledInspectorServices.includes(escapeHtmlText(section.title)), `Inspector Services did not render ${section.title}`);
@@ -968,7 +1021,7 @@ for (const record of routeRecords) {
     }
   }
 }
-assert.match(await read(resolve(output, "contracting/projects/index.html")), /not photographs of completed C&amp;G client projects/i, "Illustrative project page lacks the required disclosure");
+assert.match(await read(resolve(output, "contracting/projects/index.html")), /not photographs of client work|not photographs of completed C&amp;G client projects/i, "Illustrative project page lacks the required disclosure");
 
 const inspectorPrivacy = await read(resolve(output, "privacy/index.html"));
 const contractorPrivacy = await read(resolve(output, "contracting/privacy/index.html"));
