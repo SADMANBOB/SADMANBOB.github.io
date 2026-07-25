@@ -41,8 +41,11 @@ Italic Libre Baskerville is retained because `h1 em` renders the italic serif on
 the inspector home hero.
 
 `dm-sans-variable.woff2` is preloaded from the inspector HTML shell because it
-renders the navigation, hero lede and body copy on every route. The two serif
-files are not preloaded, so the browser still fetches them at normal priority.
+renders the navigation, hero lede and body copy on every route.
+`libre-baskerville-variable.woff2` is also preloaded because it renders
+first-viewport headings; prioritizing the normal serif face prevents the long
+mobile contact heading from shifting after first paint. The italic serif face
+is not preloaded because it is used only by emphasized display text.
 
 DM Sans is licensed under the SIL Open Font License 1.1 in `OFL-DM-Sans.txt`.
 Libre Baskerville is licensed under the SIL Open Font License 1.1 in

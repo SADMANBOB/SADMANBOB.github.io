@@ -1143,6 +1143,7 @@ for (const [site, fontFiles] of [
   }
 }
 assert.equal(/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(allSource), false, "A production stylesheet still requests third-party fonts");
+assert.match(assembledInspector, /<link rel="preload" href="\/assets\/fonts\/libre-baskerville-variable\.woff2" as="font" type="font\/woff2" crossorigin(?:="")?\s*\/?>/, "Inspector shell does not preload the normal serif face required by first-viewport headings");
 assert.match(assembledInspector, /<source type="image\/avif"[^>]*srcSet="\/assets\/optimized\/hero-inspector-/, "Inspector hero lacks AVIF responsive sources");
 assert.match(assembledInspector, /<source type="image\/webp"[^>]*srcSet="\/assets\/optimized\/hero-inspector-/, "Inspector hero lacks WebP responsive sources");
 assert.match(assembledContractor, /<source type="image\/avif"[^>]*srcSet="\/contracting\/assets\/optimized\/contractor-hero-/, "Contractor hero lacks AVIF responsive sources");
