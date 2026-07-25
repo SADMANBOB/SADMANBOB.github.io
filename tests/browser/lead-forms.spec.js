@@ -116,6 +116,11 @@ test.describe("inspection lead form @smoke", () => {
   });
 
   test("an instant submission is treated as automated", async ({ page }) => {
+    // Freeze Date.now before React mounts so concurrent browser load cannot
+    // turn this into a slow submission while the fields are filled.
+    await page.addInitScript(() => {
+      Date.now = () => Date.parse("2026-07-23T12:00:00-07:00");
+    });
     await page.goto("/contact/");
     await page.waitForFunction(() => document.querySelector("form.request-form") !== null);
     await fillInspectionForm(page);
@@ -160,11 +165,12 @@ test.describe("contractor estimate form @smoke", () => {
     const body = await page.locator("form.estimate-form").innerText();
     expect(body).toMatch(/eligibility/i);
     // Answering "yes" to a recent C&G inspection must block the request.
-    const yes = page.locator('input[name="eligibility"][value="yes"]');
-    if (await yes.count()) {
-      await yes.check();
-      await expect(page.locator("form.estimate-form")).toContainText(/cannot offer or perform repairs/i);
-    }
+    await page.locator('select[name="eligibility"]').selectOption("yes");
+    const eligibilityBlocked = page.getByTestId("contractor-eligibility-blocked-state");
+    await expect(eligibilityBlocked).toBeVisible();
+    await expect(eligibilityBlocked).toContainText(/cannot offer or perform repairs/i);
+    await expect(eligibilityBlocked).toContainText(/Nothing has been sent/i);
+    await expect(page.getByTestId("contractor-spam-blocked-state")).toHaveCount(0);
   });
 
   test("the honeypot is concealed from sight and from assistive technology", async ({ page }) => {
@@ -172,10 +178,42 @@ test.describe("contractor estimate form @smoke", () => {
   });
 
   test("advancing without answering eligibility surfaces a visible validation error", async ({ page }) => {
-    const submit = page.locator('form.estimate-form button[type="submit"]').first();
-    if (await submit.count()) {
-      await submit.click();
-      await expect(page.locator(".error-summary, .field-error").first()).toBeVisible();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    const summary = page.locator("form.estimate-form .error-summary");
+    await expect(summary).toBeVisible();
+    await expect(summary).toBeFocused();
+    await expect(page.locator('select[name="eligibility"]')).toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#eligibility-error")).toBeVisible();
+    await expect(page.getByTestId("contractor-spam-blocked-state")).toHaveCount(0);
+  });
+
+  test("an incomplete eligibility review validates before spam controls", async ({ page }) => {
+    await page.locator('select[name="eligibility"]').selectOption("unsure");
+    await page.getByRole("button", { name: "Review eligibility email", exact: true }).click();
+    await expect(page.locator("form.estimate-form .error-summary")).toBeVisible();
+    await expect(page.locator("#fullName-error")).toBeVisible();
+    await expect(page.getByTestId("contractor-spam-blocked-state")).toHaveCount(0);
+  });
+
+  test("a valid submission with a spam signal uses only the generic blocked notice", async ({ page }) => {
+    await page.locator('select[name="eligibility"]').selectOption("unsure");
+    await page.locator('input[name="fullName"]').fill("Jordan Rivera");
+    await page.locator('input[name="email"]').fill("jordan@example.com");
+    await page.locator('input[name="phone"]').fill("3105551234");
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await page.locator('input[name="address"]').fill("1200 Example Street, Compton, CA 90220");
+    for (const field of ["authority", "contactConsent", "noPromise"]) {
+      await page.locator(`input[name="${field}"]`).check();
     }
+    await page.locator(`[name="${HONEYPOT_FIELD}"]`).evaluate((node) => {
+      node.value = "https://spam.example";
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await page.getByRole("button", { name: "Review eligibility email", exact: true }).click();
+    const spamBlocked = page.getByTestId("contractor-spam-blocked-state");
+    await expect(spamBlocked).toBeVisible();
+    await expect(spamBlocked).toContainText(/could not be sent/i);
+    await expect(spamBlocked).not.toContainText(/honeypot|inspection report|12 months/i);
+    await expect(page.getByTestId("contractor-eligibility-blocked-state")).toHaveCount(0);
   });
 });

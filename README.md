@@ -29,6 +29,13 @@ internal links, fragments, accessible names, and output-size budgets. Pull
 requests also run axe and Lighthouse audits in the pinned Chromium version
 defined by the root lockfile.
 
+The production build finishes with `npm run build:security`, which applies the
+strict CSP to every assembled HTML file after Pagefind is generated.
+`npm run verify` treats the exact policy and the absence of executable inline
+code as release gates. See [`SECURITY_DECISION.md`](SECURITY_DECISION.md) for
+the deployed threat boundary, CSP rationale and limitations, dependency-audit
+decision, and remaining owner actions.
+
 ## Temporary editorial photography
 
 The current people-focused photography is a generated editorial placeholder set chosen to represent Black inspectors, contractors, craftspeople, and homeowners. It must not be described as employee, customer, or completed-project photography.

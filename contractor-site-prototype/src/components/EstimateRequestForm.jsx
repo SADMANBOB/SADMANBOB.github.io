@@ -173,7 +173,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     setUploadedFiles([]);
     setUploadError("");
     if (nextValue === "yes") {
-      setResult({ state: "blocked" });
+      setResult({ state: "eligibility-blocked" });
       focusSummary();
     } else {
       setResult(null);
@@ -217,24 +217,25 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     event.preventDefault();
     // Guards a second submit slipping through before the disabled state renders.
     if (inFlightRef.current) return;
-    // Bot signals are checked before any transport work, but the eligibility
-    // gate below is unaffected: a blocked submission never becomes an accepted
-    // project request.
-    const submissionSignals = evaluateSubmissionSignals({
-      honeypotValue: new FormData(event.currentTarget).get(HONEYPOT_FIELD),
-      elapsedMilliseconds: Date.now() - formLoadedAtRef.current,
-    });
-    if (submissionSignals.blocked) {
-      setResult({ state: "blocked" });
+    const formElement = event.currentTarget;
+    const blockAutomatedSubmission = () => {
+      const submissionSignals = evaluateSubmissionSignals({
+        honeypotValue: new FormData(formElement).get(HONEYPOT_FIELD),
+        elapsedMilliseconds: Date.now() - formLoadedAtRef.current,
+      });
+      if (!submissionSignals.blocked) return false;
+      setResult({ state: "spam-blocked" });
       focusSummary();
-      return;
-    }
+      return true;
+    };
+
     if (eligibility.state === "manual-review") {
       const nextErrors = validateFields(values, manualReviewFields);
       if (Object.keys(nextErrors).length) {
         showErrors(nextErrors);
         return;
       }
+      if (blockAutomatedSubmission()) return;
       if (!secureTransport) {
         const href = prepareMailto({
           recipient: business.contracting.email,
@@ -286,6 +287,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       showErrors(nextErrors);
       return;
     }
+    if (blockAutomatedSubmission()) return;
     const subject = `C&G project request — ${categoryLabel(values.category)}`;
     if (!secureTransport) {
       const href = prepareMailto({
@@ -362,7 +364,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       {result?.state === "submitted" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>The approved processor received your project request.</strong><p>This is not acceptance, an estimate, a contract, or a schedule reservation.{result.receipt ? ` Receipt: ${result.receipt}.` : ""}</p></div> : null}
       {result?.state === "submission-error" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>The request could not be submitted.</strong><p>No project or appointment was created. Your answers are still filled in, so you can try again. You can also call {business.contracting.phoneDisplay} or email {business.contracting.email}.</p><button type="button" className="button button-outline-dark" onClick={() => { setResult(null); focusStep(); }} data-testid="contractor-retry">Try again</button></div> : null}
 
-      {result?.state === "blocked" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert" data-testid="contractor-blocked-state"><strong>This request could not be sent.</strong><p>No project or appointment was created. Please call {business.contracting.phoneDisplay} or email {business.contracting.email} and it will be handled the same way.</p></div> : null}
+      {result?.state === "spam-blocked" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert" data-testid="contractor-spam-blocked-state"><strong>This request could not be sent.</strong><p>No project or appointment was created. Please call {business.contracting.phoneDisplay} or email {business.contracting.email} and it will be handled the same way.</p></div> : null}
 
       {values.eligibility !== "unsure" ? <Progress step={step} /> : <p className="manual-track-label">Eligibility review only · no ordinary estimate request</p>}
 
@@ -373,7 +375,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
 
         {eligibility.state === "validation-error" ? <div className="form-submit-row"><button className="button button-copper" type="button" onClick={() => showErrors(validateFields(values, ["eligibility"]))}>Continue</button><p>Choose an answer before any contact or project details appear.</p></div> : null}
 
-          {result?.state === "blocked" ? <div className="form-status form-status-blocked" ref={summaryRef} tabIndex="-1" role="status"><strong>This property is not eligible for a C&amp;G contracting request.</strong><p>{separationPolicy.blocked}</p><p>{uploadTransferOccurred ? "No upload ID will be attached to a request. A previously transferred file remains subject to the approved upload provider’s orphan-file deletion and retention policy." : "No contact or project information is required. Nothing has been sent by this website."}</p></div> : null}
+          {result?.state === "eligibility-blocked" ? <div className="form-status form-status-blocked" ref={summaryRef} tabIndex="-1" role="status" data-testid="contractor-eligibility-blocked-state"><strong>This property is not eligible for a C&amp;G contracting request.</strong><p>{separationPolicy.blocked}</p><p>{uploadTransferOccurred ? "No upload ID will be attached to a request. A previously transferred file remains subject to the approved upload provider’s orphan-file deletion and retention policy." : "No contact or project information is required. Nothing has been sent by this website."}</p></div> : null}
 
         {eligibility.state === "manual-review" ? <section className="manual-review-track" aria-labelledby="manual-review-title">
           <div className="estimate-step-intro"><span>Limited path</span><h3 id="manual-review-title">Ask C&amp;G to confirm eligibility.</h3><p>Only contact and property-identification details are requested. This does not begin an estimate or repair-sales process.</p></div>

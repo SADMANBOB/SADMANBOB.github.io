@@ -30,9 +30,12 @@ expiration or recheck date have been recorded.
 
 ## Services and operating promises
 
-- Approve service coverage separately for inspection, contracting, and
-  metadata. Los Angeles County, City of Compton, and Riverside County remain
-  unpublished until their individual registry flags are approved.
+- Los Angeles County and Riverside County were approved on 2026-07-23 for the
+  inspection site, contracting site, and metadata, and their county pages are
+  published. Reopen those records if the coverage, qualification, or allowed
+  surfaces change. Compton may appear as a representative Los Angeles County
+  community, but the separate City of Compton landing page remains pending and
+  unpublished until its individual registry flags are approved.
 - Approve any report-delivery timing promise, including same-day or next-day
   wording.
 - Approve any weekend or named-day availability promise.
@@ -90,5 +93,10 @@ expiration or recheck date have been recorded.
   sizes.
 - Confirm the production domain, canonical origin, DNS, and GitHub Pages
   environment.
+- Verify the `www.cginspection.net` property in an owner-controlled Google
+  Search Console account, submit
+  `https://www.cginspection.net/sitemap.xml`, and monitor indexing and security
+  notices. Keep verification tokens, DNS values, and account identifiers out
+  of the repository unless their publication is deliberately approved.
 - Confirm that pending records remain non-renderable after every registry
   update and before each production deployment.

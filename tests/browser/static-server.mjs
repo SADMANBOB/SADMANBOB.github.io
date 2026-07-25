@@ -1,7 +1,11 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, resolve, sep } from "node:path";
+import {
+  loopbackPolicyMeta,
+  productionPolicyMeta,
+} from "./loopback-security.js";
 
 const root = resolve(process.cwd(), "_site");
 const port = Number(process.env.PLAYWRIGHT_PORT || 4177);
@@ -54,10 +58,24 @@ const server = createServer(async (request, response) => {
       response.end("Not found");
       return;
     }
+    const extension = extname(requested.file).toLowerCase();
+    if (extension === ".html") {
+      const productionHtml = await readFile(requested.file, "utf8");
+      const policyCount = productionHtml.split(productionPolicyMeta).length - 1;
+      if (policyCount !== 1) throw new Error("Expected one production CSP meta tag");
+      const loopbackHtml = productionHtml.replace(productionPolicyMeta, loopbackPolicyMeta);
+      response.writeHead(200, {
+        "cache-control": "no-store",
+        "content-length": Buffer.byteLength(loopbackHtml),
+        "content-type": contentTypes.get(extension),
+      });
+      response.end(request.method === "HEAD" ? undefined : loopbackHtml);
+      return;
+    }
     response.writeHead(200, {
       "cache-control": "no-store",
       "content-length": requested.fileStat.size,
-      "content-type": contentTypes.get(extname(requested.file).toLowerCase()) || "application/octet-stream",
+      "content-type": contentTypes.get(extension) || "application/octet-stream",
     });
     if (request.method === "HEAD") response.end();
     else createReadStream(requested.file).pipe(response);

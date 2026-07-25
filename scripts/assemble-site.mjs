@@ -10,6 +10,7 @@ const output = resolve(root, "_site");
 const inspectorDist = resolve(root, "inspector-site-prototype/dist");
 const contractorDist = resolve(root, "contractor-site-prototype/dist");
 const portal = resolve(root, "portal");
+const legacyRedirectScript = resolve(root, "shared/legacyRedirect.js");
 const siteOrigin = (process.env.SITE_ORIGIN || business.inspection.origin).replace(/\/+$/, "");
 
 const inspectorRoutes = enabledInspectorRoutes
@@ -46,9 +47,9 @@ const redirectPage = (target) => {
     <link rel="canonical" href="${absoluteTarget}" />
     <title>Inspection page moved | C&amp;G</title>
   </head>
-  <body>
+  <body data-redirect-target="${target}">
     <p>This inspection page has moved. <a href="${target}">Continue to C&amp;G Certified Home Inspector</a>.</p>
-    <script>location.replace(${JSON.stringify(target)} + location.search + location.hash);</script>
+    <script src="/assets/legacy-redirect.js"></script>
   </body>
 </html>
 `;
@@ -61,6 +62,8 @@ const copyWithoutLocalArtifacts = (from, to) =>
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await copyWithoutLocalArtifacts(inspectorDist, output);
+await mkdir(resolve(output, "assets"), { recursive: true });
+await copyFile(legacyRedirectScript, resolve(output, "assets/legacy-redirect.js"));
 
 await mkdir(resolve(output, "contracting"), { recursive: true });
 await copyWithoutLocalArtifacts(contractorDist, resolve(output, "contracting"));

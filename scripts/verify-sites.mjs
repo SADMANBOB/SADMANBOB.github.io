@@ -4,6 +4,10 @@ import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, relative, resolve } from "node:path";
 import { isLocalFilesystemArtifact } from "../shared/outputHygiene.js";
+import {
+  CONTENT_SECURITY_POLICY,
+  contentSecurityPolicyMetaTag,
+} from "../shared/securityPolicy.js";
 import { ALLOWED_SAME_AS, PROHIBITED_SCHEMA_FIELDS } from "../shared/localBusinessSchema.js";
 import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimCanRenderOn, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
 import {
@@ -927,9 +931,15 @@ const legacyInspectorRoutes = ["", "services", "about", "areas", "faq", "resourc
 for (const route of legacyInspectorRoutes) {
   const html = await read(resolve(output, "inspections", route, "index.html"));
   assert.match(html, /Inspection page moved/, `Legacy /inspections/${route} redirect is missing`);
-  assert.match(html, /location\.replace/, `Legacy /inspections/${route} redirect is not functional`);
+  assert.match(html, /data-redirect-target="\/[^"]*"/, `Legacy /inspections/${route} redirect has no bounded target`);
+  assert.match(html, /src="\/assets\/legacy-redirect\.js"/, `Legacy /inspections/${route} redirect is not functional`);
+  assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?location\.replace/i, `Legacy /inspections/${route} redirect contains executable inline code`);
   assert.match(html, /noindex,follow/, `Legacy /inspections/${route} redirect must remain noindex,follow`);
 }
+const legacyRedirectSource = await read(resolve(output, "assets/legacy-redirect.js"));
+assert.match(legacyRedirectSource, /location\.replace/, "The external legacy redirect helper does not navigate");
+assert.match(legacyRedirectSource, /location\.search/, "The external legacy redirect helper drops the query string");
+assert.match(legacyRedirectSource, /location\.hash/, "The external legacy redirect helper drops the fragment");
 
 const assembledInspector = await read(resolve(output, "index.html"));
 const assembledInspectorServices = await read(resolve(output, "services/index.html"));
@@ -1190,6 +1200,53 @@ assert.equal(
   "The full-size logo master must not be used as a favicon",
 );
 
+// Every deployable HTML document receives one exact CSP before any governed
+// resource. Executable inline code and inline presentation are forbidden so
+// the policy does not depend on route-specific hashes or unsafe fallbacks.
+const policyMeta = contentSecurityPolicyMetaTag();
+assert.equal(CONTENT_SECURITY_POLICY.includes("'unsafe-inline'"), false, "Production CSP permits unsafe-inline");
+assert.equal(
+  /(?:^|[\s;])'unsafe-eval'(?:[\s;]|$)/.test(CONTENT_SECURITY_POLICY),
+  false,
+  "Production CSP permits unrestricted unsafe-eval",
+);
+assert.equal(/[*>]|https?:/.test(CONTENT_SECURITY_POLICY), false, "Production CSP permits a wildcard or third-party resource origin");
+
+const assembledHtmlFiles = (await listFiles(output)).filter((file) => file.endsWith(".html"));
+assert.ok(assembledHtmlFiles.length > 0, "No assembled HTML documents were found for CSP verification");
+for (const file of assembledHtmlFiles) {
+  const outputFile = relative(output, file);
+  const html = await read(file);
+  const policyTags = [...html.matchAll(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"\s*\/?>/gi)];
+  assert.equal(policyTags.length, 1, `${outputFile} must contain exactly one CSP meta tag`);
+  assert.equal(policyTags[0]?.[1], CONTENT_SECURITY_POLICY, `${outputFile} CSP drifted from the production policy`);
+  const charsetIndex = html.search(/<meta\s+charset=/i);
+  const policyIndex = html.indexOf(policyMeta);
+  const firstGovernedResourceIndex = html.search(/<(?:script|style|img)\b|<link\b[^>]*\brel="(?:stylesheet|preload|modulepreload)"/i);
+  assert.ok(charsetIndex >= 0 && policyIndex > charsetIndex, `${outputFile} CSP must follow the charset declaration`);
+  if (firstGovernedResourceIndex >= 0) {
+    assert.ok(policyIndex < firstGovernedResourceIndex, `${outputFile} CSP appears after a governed resource`);
+  }
+  assert.doesNotMatch(html, /\sstyle\s*=/i, `${outputFile} contains an inline style attribute`);
+  assert.doesNotMatch(html, /<[^>]+\son[a-z]+\s*=/i, `${outputFile} contains an inline event handler`);
+  assert.doesNotMatch(html, /\bjavascript\s*:/i, `${outputFile} contains a javascript: URL`);
+
+  for (const script of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attributes = script[1];
+    const body = script[2].trim();
+    if (/\ssrc=["'][^"']+["']/i.test(attributes)) {
+      assert.equal(body, "", `${outputFile} external script tag also contains inline code`);
+      continue;
+    }
+    if (/\stype=["']application\/ld\+json["']/i.test(attributes)) continue;
+    assert.equal(body, "", `${outputFile} contains executable inline script`);
+  }
+}
+for (const surface of ["inspector", "contractor"]) {
+  await stat(resolve(output, `pagefind/${surface}/pagefind-worker.js`));
+  await stat(resolve(output, `pagefind/${surface}/wasm.en.pagefind`));
+}
+
 // macOS filesystem sidecars must never reach the deployed artifact.
 const localArtifacts = [];
 const scanForLocalArtifacts = async (directory) => {
@@ -1202,4 +1259,4 @@ const scanForLocalArtifacts = async (directory) => {
 await scanForLocalArtifacts(output);
 assert.deepEqual(localArtifacts, [], `Local filesystem metadata leaked into the deployed output: ${localArtifacts.join(", ")}`);
 
-console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, and legacy redirects.`);
+console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, strict CSP, Pagefind workers, and legacy redirects.`);

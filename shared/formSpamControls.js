@@ -2,13 +2,12 @@
 //
 // GitHub Pages serves static files only, so there is no server-side rate limit
 // or request inspection available. These controls are therefore client-side
-// hints: they raise the cost of naive form-filling bots without ever blocking a
-// real visitor, and an approved form processor is still expected to apply its
-// own server-side spam controls.
+// hints: they raise the cost of naive form-filling bots, while an approved form
+// processor is still expected to apply its own server-side spam controls.
 //
 // Nothing here is a substitute for provider-side abuse handling. It is
-// deliberately conservative: a false positive would silently lose a lead, so
-// every rule below fails open for anything a human could plausibly do.
+// deliberately narrow: only a populated concealed field or a finite fill time
+// below the stated threshold blocks. Missing or non-finite timing data passes.
 
 // A field that is visually hidden and hidden from assistive technology. Real
 // users never see it and screen readers never announce it, so any value in it
@@ -40,9 +39,3 @@ export function evaluateSubmissionSignals({ honeypotValue, elapsedMilliseconds }
   }
   return { blocked: false, reason: null };
 }
-
-// A blocked submission must never tell the sender which control caught it, and
-// must never claim the request was delivered. The forms surface this as an
-// ordinary failure with the phone and email fallbacks.
-export const SPAM_BLOCKED_MESSAGE =
-  "This request could not be sent automatically. Please call or email C&G directly and the request will be handled the same way.";

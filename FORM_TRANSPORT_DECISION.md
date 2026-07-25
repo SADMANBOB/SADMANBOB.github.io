@@ -51,8 +51,11 @@ recoverable failure state. A caller-supplied `signal` is still honoured.
 ### Spam controls and their limits
 
 `shared/formSpamControls.js` adds a honeypot field and a 3-second minimum fill
-time. Both fail open: a real visitor is never blocked for anything a human could
-plausibly do, because a false positive silently loses a lead.
+time. A populated concealed field or a completed, otherwise-valid submission
+inside that threshold is blocked with the generic failure and direct-contact
+fallback. Ordinary field validation runs first, so incomplete or invalid input
+still receives the specific field errors instead of a spam classification.
+Missing or non-finite timing data fails open.
 
 These are client-side hints only. GitHub Pages serves static files, so there is
 no server-side rate limiting available. **An approved processor must apply its

@@ -69,7 +69,7 @@ function InternalLink({ href, onNavigate, children, className = "", ...props }) 
 function EditorialPicture({ id, sizes, loading, fetchPriority }) {
   const sources = responsivePictureSources(id, { basePath: appBase, sizes });
   const image = responsiveImageProps(id, { basePath: appBase, sizes });
-  return <picture style={{ display: "contents" }}>{sources.map((source) => <source key={source.type} {...source} />)}<img {...image} loading={loading} fetchPriority={fetchPriority} /></picture>;
+  return <picture className="editorial-picture">{sources.map((source) => <source key={source.type} {...source} />)}<img {...image} loading={loading} fetchPriority={fetchPriority} /></picture>;
 }
 
 function PublishedWorkPicture({ editorialId, surface, sizes, loading, fetchPriority }) {
