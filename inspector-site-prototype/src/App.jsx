@@ -127,13 +127,13 @@ function InternalLink({ href, onNavigate, children, className = "", ...props }) 
 function EditorialPicture({ id, sizes, loading, fetchPriority }) {
   const sources = responsivePictureSources(id, { basePath: appBase, sizes });
   const image = responsiveImageProps(id, { basePath: appBase, sizes });
-  return <picture style={{ display: "contents" }}>{sources.map((source) => <source key={source.type} {...source} />)}<img {...image} loading={loading} fetchPriority={fetchPriority} /></picture>;
+  return <picture className="editorial-picture">{sources.map((source) => <source key={source.type} {...source} />)}<img {...image} loading={loading} fetchPriority={fetchPriority} /></picture>;
 }
 
 function BrandMark({ onNavigate }) {
   return (
     <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.inspection.publicName} home`}>
-      <span className="brand-mark-wrap"><img src={assetUrl("assets/cg-logo-mark.png")} alt="" className="brand-mark" width="54" height="54" /></span>
+      <span className="brand-mark-wrap"><img src={assetUrl("assets/optimized/cg-logo-mark-162.png")} alt="" className="brand-mark" width="162" height="216" /></span>
       <span className="brand-copy"><strong>C&amp;G Certified</strong><span>Home Inspector</span></span>
     </InternalLink>
   );

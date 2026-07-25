@@ -36,10 +36,12 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--paper); -webkit-font-smoothing: antialiased; }
+body.search-dialog-open { overflow: hidden; }
 button, input, select, textarea, a { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; height: auto; }
+.editorial-picture { display: contents; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 :focus-visible { outline: 3px solid #743d22; outline-offset: 3px; }
@@ -485,6 +487,9 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.035em; }
 .estimate-form label { min-width: 0; }
 .estimate-form .check-label { display: grid; grid-template-columns: 20px 1fr; align-items: start; gap: 10px; font-weight: 500; line-height: 1.55; }
 .estimate-form .check-label input { width: 18px; min-height: 18px; margin: 1px 0 0; accent-color: var(--copper-dark); }
+/* Honeypot. Removed from layout and from the accessibility tree, but not via
+   display:none, which trivial bots check for. */
+.form-honeypot { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .field-error { color: #8c291c; font-size: 11px; font-weight: 700; }
 .error-summary { padding: 18px 20px; color: #6f2017; background: #f3ddd8; border: 2px solid #9b402e; }
 .error-summary strong { font-family: var(--serif); font-size: 21px; }

@@ -3,6 +3,10 @@ import {
   claimCanRenderOn,
   claims,
 } from "../../../shared/siteData.js";
+import {
+  approvedAreaServed,
+  contractorLicenceCredential,
+} from "../../../shared/localBusinessSchema.js";
 import { contractorFaqs } from "./faqs.js";
 
 export function buildContractorSchema(route, origin) {
@@ -47,6 +51,11 @@ export function buildContractorSchema(route, origin) {
         propertyID: "CSLB",
         value: business.contracting.license.number,
       },
+      // The licence is held by the contractor of record named above, and
+      // recognizedBy names the issuing state board so it reads as a
+      // third-party credential rather than a self-assertion.
+      hasCredential: contractorLicenceCredential(),
+      areaServed: approvedAreaServed(),
       sameAs: [business.contracting.license.officialLookupUrl],
     });
   }

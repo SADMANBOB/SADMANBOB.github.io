@@ -25,8 +25,7 @@ export function SiteSearchDialog({ open, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     returnFocusRef.current = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.classList.add("search-dialog-open");
     window.requestAnimationFrame(() => inputRef.current?.focus());
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -52,7 +51,7 @@ export function SiteSearchDialog({ open, onClose }) {
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       searchRequestRef.current += 1;
-      document.body.style.overflow = previousOverflow;
+      document.body.classList.remove("search-dialog-open");
       document.removeEventListener("keydown", handleKeyDown);
       returnFocusRef.current?.focus?.();
     };

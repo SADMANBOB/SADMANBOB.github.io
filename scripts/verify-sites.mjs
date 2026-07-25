@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
+import { isLocalFilesystemArtifact } from "../shared/outputHygiene.js";
+import {
+  CONTENT_SECURITY_POLICY,
+  contentSecurityPolicyMetaTag,
+} from "../shared/securityPolicy.js";
+import { ALLOWED_SAME_AS, PROHIBITED_SCHEMA_FIELDS } from "../shared/localBusinessSchema.js";
 import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, claimCanRenderOn, claimIsApproved, claims, contractorRequestCategoryIds, evaluateContractorEligibility, imageProvenance, integrationCanRender, integrations, separationPolicy, serviceAreas } from "../shared/siteData.js";
 import {
   bookingActionFor,
@@ -69,6 +76,18 @@ const metaContent = (html, attribute, key) => html.match(new RegExp(`<meta ${att
 const titleContent = (html) => html.match(/<title>([^<]+)<\/title>/)?.[1];
 const canonicalContent = (html) => html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
 const schemaContent = (html) => html.match(/<script id="cg-page-schema" type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+
+// Yields every object node in a JSON-LD document with a readable path, so
+// structured-data assertions apply to nested nodes rather than only the top level.
+const walkSchemaNodes = function* (node, path = "$") {
+  if (Array.isArray(node)) {
+    for (const [index, entry] of node.entries()) yield* walkSchemaNodes(entry, `${path}[${index}]`);
+    return;
+  }
+  if (!node || typeof node !== "object") return;
+  yield [node, path];
+  for (const [key, value] of Object.entries(node)) yield* walkSchemaNodes(value, `${path}.${key}`);
+};
 const sitemapLocations = (xml) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 const escapeHtmlText = (value) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
@@ -595,8 +614,6 @@ assert.match(contractorSource, /Nothing is uploaded or sent while you use this g
 for (const site of [inspector, contractor]) {
   await stat(resolve(site, "dist/index.html"));
   await stat(resolve(site, "dist/404.html"));
-  await stat(resolve(site, "dist/robots.txt"));
-  await stat(resolve(site, "dist/sitemap.xml"));
 }
 
 const routeRecords = [
@@ -643,7 +660,20 @@ for (const record of routeRecords) {
   const graph = schema["@graph"] || [];
   const webPage = graph.find((entry) => entry["@type"] === "WebPage");
   assert.equal(webPage?.url, expectedUrl, `${record.outputFile} JSON-LD URL is wrong`);
-  assert.equal(JSON.stringify(schema).match(/aggregateRating|reviewRating|areaServed/g), null, `${record.outputFile} JSON-LD contains unapproved rating or area data`);
+  assert.equal(JSON.stringify(schema).match(/aggregateRating|reviewRating/g), null, `${record.outputFile} JSON-LD contains unapproved rating data`);
+  // areaServed is permitted, but only for service areas the registry has
+  // approved for metadata. Anything else is an unapproved coverage claim.
+  const approvedMetadataAreaLabels = approvedServiceAreas("Metadata").map((area) => area.label);
+  for (const [node] of walkSchemaNodes(schema)) {
+    if (!Object.hasOwn(node, "areaServed")) continue;
+    for (const area of [node.areaServed].flat()) {
+      assert.equal(area["@type"], "AdministrativeArea", `${record.outputFile} publishes areaServed with an unexpected type`);
+      assert.ok(
+        approvedMetadataAreaLabels.includes(area.name),
+        `${record.outputFile} publishes the unapproved service area "${area.name}" in structured data`,
+      );
+    }
+  }
   if (record.site === "contractor") {
     assert.match(visibleMarkup, new RegExp(`CSLB #${business.contracting.license.number}`), `${record.outputFile} lacks the visible license number`);
     assert.match(visibleMarkup, new RegExp(escapeRegex(business.contracting.contractorOfRecord)), `${record.outputFile} lacks the visible contractor of record`);
@@ -802,13 +832,114 @@ for (const [file, route] of [["404.html", inspectorNotFoundRoute], ["contracting
   assert.equal(schema["@graph"]?.find((entry) => entry["@type"] === "WebPage")?.url, expected404Url, `${file} JSON-LD URL is wrong`);
 }
 
+// ---------------------------------------------------------------------------
+// Local-business structured data.
+//
+// Every JSON-LD graph in the assembled output is walked so that an unapproved
+// field cannot be introduced anywhere, not just on the pages checked by name.
+// ---------------------------------------------------------------------------
+const schemaDocuments = [];
+for (const record of routeRecords) {
+  const html = await read(resolve(output, record.outputFile));
+  const raw = schemaContent(html);
+  if (!raw) continue;
+  let parsed;
+  assert.doesNotThrow(() => { parsed = JSON.parse(raw); }, `${record.outputFile} JSON-LD does not parse`);
+  schemaDocuments.push({ outputFile: record.outputFile, publicPath: record.publicPath, schema: parsed });
+}
+assert.ok(schemaDocuments.length >= routeRecords.length - 1, "Most routes should emit structured data");
+
+const businessNodesById = new Map();
+for (const { outputFile, schema } of schemaDocuments) {
+  assert.equal(schema["@context"], "https://schema.org", `${outputFile} JSON-LD has the wrong @context`);
+  for (const [node, path] of walkSchemaNodes(schema)) {
+    for (const field of PROHIBITED_SCHEMA_FIELDS) {
+      assert.equal(
+        Object.hasOwn(node, field),
+        false,
+        `${outputFile} publishes the unapproved structured-data field "${field}" at ${path}`,
+      );
+    }
+    if (Object.hasOwn(node, "sameAs")) {
+      for (const value of [node.sameAs].flat()) {
+        assert.ok(
+          ALLOWED_SAME_AS.includes(value),
+          `${outputFile} publishes an unapproved sameAs target at ${path}: ${value}`,
+        );
+      }
+    }
+    // Two *definitions* sharing an @id must be identical, otherwise the pages
+    // describe the same entity in contradictory ways. A bare {"@id": ...} is a
+    // reference rather than a definition, so it is not compared.
+    const id = node["@id"];
+    const isDefinition = typeof id === "string" && Object.keys(node).length > 1;
+    if (isDefinition && id.endsWith("#business")) {
+      const serialised = JSON.stringify(node);
+      if (businessNodesById.has(id)) {
+        assert.equal(serialised, businessNodesById.get(id), `Contradictory definitions of the business node ${id}`);
+      } else businessNodesById.set(id, serialised);
+    }
+  }
+}
+
+const inspectorHomeSchema = schemaDocuments.find((entry) => entry.publicPath === "/").schema["@graph"];
+const inspectionBusiness = inspectorHomeSchema.find((node) => node["@id"] === `${expectedOrigin}/#business`);
+assert.ok(inspectionBusiness, "The inspector home page does not publish a local-business node");
+assert.equal(inspectionBusiness["@type"], "ProfessionalService", "The inspection business node has the wrong schema type");
+assert.equal(inspectionBusiness.name, business.inspection.publicName, "The inspection business node has the wrong name");
+assert.equal(inspectionBusiness.telephone, business.inspection.phoneE164, "The inspection business node has the wrong phone");
+assert.equal(inspectionBusiness.email, business.inspection.email, "The inspection business node has the wrong email");
+assert.deepEqual(
+  inspectionBusiness.areaServed.map((area) => area.name),
+  approvedServiceAreas("Metadata").map((area) => area.label),
+  "The inspection business node does not match the approved metadata service areas",
+);
+assert.ok(inspectionBusiness.logo.endsWith("/assets/cg-logo-mark.png"), "The inspection business node has no canonical logo");
+
+// Every county service-area page carries the same business node.
+for (const area of approvedServiceAreas("Metadata")) {
+  const areaDocument = schemaDocuments.find((entry) => entry.publicPath === `/areas/${area.id}/`);
+  assert.ok(areaDocument, `Missing structured data for the ${area.label} page`);
+  assert.ok(
+    areaDocument.schema["@graph"].some((node) => node["@id"] === `${expectedOrigin}/#business`),
+    `${area.label} does not publish the local-business node`,
+  );
+}
+
+const contractorHomeSchema = schemaDocuments.find((entry) => entry.publicPath === "/contracting/").schema["@graph"];
+const contractingBusiness = contractorHomeSchema.find((node) => node["@type"] === "GeneralContractor");
+assert.ok(contractingBusiness, "The contractor home page does not publish a contractor node");
+assert.equal(contractingBusiness.name, business.contracting.contractorOfRecord, "The contractor node must be named for the contractor of record");
+assert.equal(contractingBusiness.alternateName, business.contracting.publicName, "The contractor node has the wrong public brand");
+assert.deepEqual(
+  contractingBusiness.areaServed.map((area) => area.name),
+  approvedServiceAreas("Metadata").map((area) => area.label),
+  "The contractor node does not match the approved metadata service areas",
+);
+assert.equal(contractingBusiness.hasCredential.identifier, business.contracting.license.number, "The contractor credential has the wrong licence number");
+assert.equal(contractingBusiness.hasCredential.recognizedBy.name, "California Contractors State License Board", "The contractor credential is not attributed to the issuing board");
+assert.equal(contractingBusiness.hasCredential.url, business.contracting.license.officialLookupUrl, "The contractor credential does not link the official record");
+// The inspection business must never be described as holding a contractor licence.
+assert.equal(Object.hasOwn(inspectionBusiness, "hasCredential"), false, "The inspection business must not assert a contractor credential");
+assert.equal(
+  JSON.stringify(inspectorHomeSchema).includes(business.contracting.license.number),
+  false,
+  "The inspection structured data must not carry the contractor licence number",
+);
+
 const legacyInspectorRoutes = ["", "services", "about", "areas", "faq", "resources", "contact"];
 for (const route of legacyInspectorRoutes) {
   const html = await read(resolve(output, "inspections", route, "index.html"));
   assert.match(html, /Inspection page moved/, `Legacy /inspections/${route} redirect is missing`);
-  assert.match(html, /location\.replace/, `Legacy /inspections/${route} redirect is not functional`);
+  assert.match(html, /data-redirect-target="\/[^"]*"/, `Legacy /inspections/${route} redirect has no bounded target`);
+  assert.match(html, /src="\/assets\/legacy-redirect\.js"/, `Legacy /inspections/${route} redirect is not functional`);
+  assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?location\.replace/i, `Legacy /inspections/${route} redirect contains executable inline code`);
   assert.match(html, /noindex,follow/, `Legacy /inspections/${route} redirect must remain noindex,follow`);
 }
+const legacyRedirectSource = await read(resolve(output, "assets/legacy-redirect.js"));
+assert.match(legacyRedirectSource, /location\.replace/, "The external legacy redirect helper does not navigate");
+assert.match(legacyRedirectSource, /location\.search/, "The external legacy redirect helper drops the query string");
+assert.match(legacyRedirectSource, /location\.hash/, "The external legacy redirect helper drops the fragment");
 
 const assembledInspector = await read(resolve(output, "index.html"));
 const assembledInspectorServices = await read(resolve(output, "services/index.html"));
@@ -1049,6 +1180,83 @@ assert.match(contractorPrivacy, /GitHub Pages/i, "Contractor privacy lacks the a
 
 assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/sitemap\\.xml`), "Root robots.txt has the wrong sitemap");
 assert.match(await read(resolve(output, "robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Root robots.txt does not advertise the contractor sitemap");
-assert.match(await read(resolve(output, "contracting/robots.txt")), new RegExp(`Sitemap: ${escapeRegex(expectedOrigin)}/contracting/sitemap\\.xml`), "Contractor robots.txt has the wrong sitemap");
+// Crawlers only read /robots.txt at the origin root; a nested copy is inert and must not ship.
+assert.equal(existsSync(resolve(output, "contracting/robots.txt")), false, "A nested contracting/robots.txt is inert and must not be emitted");
 
-console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, and legacy redirects.`);
+// Brand and icon assets must exist at the origin root so no entry point requests a missing favicon.
+for (const iconFile of ["favicon.ico", "apple-touch-icon.png", "assets/optimized/cg-logo-mark-162.png"]) {
+  await stat(resolve(output, iconFile));
+}
+const headerLogoBytes = (await stat(resolve(output, "assets/optimized/cg-logo-mark-162.png"))).size;
+assert.ok(headerLogoBytes < 40_000, `The globally loaded header logo must stay small (${headerLogoBytes} bytes)`);
+for (const entryPoint of ["index.html", "contracting/index.html", "property-services/index.html"]) {
+  const entryHtml = await read(resolve(output, entryPoint));
+  assert.match(entryHtml, /<link rel="icon" href="\/favicon\.ico"/, `${entryPoint} does not reference the root favicon`);
+  assert.match(entryHtml, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"/, `${entryPoint} does not reference the apple touch icon`);
+}
+assert.equal(
+  /<link[^>]*rel="icon"[^>]*cg-logo-mark\.png/.test(await read(resolve(output, "index.html"))),
+  false,
+  "The full-size logo master must not be used as a favicon",
+);
+
+// Every deployable HTML document receives one exact CSP before any governed
+// resource. Executable inline code and inline presentation are forbidden so
+// the policy does not depend on route-specific hashes or unsafe fallbacks.
+const policyMeta = contentSecurityPolicyMetaTag();
+assert.equal(CONTENT_SECURITY_POLICY.includes("'unsafe-inline'"), false, "Production CSP permits unsafe-inline");
+assert.equal(
+  /(?:^|[\s;])'unsafe-eval'(?:[\s;]|$)/.test(CONTENT_SECURITY_POLICY),
+  false,
+  "Production CSP permits unrestricted unsafe-eval",
+);
+assert.equal(/[*>]|https?:/.test(CONTENT_SECURITY_POLICY), false, "Production CSP permits a wildcard or third-party resource origin");
+
+const assembledHtmlFiles = (await listFiles(output)).filter((file) => file.endsWith(".html"));
+assert.ok(assembledHtmlFiles.length > 0, "No assembled HTML documents were found for CSP verification");
+for (const file of assembledHtmlFiles) {
+  const outputFile = relative(output, file);
+  const html = await read(file);
+  const policyTags = [...html.matchAll(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"\s*\/?>/gi)];
+  assert.equal(policyTags.length, 1, `${outputFile} must contain exactly one CSP meta tag`);
+  assert.equal(policyTags[0]?.[1], CONTENT_SECURITY_POLICY, `${outputFile} CSP drifted from the production policy`);
+  const charsetIndex = html.search(/<meta\s+charset=/i);
+  const policyIndex = html.indexOf(policyMeta);
+  const firstGovernedResourceIndex = html.search(/<(?:script|style|img)\b|<link\b[^>]*\brel="(?:stylesheet|preload|modulepreload)"/i);
+  assert.ok(charsetIndex >= 0 && policyIndex > charsetIndex, `${outputFile} CSP must follow the charset declaration`);
+  if (firstGovernedResourceIndex >= 0) {
+    assert.ok(policyIndex < firstGovernedResourceIndex, `${outputFile} CSP appears after a governed resource`);
+  }
+  assert.doesNotMatch(html, /\sstyle\s*=/i, `${outputFile} contains an inline style attribute`);
+  assert.doesNotMatch(html, /<[^>]+\son[a-z]+\s*=/i, `${outputFile} contains an inline event handler`);
+  assert.doesNotMatch(html, /\bjavascript\s*:/i, `${outputFile} contains a javascript: URL`);
+
+  for (const script of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    const attributes = script[1];
+    const body = script[2].trim();
+    if (/\ssrc=["'][^"']+["']/i.test(attributes)) {
+      assert.equal(body, "", `${outputFile} external script tag also contains inline code`);
+      continue;
+    }
+    if (/\stype=["']application\/ld\+json["']/i.test(attributes)) continue;
+    assert.equal(body, "", `${outputFile} contains executable inline script`);
+  }
+}
+for (const surface of ["inspector", "contractor"]) {
+  await stat(resolve(output, `pagefind/${surface}/pagefind-worker.js`));
+  await stat(resolve(output, `pagefind/${surface}/wasm.en.pagefind`));
+}
+
+// macOS filesystem sidecars must never reach the deployed artifact.
+const localArtifacts = [];
+const scanForLocalArtifacts = async (directory) => {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = resolve(directory, entry.name);
+    if (isLocalFilesystemArtifact(entry.name)) localArtifacts.push(relative(output, entryPath));
+    else if (entry.isDirectory()) await scanForLocalArtifacts(entryPath);
+  }
+};
+await scanForLocalArtifacts(output);
+assert.deepEqual(localArtifacts, [], `Local filesystem metadata leaked into the deployed output: ${localArtifacts.join(", ")}`);
+
+console.log(`PASS: verified ${routeRecords.length} enabled routes, ${enabledInspectorRoutes.length} inspector entries, ${enabledContractorRoutes.length} contractor entries, ${imageProvenance.length} image records, eligibility guards, structured data, sitemaps, forms, privacy truth, strict CSP, Pagefind workers, and legacy redirects.`);

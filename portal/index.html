@@ -15,6 +15,9 @@
     <meta name="twitter:description" content="Choose between distinct home inspection and residential contracting services." />
     <meta name="twitter:image" content="{{SITE_ORIGIN}}/assets/hero-inspector.jpg" />
     <link rel="canonical" href="{{SITE_ORIGIN}}/property-services/" />
+    <link rel="preload" href="/contracting/assets/fonts/newsreader-variable.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script id="cg-page-schema" type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"{{SITE_ORIGIN}}/property-services/#webpage","url":"{{SITE_ORIGIN}}/property-services/","name":"Choose a C&G Service","description":"Choose between distinct home inspection and residential contracting services."}]}</script>
     <title>Choose a C&amp;G Service</title>
     <link rel="stylesheet" href="/property-services/styles.css" />
@@ -33,11 +36,19 @@
       <section class="service-grid" id="services" aria-label="Choose a C&G service">
         <article class="service inspection">
           <div class="service-copy"><span>01 / Home inspection</span><h2>Home <em>Inspection</em></h2><p>Understand visible and accessible property conditions before a purchase, sale, or maintenance decision.</p><a href="/">Explore Home Inspection <b aria-hidden="true">→</b></a></div>
-          <img src="/assets/hero-inspector.jpg" alt="C&G home inspector at a residential property" width="1731" height="909" loading="lazy" decoding="async" />
+          <picture>
+            <source type="image/avif" srcset="/assets/optimized/hero-inspector-640.avif 640w, /assets/optimized/hero-inspector-960.avif 960w, /assets/optimized/hero-inspector-1440.avif 1440w" sizes="(max-width: 780px) 100vw, 50vw" />
+            <source type="image/webp" srcset="/assets/optimized/hero-inspector-640.webp 640w, /assets/optimized/hero-inspector-960.webp 960w, /assets/optimized/hero-inspector-1440.webp 1440w" sizes="(max-width: 780px) 100vw, 50vw" />
+            <img src="/assets/hero-inspector.jpg" alt="C&G home inspector at a residential property" width="1731" height="909" loading="lazy" decoding="async" />
+          </picture>
         </article>
         <article class="service contracting">
           <div class="service-copy"><span>02 / Residential contracting</span><h2>Residential <em>Contracting</em></h2><p>Share a repair, finish-work, punch-list, or small multi-trade project for scope and eligibility review.</p><a href="/contracting/">Explore Contracting Services <b aria-hidden="true">→</b></a></div>
-          <img src="/contracting/assets/contractor-hero.jpg" alt="Contractor carefully measuring interior wood trim" width="1536" height="1024" loading="lazy" decoding="async" />
+          <picture>
+            <source type="image/avif" srcset="/contracting/assets/optimized/contractor-hero-640.avif 640w, /contracting/assets/optimized/contractor-hero-960.avif 960w, /contracting/assets/optimized/contractor-hero-1440.avif 1440w" sizes="(max-width: 780px) 100vw, 50vw" />
+            <source type="image/webp" srcset="/contracting/assets/optimized/contractor-hero-640.webp 640w, /contracting/assets/optimized/contractor-hero-960.webp 960w, /contracting/assets/optimized/contractor-hero-1440.webp 1440w" sizes="(max-width: 780px) 100vw, 50vw" />
+            <img src="/contracting/assets/contractor-hero.jpg" alt="Contractor carefully measuring interior wood trim" width="1536" height="1024" loading="lazy" decoding="async" />
+          </picture>
         </article>
       </section>
       <section class="boundary">

@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, existsSync } from "node:fs";
 import { access, readFile, readdir, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, posix, resolve, sep } from "node:path";
@@ -215,9 +215,24 @@ const staticChecks = async () => {
 
     const labels = elements(document, "label");
     const labelTargets = new Set(labels.map((label) => attr(label, "for")).filter(Boolean));
+    // An element inside an aria-hidden="true" subtree is removed from the
+    // accessibility tree entirely, so it is never announced and an accessible
+    // name would be meaningless. The spam honeypot is the only such control.
+    const isAriaHidden = (node) => {
+      for (let current = node; current; current = current.parentNode) {
+        if (current.tagName && attr(current, "aria-hidden") === "true") return true;
+      }
+      return false;
+    };
     for (const control of descendants(document, (node) => ["input", "select", "textarea"].includes(node.tagName))) {
       const type = (attr(control, "type") || "").toLowerCase();
       if (["button", "hidden", "reset", "submit"].includes(type)) continue;
+      if (isAriaHidden(control)) {
+        // Such a control must also be unreachable by keyboard, otherwise it is
+        // a focusable element with no announced name.
+        check(attr(control, "tabindex") === "-1", `${relative} has an aria-hidden control that is still keyboard reachable`);
+        continue;
+      }
       const id = attr(control, "id");
       const named = Boolean(
         attr(control, "aria-label")
@@ -284,13 +299,14 @@ const staticChecks = async () => {
     check(Boolean(canonicalByUrl.get(location)), `Sitemap URL has no matching crawlable canonical page: ${location}`);
   }
 
+  // Only the origin-root robots.txt is honoured by crawlers, so it is the single
+  // authoritative file and must advertise both sitemaps itself.
   const rootRobots = await readFile(resolve(output, "robots.txt"), "utf8");
-  const contractorRobots = await readFile(resolve(output, "contracting/robots.txt"), "utf8");
   check(/User-agent:\s*\*/i.test(rootRobots) && /Allow:\s*\/\s*$/im.test(rootRobots), "Root robots.txt does not allow crawling");
   check(rootRobots.includes(`Sitemap: ${siteOrigin}/sitemap.xml`), "Root robots.txt points to the wrong sitemap");
-  check(/User-agent:\s*\*/i.test(contractorRobots) && /Allow:\s*\/contracting\/\s*$/im.test(contractorRobots), "Contractor robots.txt does not allow its route prefix");
-  check(contractorRobots.includes(`Sitemap: ${siteOrigin}/contracting/sitemap.xml`), "Contractor robots.txt points to the wrong sitemap");
-  check(!/Disallow:\s*\/\s*$/im.test(`${rootRobots}\n${contractorRobots}`), "A robots file blocks the entire site");
+  check(rootRobots.includes(`Sitemap: ${siteOrigin}/contracting/sitemap.xml`), "Root robots.txt does not advertise the contractor sitemap");
+  check(!existsSync(resolve(output, "contracting/robots.txt")), "An inert nested contracting/robots.txt was emitted");
+  check(!/Disallow:\s*\/\s*$/im.test(rootRobots), "The robots file blocks the entire site");
 
   const htmlByRelative = new Map(htmlRecords.map((record) => [record.relative, record]));
   const validateReference = (reference, sourceRelative, sourcePublicPath, label) => {

@@ -45,9 +45,11 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--charcoal); -webkit-font-smoothing: antialiased; }
+body.search-dialog-open { overflow: hidden; }
 button, a { font: inherit; }
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; height: auto; }
+.editorial-picture { display: contents; }
 :focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 4px; }
 .skip-link { position: fixed; top: 10px; left: 10px; z-index: 50; padding: 10px 13px; color: #171614; background: var(--gold-bright); font-size: 12px; font-weight: 700; transform: translateY(-150%); transition: transform .2s ease; }
 .skip-link:focus { transform: translateY(0); }
@@ -591,6 +593,10 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 .form-error-summary h3 { margin-bottom: 10px; font-family: var(--serif); font-size: 21px; font-weight: 400; }
 .form-error-summary ul { display: grid; gap: 6px; margin: 0; padding-left: 19px; font-size: 11px; }
 .form-error-summary a { text-decoration: underline; }
+/* Honeypot. Removed from the layout and from the accessibility tree, but not
+   via display:none, which trivial bots check for. Real users never reach it:
+   it is aria-hidden and tabIndex -1. */
+.form-honeypot { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .form-privacy-note { margin: 0; color: var(--body-ink-soft); font-size: 10px; line-height: 1.6; }
 .form-privacy-note a { color: #7d5d1f; font-weight: 700; text-decoration: underline; }
 .form-prepared-state { padding: 24px; background: var(--cream-deep); border-left: 3px solid var(--gold); }
@@ -970,4 +976,19 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 .review-stars .is-empty { opacity: .35; }
 @media (max-width: 800px) {
   .home-area-card-grid { grid-template-columns: 1fr; }
+}
+
+/* Mobile legibility floor.
+   Lighthouse measured only 39% of the text on /contact/ at 12px or larger, with
+   form labels at 11px and the optional-field hint at 9px. These are reading and
+   form-control text on the highest-intent conversion page, so they are raised to
+   a 12px minimum on small viewports. Desktop sizing and all decorative
+   micro-labels are deliberately unchanged. */
+@media (max-width: 800px) {
+  .contact-preflight-list p,
+  .request-form label,
+  .form-choice-row > span,
+  .form-privacy-note,
+  .field-optional,
+  .footer-disclosures p { font-size: 12px; }
 }

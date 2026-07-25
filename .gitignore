@@ -1,4 +1,12 @@
+# macOS filesystem metadata must never reach the repository or the deployed output.
 .DS_Store
+**/.DS_Store
+._*
+**/._*
+.AppleDouble/
+.LSOverride
+.Spotlight-V100
+.Trashes
 **/node_modules/
 **/.npm-cache/
 **/dist/

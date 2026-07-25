@@ -1,6 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { business } from "../../../shared/siteData.js";
+import {
+  HONEYPOT_FIELD,
+  evaluateSubmissionSignals,
+  honeypotFieldProps,
+} from "../../../shared/formSpamControls.js";
 import { OWNER_REVIEW_STAGING_VISIBLE, preferredEmails } from "../../../shared/ownerReview.js";
 import {
   createFileShareAuthorization,
@@ -41,9 +46,17 @@ export function ContactRequestForm() {
   const [uploadError, setUploadError] = useState("");
   const errorSummaryRef = useRef(null);
   const preparedStateRef = useRef(null);
+  const formLoadedAtRef = useRef(Date.now());
+  const inFlightRef = useRef(false);
+  const submitButtonRef = useRef(null);
+
+  useEffect(() => { formLoadedAtRef.current = Date.now(); }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    // Guards a second submit slipping through before React has re-rendered the
+    // disabled button, for example a double click or a repeated Enter press.
+    if (inFlightRef.current) return;
     const form = new FormData(event.currentTarget);
     const nextErrors = {};
 
@@ -69,6 +82,20 @@ export function ContactRequestForm() {
     }
 
     setErrors({});
+
+    // Bot signals are evaluated only after the form is otherwise valid, so a
+    // real visitor who mistypes never sees a spam outcome.
+    const submissionSignals = evaluateSubmissionSignals({
+      honeypotValue: form.get(HONEYPOT_FIELD),
+      elapsedMilliseconds: Date.now() - formLoadedAtRef.current,
+    });
+    if (submissionSignals.blocked) {
+      setPreparedEmail(null);
+      setSubmissionResult({ state: "blocked" });
+      window.requestAnimationFrame(() => preparedStateRef.current?.focus());
+      return;
+    }
+
     const payload = {
       name: String(form.get("name")),
       email: String(form.get("email")),
@@ -112,17 +139,27 @@ export function ContactRequestForm() {
     }
 
     setPreparedEmail(null);
+    inFlightRef.current = true;
     setSubmitting(true);
     setSubmissionResult(null);
     try {
       const result = await submitApprovedForm(surface, payload);
       setSubmissionResult({ state: "submitted", receipt: result.receipt });
     } catch {
+      // The processor's own error text is never shown; it can echo submitted
+      // values. The visitor always sees the same recoverable failure with the
+      // phone and email fallbacks.
       setSubmissionResult({ state: "error" });
     } finally {
+      inFlightRef.current = false;
       setSubmitting(false);
       window.requestAnimationFrame(() => preparedStateRef.current?.focus());
     }
+  };
+
+  const handleRetry = () => {
+    setSubmissionResult(null);
+    window.requestAnimationFrame(() => submitButtonRef.current?.focus());
   };
 
   const errorFor = (name) => errors[name] ? <span className="field-error" id={`inspection-${name}-error`}>{errors[name]}</span> : null;
@@ -290,7 +327,11 @@ export function ContactRequestForm() {
         <p className="form-privacy-note">Do not include lockbox codes, alarm codes, financial records, offer documents, or a full inspection report. See the <a href="/privacy/">privacy notice</a>.</p>
       </fieldset>
 
-      <button className="button button-gold" type="submit" disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send request securely") : "Prepare email"} <ArrowRight size={17} aria-hidden="true" /></button>
+      {/* Hidden from sight and from assistive technology. Any value here came
+          from an automated agent filling every input on the page. */}
+      <div className="form-honeypot" aria-hidden="true"><input {...honeypotFieldProps} id="inspection-contact-reference" /></div>
+
+      <button className="button button-gold" type="submit" ref={submitButtonRef} disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send request securely") : "Prepare email"} <ArrowRight size={17} aria-hidden="true" /></button>
 
       {OWNER_REVIEW_STAGING_VISIBLE ? (
       <div className="form-owner-review-panel" role="note">
@@ -358,7 +399,15 @@ export function ContactRequestForm() {
       {submissionResult?.state === "error" ? (
         <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="alert">
           <h3>Secure submission failed</h3>
-          <p>Please retry, or call {business.inspection.phoneDisplay}. Nothing was stored by this page beyond the failed attempt response.</p>
+          <p>Your request was not sent. Your answers are still filled in below, so you can try again. You can also call {business.inspection.phoneDisplay} or email {business.inspection.email}. Nothing was stored by this page beyond the failed attempt response.</p>
+          <button type="button" className="button button-outline" onClick={handleRetry} data-testid="inspection-retry">Try again</button>
+        </div>
+      ) : null}
+
+      {submissionResult?.state === "blocked" ? (
+        <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="alert" data-testid="inspection-blocked-state">
+          <h3>This request could not be sent</h3>
+          <p>Your request was not sent. Please call {business.inspection.phoneDisplay} or email {business.inspection.email} and it will be handled the same way.</p>
         </div>
       ) : null}
     </form>
