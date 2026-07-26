@@ -38,6 +38,7 @@ export function ContactRequestForm() {
   const [errors, setErrors] = useState({});
   const [preparedEmail, setPreparedEmail] = useState(null);
   const [preferredContact, setPreferredContact] = useState("email");
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [uploadConsent, setUploadConsent] = useState(false);
@@ -50,7 +51,10 @@ export function ContactRequestForm() {
   const inFlightRef = useRef(false);
   const submitButtonRef = useRef(null);
 
-  useEffect(() => { formLoadedAtRef.current = Date.now(); }, []);
+  useEffect(() => {
+    formLoadedAtRef.current = Date.now();
+    setRuntimeReady(true);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -214,7 +218,7 @@ export function ContactRequestForm() {
   };
 
   return (
-    <form className="request-form" onSubmit={handleSubmit} onChange={handleChange} noValidate data-testid="inspection-contact-form" aria-labelledby="inspection-request">
+    <form className="request-form" onSubmit={handleSubmit} onChange={handleChange} noValidate data-testid="inspection-contact-form" data-runtime-ready={runtimeReady ? "true" : "false"} aria-labelledby="inspection-request">
       <div className="request-form-heading">
         <p className="eyebrow eyebrow-dark">Request details</p>
         <h2 id="inspection-request" tabIndex="-1">Start your inspection request.</h2>
