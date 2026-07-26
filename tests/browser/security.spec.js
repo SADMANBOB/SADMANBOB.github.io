@@ -54,6 +54,11 @@ test.describe("strict CSP and Pagefind runtime @smoke", () => {
       for (const summary of summaries) {
         expect(summary, `${searchCase.name} search contains a glued lower-to-title word boundary`).not.toMatch(/[a-z0-9)\].!?;:,][A-Z][a-z]/);
         expect(summary, `${searchCase.name} search contains a glued acronym-to-title word boundary`).not.toMatch(/[A-Z]{2,}[A-Z][a-z]{2,}/);
+        expect(summary, `${searchCase.name} search contains a glued label-to-phone boundary`).not.toMatch(/[a-z]\(\d{3}\)\s*\d{3}-\d{4}/);
+        expect(summary, `${searchCase.name} search contains a glued phone-to-email boundary`).not.toMatch(/\(\d{3}\)\s*\d{3}-\d{4}[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      }
+      if (searchCase.name === "contractor") {
+        expect(summaries.join(" ")).toContain("Current contact (310) 505-6581 clarencegloss@gmail.com.");
       }
 
       await searchForm.getByRole("searchbox").fill("payment");
