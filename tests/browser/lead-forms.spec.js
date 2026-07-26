@@ -31,6 +31,11 @@ const fillInspectionForm = async (page, overrides = {}) => {
   if (await consent.count()) await consent.first().check();
 };
 
+const waitForInspectionRuntime = async (page) => {
+  await expect(page.getByTestId("inspection-contact-form"))
+    .toHaveAttribute("data-runtime-ready", "true");
+};
+
 /** The honeypot uses the visually-hidden clip pattern, so it occupies a 1px
  *  box rather than display:none. What matters is that it is imperceptible,
  *  outside the accessibility tree, and not keyboard reachable. */
@@ -82,7 +87,7 @@ const openContractorContactStep = async (page) => {
 test.describe("inspection lead form @smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/contact/");
-    await page.waitForFunction(() => document.querySelector("form.request-form") !== null);
+    await waitForInspectionRuntime(page);
   });
 
   test("blocks submission with an accessible error summary and focuses it", async ({ page }) => {
@@ -134,7 +139,7 @@ test.describe("inspection lead form @smoke", () => {
       Date.now = () => Date.parse("2026-07-23T12:00:00-07:00");
     });
     await page.goto("/contact/");
-    await page.waitForFunction(() => document.querySelector("form.request-form") !== null);
+    await waitForInspectionRuntime(page);
     await fillInspectionForm(page);
     // Submitted well inside the minimum human fill time.
     await page.locator('form.request-form button[type="submit"]').click();
