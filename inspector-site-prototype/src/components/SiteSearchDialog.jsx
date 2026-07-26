@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Search, X } from "lucide-react";
 import { business, separationPolicy } from "../../../shared/siteData.js";
+import { searchResultSummary } from "../../../shared/searchResultSummary.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../../../shared/searchVocabulary.js";
 
 const bundlePath = "/pagefind/inspector/pagefind.js";
 const initialStatus = "Enter a topic to search the inspection guides and service pages.";
-const resultSummary = (result) => (result.meta?.description || result.excerpt || "Open this inspection page.")
-  .replace(/<[^>]+>/g, "")
-  .replaceAll("&amp;", "&")
-  .replaceAll("&quot;", '"')
-  .replaceAll("&#39;", "'");
 
 export function SiteSearchDialog({ open, onClose }) {
   const dialogRef = useRef(null);
@@ -135,7 +131,7 @@ export function SiteSearchDialog({ open, onClose }) {
           {phase === "empty" ? <div className="search-guidance"><strong>Try a shorter system or question.</strong><p>Use one or two terms such as roof, electrical, report, access, or water heater. The links below can also help you switch paths.</p></div> : null}
           {phase === "error" ? <div className="search-guidance"><strong>The on-site index is temporarily unavailable.</strong><p>Open Services, FAQ, or Resources from the main navigation, or use the separate-service link below when your question is about project work.</p></div> : null}
           {phase === "validation" ? <div className="search-guidance"><strong>Add a little more detail.</strong><p>Enter at least two letters, or choose one of the suggested searches.</p></div> : null}
-          {results.length ? <ol className="search-results" aria-label="Inspection search results">{results.map((result) => <li key={result.url}><a href={result.url}><span>{result.meta?.title || "C&G inspection guidance"}</span><p>{resultSummary(result)}</p><small>Open page <ArrowRight size={14} aria-hidden="true" /></small></a></li>)}</ol> : null}
+          {results.length ? <ol className="search-results" aria-label="Inspection search results">{results.map((result) => <li key={result.url}><a href={result.url}><span>{result.meta?.title || "C&G inspection guidance"}</span><p>{searchResultSummary(result, "Open this inspection page.")}</p><small>Open page <ArrowRight size={14} aria-hidden="true" /></small></a></li>)}</ol> : null}
         </div>
         <aside className="search-recovery" aria-labelledby="inspection-search-recovery-title">
           <div><strong id="inspection-search-recovery-title">Looking for repair or improvement guidance?</strong><p>Use the separate contractor site to review project categories and the required eligibility step.</p></div>

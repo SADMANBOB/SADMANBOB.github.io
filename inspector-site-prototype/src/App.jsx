@@ -44,6 +44,7 @@ import {
 import {
   bookingActionFor,
   formTransportFor,
+  prepareMailto,
   protectedUploadPolicyFor,
 } from "../../shared/integrationAdapters.js";
 import {
@@ -89,6 +90,19 @@ const inspectionFormTransport = formTransportFor("inspector-contact");
 const inspectionSecureFormEnabled = Boolean(inspectionFormTransport && inspectionFormTransport.provider !== "mailto");
 const inspectionUploadPolicy = protectedUploadPolicyFor("inspector-contact");
 const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
+const existingReportQuestionHref = prepareMailto({
+  recipient: business.inspection.email,
+  subject: "Question about an existing C&G inspection report",
+  body: [
+    "EXISTING C&G INSPECTION REPORT QUESTION",
+    "",
+    "Property address:",
+    "Report section or page:",
+    "Question:",
+    "",
+    "Please do not attach the full report or include access codes, financial information, government IDs, payment-card details, or other sensitive material in this first email.",
+  ].join("\n"),
+});
 
 const pageUrl = (path) => {
   const relativePath = path.replace(/^\/+|\/+$/g, "");
@@ -854,6 +868,12 @@ function ContactPage({ route, onNavigate }) {
               <h2 id="contact-preflight-title">A few details help the conversation.</h2>
               <p>{serviceAreaQualification} Share what you know so we can review scope, travel, and timing.</p>
               <div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a></div>
+              <div className="existing-report-contact" id="existing-report-question">
+                <p>Already have a C&amp;G inspection report?</p>
+                <h3>Ask a report question without starting a new inspection request.</h3>
+                <p>Use the prepared email to identify the property and the report section or page. Do not attach the full report or include access codes, financial records, IDs, payment details, or other sensitive material in the first message.</p>
+                <a className="text-link text-link-dark" href={existingReportQuestionHref}>Prepare a report-question email <ArrowRight size={15} aria-hidden="true" /></a>
+              </div>
             </div>
             <ol className="contact-preflight-list">{contactPreparationItems.map(([number, title, description]) => <li key={title}><span>{number}</span><div><strong>{title}</strong><p>{description}</p></div></li>)}</ol>
           </aside>

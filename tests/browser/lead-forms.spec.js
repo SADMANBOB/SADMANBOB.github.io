@@ -64,6 +64,21 @@ const expectHoneypotConcealed = async (page) => {
   expect(state.clipPath).not.toBe("none");
 };
 
+const fillHoneypot = async (page) => {
+  const honeypot = page.locator(`[name="${HONEYPOT_FIELD}"]`);
+  // Submission reads the current DOM value through FormData. Dispatching a
+  // React change event here can race a rerender of this uncontrolled trap.
+  await honeypot.evaluate((node) => { node.value = "https://spam.example"; });
+  await expect(honeypot).toHaveValue("https://spam.example");
+};
+
+const openContractorContactStep = async (page) => {
+  await page.locator('select[name="eligibility"]').selectOption("no");
+  await page.locator('select[name="category"]').selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Continue to contact and property", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Contact and property.", exact: true })).toBeVisible();
+};
+
 test.describe("inspection lead form @smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/contact/");
@@ -100,10 +115,7 @@ test.describe("inspection lead form @smoke", () => {
 
   test("a filled honeypot never reports the request as sent", async ({ page }) => {
     await fillInspectionForm(page);
-    await page.locator(`[name="${HONEYPOT_FIELD}"]`).evaluate((node) => {
-      node.value = "https://spam.example";
-      node.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    await fillHoneypot(page);
     await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
     await page.locator('form.request-form button[type="submit"]').click();
     const blocked = page.getByTestId("inspection-blocked-state");
@@ -143,8 +155,11 @@ test.describe("inspection lead form @smoke", () => {
   });
 
   test("the whole form is reachable and submittable by keyboard", async ({ page }) => {
-    await page.locator('[name="name"]').focus();
-    await expect(page.locator('[name="name"]')).toBeFocused();
+    const nameInput = page.locator('[name="name"]');
+    // A user interaction also activates headless WebKit before the keyboard
+    // reachability assertion; programmatic focus alone can leave the page inactive.
+    await nameInput.click();
+    await expect(nameInput).toBeFocused();
     const reachedSubmit = await page.evaluate(() => {
       const form = document.querySelector("form.request-form");
       const focusable = [...form.querySelectorAll("input,select,textarea,button")]
@@ -195,20 +210,68 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(page.getByTestId("contractor-spam-blocked-state")).toHaveCount(0);
   });
 
+  test("marks required fields and requires phone only for phone follow-up", async ({ page }) => {
+    // This intentionally exercises both contact methods, back navigation, and
+    // two validation passes; allow headroom in resource-constrained WebKit CI.
+    test.slow();
+    await expect(page.locator(".form-required-note")).toContainText(/Required field/i);
+    await expect(page.locator('label[for="eligibility"] .field-required')).toBeVisible();
+    await openContractorContactStep(page);
+
+    const phone = page.locator('input[name="phone"]');
+    const phoneLabel = page.locator('label[for="phone"]');
+    await expect(phone).not.toHaveAttribute("required", "");
+    await expect(phone).not.toHaveAttribute("aria-required", "true");
+    await expect(phoneLabel.locator(".field-optional")).toContainText(/optional unless phone follow-up/i);
+    await expect(page.locator('label[for="fullName"] .field-required')).toBeVisible();
+
+    await page.locator('input[name="fullName"]').fill("Jordan Rivera");
+    await page.locator('input[name="email"]').fill("jordan@example.com");
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await page.locator('input[name="address"]').fill("1200 Example Street, Compton, CA 90220");
+    await page.locator('select[name="propertyType"]').selectOption({ index: 1 });
+    await page.locator('select[name="occupancy"]').selectOption({ index: 1 });
+    await page.locator('input[name="authority"]').check();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
+
+    await page.getByRole("button", { name: "Back", exact: true }).click();
+    await page.locator('select[name="contactMethod"]').selectOption("Phone");
+    await expect(phone).toHaveAttribute("required", "");
+    await expect(phone).toHaveAttribute("aria-required", "true");
+    await expect(phoneLabel.locator(".field-required")).toBeVisible();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await expect(page.locator("form.estimate-form .error-summary")).toBeFocused();
+    await expect(page.locator("#phone-error")).toContainText(/required when phone follow-up/i);
+    await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
+
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await expect(page.locator("#phone-error")).toHaveCount(0);
+    await expect(phone).not.toHaveAttribute("required", "");
+    await phone.fill("123");
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await expect(page.locator("#phone-error")).toContainText(/at least 10 digits/i);
+    await page.locator('select[name="contactMethod"]').selectOption("Phone");
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await expect(page.locator("#phone-error")).toContainText(/at least 10 digits/i);
+    await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
+    await phone.fill("");
+    await expect(page.locator("#phone-error")).toHaveCount(0);
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
+  });
+
   test("a valid submission with a spam signal uses only the generic blocked notice", async ({ page }) => {
     await page.locator('select[name="eligibility"]').selectOption("unsure");
     await page.locator('input[name="fullName"]').fill("Jordan Rivera");
     await page.locator('input[name="email"]').fill("jordan@example.com");
-    await page.locator('input[name="phone"]').fill("3105551234");
+    // Email follow-up does not require a phone number on the limited review path.
     await page.locator('select[name="contactMethod"]').selectOption("Email");
     await page.locator('input[name="address"]').fill("1200 Example Street, Compton, CA 90220");
     for (const field of ["authority", "contactConsent", "noPromise"]) {
       await page.locator(`input[name="${field}"]`).check();
     }
-    await page.locator(`[name="${HONEYPOT_FIELD}"]`).evaluate((node) => {
-      node.value = "https://spam.example";
-      node.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    await fillHoneypot(page);
     await page.getByRole("button", { name: "Review eligibility email", exact: true }).click();
     const spamBlocked = page.getByTestId("contractor-spam-blocked-state");
     await expect(spamBlocked).toBeVisible();

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { business } from "../../shared/siteData.js";
 import { enabledRoutes, openStablePage } from "./site-fixture.js";
 
 test.describe("cross-browser production-route smoke @smoke", () => {
@@ -17,4 +18,34 @@ test.describe("cross-browser production-route smoke @smoke", () => {
       expect(overflow, `${route.path} has horizontal overflow`).toEqual({ body: 0, document: 0 });
     });
   }
+});
+
+test.describe("responsive navigation and contact recovery @smoke", () => {
+  test("inspection navigation collapses at 840px before links can wrap", async ({ page }) => {
+    await page.setViewportSize({ width: 840, height: 900 });
+    await openStablePage(page, { name: "inspector-home", path: "/" });
+
+    const menuButton = page.locator("button.menu-toggle");
+    const navigation = page.getByRole("navigation", { name: "Main navigation", exact: true });
+    await expect(menuButton).toBeVisible();
+    await expect(menuButton).toHaveAccessibleName("Open navigation");
+    await expect(navigation).toBeHidden();
+    await menuButton.click();
+    await expect(navigation).toBeVisible();
+    await expect(menuButton).toHaveAttribute("aria-expanded", "true");
+    await expect(menuButton).toHaveAccessibleName("Close navigation");
+  });
+
+  test("inspection contact offers a prepared existing-report question path", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openStablePage(page, { name: "inspector-contact", path: "/contact/" });
+
+    const reportLink = page.getByRole("link", { name: "Prepare a report-question email", exact: true });
+    await expect(reportLink).toBeVisible();
+    const href = await reportLink.getAttribute("href");
+    expect(href).toContain(`mailto:${business.inspection.email}`);
+    expect(decodeURIComponent(href)).toContain("Question about an existing C&G inspection report");
+    expect(decodeURIComponent(href)).toContain("Report section or page:");
+    expect(decodeURIComponent(href)).toContain("Please do not attach the full report");
+  });
 });

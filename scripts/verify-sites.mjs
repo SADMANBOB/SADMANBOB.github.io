@@ -46,8 +46,9 @@ import {
   preferredEmails,
   provisionalBusinessDetails,
 } from "../shared/ownerReview.js";
+import { searchResultSummary } from "../shared/searchResultSummary.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../shared/searchVocabulary.js";
-import { inspectorRoutes, enabledInspectorRoutes, inspectorNotFoundRoute, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
+import { inspectorRoutes, enabledInspectorRoutes, serviceAreaRouteDefinitions as inspectorAreaRoutes } from "../inspector-site-prototype/src/content/routes.js";
 import { inspectorFaqItems } from "../inspector-site-prototype/src/content/faqs.js";
 import { enabledInspectionScope } from "../inspector-site-prototype/src/content/inspectionScope.js";
 import { resourceBySlug } from "../inspector-site-prototype/src/content/resources.js";
@@ -90,6 +91,31 @@ const walkSchemaNodes = function* (node, path = "$") {
 };
 const sitemapLocations = (xml) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 const escapeHtmlText = (value) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+assert.equal(
+  searchResultSummary(
+    { excerpt: "Editorial <mark>images</mark><span>Images here</span> &amp; details" },
+    "Open this page.",
+  ),
+  "Editorial images Images here & details",
+  "Pagefind excerpts must preserve word boundaries when markup is removed",
+);
+assert.equal(
+  searchResultSummary(
+    { meta: { description: "  06Attic contextWater Heater BasicsUnderstanding imagesImages FAQHome&nbsp;guidance  " } },
+    "Open this page.",
+  ),
+  "06 Attic context Water Heater Basics Understanding images Images FAQ Home guidance",
+  "Pagefind descriptions must recover glued prose boundaries and collapse entity whitespace",
+);
+assert.equal(
+  searchResultSummary(
+    { meta: { description: "Keep IDs, FAQs, and PDFs intact; split FAQHome, APIResponse, and IDsPayment." } },
+    "Open this page.",
+  ),
+  "Keep IDs, FAQs, and PDFs intact; split FAQ Home, API Response, and IDs Payment.",
+  "Pagefind descriptions must preserve plural acronyms while recovering real glued boundaries",
+);
 
 const inspectorSourceFiles = (await listFiles(resolve(inspector, "src"))).filter((file) => /\.(jsx?|css)$/.test(file));
 const contractorSourceFiles = (await listFiles(resolve(contractor, "src"))).filter((file) => /\.(jsx?|css)$/.test(file));
@@ -821,16 +847,31 @@ if (getApprovedSampleReports().length) {
   await assert.rejects(stat(resolve(output, "sample-report/index.html")), "Disabled sample report route was emitted");
 }
 
-for (const [file, route] of [["404.html", inspectorNotFoundRoute], ["contracting/404.html", contractorNotFoundRoute]]) {
-  const html = await read(resolve(output, file));
-  assert.match(html, /<meta name="robots" content="noindex,follow"/, `${file} must be noindex,follow`);
-  assert.equal(titleContent(html), escapeHtmlText(route.title), `${file} has the wrong title`);
-  assert.match(html, /<h1(?:\s|>)/, `${file} lacks the intended not-found experience`);
-  assert.equal((html.match(/id="cg-page-schema"/g) || []).length, 1, `${file} must contain one JSON-LD script`);
-  const schema = JSON.parse(schemaContent(html));
-  const expected404Url = file === "404.html" ? `${expectedOrigin}/404.html` : `${expectedOrigin}/contracting/404.html`;
-  assert.equal(schema["@graph"]?.find((entry) => entry["@type"] === "WebPage")?.url, expected404Url, `${file} JSON-LD URL is wrong`);
-}
+const rootNotFoundHtml = await read(resolve(output, "404.html"));
+assert.match(rootNotFoundHtml, /<meta name="robots" content="noindex,follow"/, "404.html must be noindex,follow");
+assert.equal(titleContent(rootNotFoundHtml), "Page Not Found | Choose a C&amp;G Service", "404.html must use the approved service-chooser title");
+assert.equal(canonicalContent(rootNotFoundHtml), `${expectedOrigin}/404.html`, "404.html has the wrong canonical URL");
+assert.equal(metaContent(rootNotFoundHtml, "property", "og:url"), `${expectedOrigin}/404.html`, "404.html has the wrong Open Graph URL");
+assert.match(rootNotFoundHtml, /Page not found · Choose a C&amp;G service/, "404.html lacks service-neutral identity");
+assert.match(rootNotFoundHtml, /C&amp;G service chooser/, "404.html lacks the approved chooser identity");
+assert.doesNotMatch(rootNotFoundHtml, /C&amp;G Property Services/i, "404.html invents an umbrella C&G business name");
+assert.match(rootNotFoundHtml, /href="\/">Go to Home Inspection/, "404.html lacks the inspection choice");
+assert.match(rootNotFoundHtml, /href="\/contracting\/">Go to Contracting Services/, "404.html lacks the contractor choice");
+assert.match(rootNotFoundHtml, /href="\/property-services\/styles\.css"/, "404.html must use the shared service-chooser stylesheet");
+assert.doesNotMatch(rootNotFoundHtml, /\{\{[A-Z_]+\}\}/, "404.html contains an unresolved portal template token");
+assert.doesNotMatch(rootNotFoundHtml, /<title>[^<]*(?:Certified Home Inspector|Contracting Services)/, "404.html is branded as only one service");
+assert.equal((rootNotFoundHtml.match(/<h1(?:\s|>)/g) || []).length, 1, "404.html must contain one H1");
+assert.equal((rootNotFoundHtml.match(/id="cg-page-schema"/g) || []).length, 1, "404.html must contain one JSON-LD script");
+const rootNotFoundSchema = JSON.parse(schemaContent(rootNotFoundHtml));
+assert.equal(rootNotFoundSchema["@graph"]?.find((entry) => entry["@type"] === "WebPage")?.url, `${expectedOrigin}/404.html`, "404.html JSON-LD URL is wrong");
+
+const contractorNotFoundHtml = await read(resolve(output, "contracting/404.html"));
+assert.match(contractorNotFoundHtml, /<meta name="robots" content="noindex,follow"/, "contracting/404.html must be noindex,follow");
+assert.equal(titleContent(contractorNotFoundHtml), escapeHtmlText(contractorNotFoundRoute.title), "contracting/404.html has the wrong title");
+assert.match(contractorNotFoundHtml, /<h1(?:\s|>)/, "contracting/404.html lacks the intended not-found experience");
+assert.equal((contractorNotFoundHtml.match(/id="cg-page-schema"/g) || []).length, 1, "contracting/404.html must contain one JSON-LD script");
+const contractorNotFoundSchema = JSON.parse(schemaContent(contractorNotFoundHtml));
+assert.equal(contractorNotFoundSchema["@graph"]?.find((entry) => entry["@type"] === "WebPage")?.url, `${expectedOrigin}/contracting/404.html`, "contracting/404.html JSON-LD URL is wrong");
 
 // ---------------------------------------------------------------------------
 // Local-business structured data.
