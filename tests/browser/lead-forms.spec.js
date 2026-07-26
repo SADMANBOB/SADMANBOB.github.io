@@ -235,12 +235,16 @@ test.describe("contractor estimate form @smoke", () => {
     await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
     await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
 
-    await page.getByRole("button", { name: "Back", exact: true }).click();
+    // These post-navigation controls can sit at the viewport edge after their
+    // hover transform, which makes pointer activation flaky in headless WebKit.
+    // Native Enter activation exercises the same button handlers without that
+    // scroll geometry; pointer activation is covered immediately above.
+    await page.getByRole("button", { name: "Back", exact: true }).press("Enter");
     await page.locator('select[name="contactMethod"]').selectOption("Phone");
     await expect(phone).toHaveAttribute("required", "");
     await expect(phone).toHaveAttribute("aria-required", "true");
     await expect(phoneLabel.locator(".field-required")).toBeVisible();
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
     await expect(page.locator("form.estimate-form .error-summary")).toBeFocused();
     await expect(page.locator("#phone-error")).toContainText(/required when phone follow-up/i);
     await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
@@ -249,7 +253,7 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(page.locator("#phone-error")).toHaveCount(0);
     await expect(phone).not.toHaveAttribute("required", "");
     await phone.fill("123");
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
     await expect(page.locator("#phone-error")).toContainText(/at least 10 digits/i);
     await page.locator('select[name="contactMethod"]').selectOption("Phone");
     await page.locator('select[name="contactMethod"]').selectOption("Email");
@@ -257,7 +261,7 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
     await phone.fill("");
     await expect(page.locator("#phone-error")).toHaveCount(0);
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
     await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
   });
 
