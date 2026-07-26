@@ -64,6 +64,14 @@ const expectHoneypotConcealed = async (page) => {
   expect(state.clipPath).not.toBe("none");
 };
 
+const fillHoneypot = async (page) => {
+  const honeypot = page.locator(`[name="${HONEYPOT_FIELD}"]`);
+  // Submission reads the current DOM value through FormData. Dispatching a
+  // React change event here can race a rerender of this uncontrolled trap.
+  await honeypot.evaluate((node) => { node.value = "https://spam.example"; });
+  await expect(honeypot).toHaveValue("https://spam.example");
+};
+
 const openContractorContactStep = async (page) => {
   await page.locator('select[name="eligibility"]').selectOption("no");
   await page.locator('select[name="category"]').selectOption({ index: 1 });
@@ -107,10 +115,7 @@ test.describe("inspection lead form @smoke", () => {
 
   test("a filled honeypot never reports the request as sent", async ({ page }) => {
     await fillInspectionForm(page);
-    await page.locator(`[name="${HONEYPOT_FIELD}"]`).evaluate((node) => {
-      node.value = "https://spam.example";
-      node.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    await fillHoneypot(page);
     await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
     await page.locator('form.request-form button[type="submit"]').click();
     const blocked = page.getByTestId("inspection-blocked-state");
@@ -263,10 +268,7 @@ test.describe("contractor estimate form @smoke", () => {
     for (const field of ["authority", "contactConsent", "noPromise"]) {
       await page.locator(`input[name="${field}"]`).check();
     }
-    await page.locator(`[name="${HONEYPOT_FIELD}"]`).evaluate((node) => {
-      node.value = "https://spam.example";
-      node.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    await fillHoneypot(page);
     await page.getByRole("button", { name: "Review eligibility email", exact: true }).click();
     const spamBlocked = page.getByTestId("contractor-spam-blocked-state");
     await expect(spamBlocked).toBeVisible();
