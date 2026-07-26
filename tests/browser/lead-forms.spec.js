@@ -150,8 +150,11 @@ test.describe("inspection lead form @smoke", () => {
   });
 
   test("the whole form is reachable and submittable by keyboard", async ({ page }) => {
-    await page.locator('[name="name"]').focus();
-    await expect(page.locator('[name="name"]')).toBeFocused();
+    const nameInput = page.locator('[name="name"]');
+    // A user interaction also activates headless WebKit before the keyboard
+    // reachability assertion; programmatic focus alone can leave the page inactive.
+    await nameInput.click();
+    await expect(nameInput).toBeFocused();
     const reachedSubmit = await page.evaluate(() => {
       const form = document.querySelector("form.request-form");
       const focusable = [...form.querySelectorAll("input,select,textarea,button")]
