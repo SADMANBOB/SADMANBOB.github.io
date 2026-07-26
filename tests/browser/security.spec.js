@@ -6,7 +6,7 @@ const searchCases = [
     name: "inspector",
     path: "/",
     openLabel: "Search inspection guidance",
-    query: "roof",
+    query: "images",
     status: /Showing \d+ inspection results?\./,
     resultsLabel: "Inspection search results",
   },
@@ -14,7 +14,7 @@ const searchCases = [
     name: "contractor",
     path: "/contracting/",
     openLabel: "Search contractor guidance",
-    query: "drywall",
+    query: "details",
     status: /Showing \d+ contractor results?\./,
     resultsLabel: "Contractor search results",
   },
@@ -47,7 +47,23 @@ test.describe("strict CSP and Pagefind runtime @smoke", () => {
       await searchForm.getByRole("searchbox").fill(searchCase.query);
       await searchForm.getByRole("button", { name: "Search", exact: true }).click();
       await expect(page.getByText(searchCase.status)).toBeVisible();
-      await expect(page.getByRole("list", { name: searchCase.resultsLabel })).toBeVisible();
+      const results = page.getByRole("list", { name: searchCase.resultsLabel });
+      await expect(results).toBeVisible();
+      const summaries = await results.locator("p").allTextContents();
+      expect(summaries.length).toBeGreaterThan(0);
+      for (const summary of summaries) {
+        expect(summary, `${searchCase.name} search contains a glued lower-to-title word boundary`).not.toMatch(/[a-z0-9)\].!?;:,][A-Z][a-z]/);
+        expect(summary, `${searchCase.name} search contains a glued acronym-to-title word boundary`).not.toMatch(/[A-Z]{2,}[A-Z][a-z]{2,}/);
+      }
+
+      await searchForm.getByRole("searchbox").fill("payment");
+      await searchForm.getByRole("button", { name: "Search", exact: true }).click();
+      await expect.poll(
+        async () => (await results.locator("p").allTextContents()).join(" "),
+        { message: `${searchCase.name} payment summaries did not finish rendering` },
+      ).toContain("IDs");
+      const paymentSummaries = await results.locator("p").allTextContents();
+      expect(paymentSummaries.join(" ")).not.toMatch(/\bI Ds\b|\bFA Qs\b|\bPD Fs\b/);
       await expect.poll(
         () => workerUrls,
         { message: `${searchCase.name} Pagefind worker did not start` },

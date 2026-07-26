@@ -55,6 +55,17 @@ const redirectPage = (target) => {
 `;
 };
 
+const hydratePortalTemplate = (template) => template
+  .replaceAll("{{SITE_ORIGIN}}", siteOrigin)
+  .replaceAll("{{PHONE_DISPLAY}}", business.inspection.phoneDisplay)
+  .replaceAll("{{PHONE_HREF}}", business.inspection.phoneHref)
+  .replaceAll("{{EMAIL}}", business.inspection.email)
+  .replaceAll("{{CONTRACTOR_OF_RECORD}}", business.contracting.contractorOfRecord)
+  .replaceAll("{{LICENSE_NUMBER}}", business.contracting.license.number)
+  .replaceAll("{{LICENSE_CLASSIFICATION}}", business.contracting.license.classification)
+  .replaceAll("{{LICENSE_URL}}", business.contracting.license.officialLookupUrl.replaceAll("&", "&amp;"))
+  .replaceAll("{{SEPARATION_NOTICE}}", separationPolicy.notice.replaceAll("&", "&amp;"));
+
 // macOS sidecars must never reach the deployed artifact, so every copy into _site is filtered.
 const copyWithoutLocalArtifacts = (from, to) =>
   cp(from, to, { recursive: true, filter: (source) => !isLocalFilesystemArtifact(source) });
@@ -69,17 +80,12 @@ await mkdir(resolve(output, "contracting"), { recursive: true });
 await copyWithoutLocalArtifacts(contractorDist, resolve(output, "contracting"));
 
 await mkdir(resolve(output, "property-services"), { recursive: true });
-const portalHtml = (await readFile(resolve(portal, "index.html"), "utf8"))
-  .replaceAll("{{SITE_ORIGIN}}", siteOrigin)
-  .replaceAll("{{PHONE_DISPLAY}}", business.inspection.phoneDisplay)
-  .replaceAll("{{PHONE_HREF}}", business.inspection.phoneHref)
-  .replaceAll("{{EMAIL}}", business.inspection.email)
-  .replaceAll("{{CONTRACTOR_OF_RECORD}}", business.contracting.contractorOfRecord)
-  .replaceAll("{{LICENSE_NUMBER}}", business.contracting.license.number)
-  .replaceAll("{{LICENSE_CLASSIFICATION}}", business.contracting.license.classification)
-  .replaceAll("{{LICENSE_URL}}", business.contracting.license.officialLookupUrl.replaceAll("&", "&amp;"))
-  .replaceAll("{{SEPARATION_NOTICE}}", separationPolicy.notice.replaceAll("&", "&amp;"));
+const portalHtml = hydratePortalTemplate(await readFile(resolve(portal, "index.html"), "utf8"));
+const rootNotFoundHtml = hydratePortalTemplate(await readFile(resolve(portal, "404.html"), "utf8"));
 await writeFile(resolve(output, "property-services/index.html"), portalHtml);
+// GitHub Pages serves this root document for missing paths on either service,
+// so it must not imply that a missing contractor route belongs to inspection.
+await writeFile(resolve(output, "404.html"), rootNotFoundHtml);
 await copyFile(resolve(portal, "styles.css"), resolve(output, "property-services/styles.css"));
 
 for (const [legacyRoute, target] of legacyInspectorRoutes) {

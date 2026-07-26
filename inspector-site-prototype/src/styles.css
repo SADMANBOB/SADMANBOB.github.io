@@ -567,6 +567,11 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
 .contact-preflight-list p { margin: 0; color: var(--body-ink-soft); font-size: 11px; line-height: 1.55; }
 .contact-direct { display: grid; gap: 10px; padding-top: 24px; border-top: 1px solid #cbc2b3; }
 .contact-direct a { display: inline-flex; align-items: center; gap: 9px; overflow-wrap: anywhere; color: #7d5d1f; font-size: 13px; font-weight: 700; }
+.existing-report-contact { display: grid; gap: 10px; margin-top: 24px; padding: 20px; background: #e9e2d7; border-left: 3px solid var(--gold); }
+.existing-report-contact > p:first-child { margin: 0; color: var(--gold-ink); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.existing-report-contact h3 { margin: 0; font-family: var(--serif); font-size: 20px; font-weight: 400; line-height: 1.35; }
+.existing-report-contact > p:not(:first-child) { margin: 0; color: var(--body-ink-soft); font-size: 11px; line-height: 1.65; }
+.existing-report-contact .text-link { justify-self: start; margin-top: 2px; text-decoration: underline; text-underline-offset: 3px; }
 .request-form { display: grid; gap: 21px; }
 .request-form-heading { padding-bottom: 5px; }
 .request-form-heading .eyebrow { margin-bottom: 12px; }
@@ -638,8 +643,7 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
   .desktop-nav { gap: 12px; }
 }
 
-@media (max-width: 800px) {
-  .container { width: min(100% - 38px, 600px); }
+@media (max-width: 900px) {
   .site-header { position: relative; }
   .header-inner { min-height: 72px; justify-content: space-between; }
   .header-actions { gap: 10px; }
@@ -648,10 +652,14 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
   .desktop-nav { position: absolute; top: 72px; left: 0; right: 0; display: none; flex-direction: column; align-items: stretch; gap: 0; padding: 10px 19px 16px; background: #222220; border-bottom: 1px solid #444039; }
   .desktop-nav.is-open { display: flex; }
   .desktop-nav a { padding: 13px 0; border-bottom: 1px solid #373631; font-size: 13px; }
-.desktop-nav a.is-active::after { right: auto; bottom: 8px; width: 26px; }
+  .desktop-nav a.is-active::after { right: auto; bottom: 8px; width: 26px; }
   .desktop-nav .mobile-menu-cta { display: inline-flex; margin-top: 16px; }
   .desktop-nav .mobile-menu-cta.button-gold { color: #171614; }
   .desktop-nav .mobile-menu-sister { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding-top: 16px; color: var(--gold-bright); font-size: 11px; font-weight: 700; }
+}
+
+@media (max-width: 800px) {
+  .container { width: min(100% - 38px, 600px); }
   .hero-grid, .process-grid, .experience-grid, .sister-grid, .faq-grid, .home-process-grid, .clarity-grid, .page-split-grid, .values-grid, .page-audience-grid, .contact-page-grid { grid-template-columns: 1fr; }
   .hero-grid { min-height: 0; gap: 38px; padding: 56px 0 64px; }
   .page-hero-inner { padding: 68px 0 72px; }
@@ -986,6 +994,7 @@ details p { max-width: 600px; margin: -3px 0 22px; color: var(--body-ink-soft); 
    micro-labels are deliberately unchanged. */
 @media (max-width: 800px) {
   .contact-preflight-list p,
+  .existing-report-contact > p:not(:first-child),
   .request-form label,
   .form-choice-row > span,
   .form-privacy-note,

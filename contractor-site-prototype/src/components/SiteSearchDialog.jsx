@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Search, X } from "lucide-react";
 import { business, separationPolicy } from "../../../shared/siteData.js";
+import { searchResultSummary } from "../../../shared/searchResultSummary.js";
 import { dedupeSearchRecords, expandedSearchTerms, searchSuggestions } from "../../../shared/searchVocabulary.js";
 
 const bundlePath = "/pagefind/contractor/pagefind.js";
 const initialStatus = "Enter a topic to search contractor services, process, project types, and FAQs.";
-const resultSummary = (result) => (result.meta?.description || result.excerpt || "Open this contractor page.")
-  .replace(/<[^>]+>/g, "")
-  .replaceAll("&amp;", "&")
-  .replaceAll("&quot;", '"')
-  .replaceAll("&#39;", "'");
 
 export function SiteSearchDialog({ open, onClose }) {
   const dialogRef = useRef(null);
@@ -128,7 +124,7 @@ export function SiteSearchDialog({ open, onClose }) {
           {phase === "empty" ? <div className="search-guidance"><strong>Try a shorter project or process term.</strong><p>Use one or two terms such as drywall, trim, estimate, permits, or eligibility. Service categories are starting points and do not promise project acceptance.</p></div> : null}
           {phase === "error" ? <div className="search-guidance"><strong>The on-site index is temporarily unavailable.</strong><p>Open Services, Process, Project Types, or FAQ from the main navigation, or use the inspection link below when your question is about property conditions.</p></div> : null}
           {phase === "validation" ? <div className="search-guidance"><strong>Add a little more detail.</strong><p>Enter at least two letters, or choose one of the suggested searches.</p></div> : null}
-          {results.length ? <ol className="search-results" aria-label="Contractor search results">{results.map((result) => <li key={result.url}><a href={result.url}><span>{result.meta?.title || "C&G contractor guidance"}</span><p>{resultSummary(result)}</p><small>Open page <ArrowRight size={14} aria-hidden="true" /></small></a></li>)}</ol> : null}
+          {results.length ? <ol className="search-results" aria-label="Contractor search results">{results.map((result) => <li key={result.url}><a href={result.url}><span>{result.meta?.title || "C&G contractor guidance"}</span><p>{searchResultSummary(result, "Open this contractor page.")}</p><small>Open page <ArrowRight size={14} aria-hidden="true" /></small></a></li>)}</ol> : null}
         </div>
         <aside className="search-recovery" aria-labelledby="contractor-search-recovery-title">
           <div><strong id="contractor-search-recovery-title">Looking for condition-focused inspection guidance?</strong><p>{business.inspection.publicName} explains visible and accessible systems, reports, preparation, and inspection limitations.</p></div>
