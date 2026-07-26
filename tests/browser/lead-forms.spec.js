@@ -211,6 +211,9 @@ test.describe("contractor estimate form @smoke", () => {
   });
 
   test("marks required fields and requires phone only for phone follow-up", async ({ page }) => {
+    // This intentionally exercises both contact methods, back navigation, and
+    // two validation passes; allow headroom in resource-constrained WebKit CI.
+    test.slow();
     await expect(page.locator(".form-required-note")).toContainText(/Required field/i);
     await expect(page.locator('label[for="eligibility"] .field-required')).toBeVisible();
     await openContractorContactStep(page);
