@@ -116,6 +116,19 @@ assert.equal(
   "Keep IDs, FAQs, and PDFs intact; split FAQ Home, API Response, and IDs Payment.",
   "Pagefind descriptions must preserve plural acronyms while recovering real glued boundaries",
 );
+assert.equal(
+  searchResultSummary(
+    {
+      meta: {
+        description:
+          "Current contact(310) 505-6581clarencegloss@gmail.com. Keep IDs, FAQs, PDFs, 12th, 3D, 24/7, ID(310) 505-6581, and Order123jane@example.com intact.",
+      },
+    },
+    "Open this page.",
+  ),
+  "Current contact (310) 505-6581 clarencegloss@gmail.com. Keep IDs, FAQs, PDFs, 12th, 3D, 24/7, ID(310) 505-6581, and Order123jane@example.com intact.",
+  "Pagefind descriptions must recover complete contact boundaries without splitting unrelated identifiers",
+);
 
 const inspectorSourceFiles = (await listFiles(resolve(inspector, "src"))).filter((file) => /\.(jsx?|css)$/.test(file));
 const contractorSourceFiles = (await listFiles(resolve(contractor, "src"))).filter((file) => /\.(jsx?|css)$/.test(file));
