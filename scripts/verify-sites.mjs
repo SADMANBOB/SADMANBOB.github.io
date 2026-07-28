@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, relative, resolve } from "node:path";
 import { isLocalFilesystemArtifact } from "../shared/outputHygiene.js";
+import { copyPlainText } from "../shared/clipboard.js";
 import {
   CONTENT_SECURITY_POLICY,
   contentSecurityPolicyMetaTag,
@@ -13,6 +14,7 @@ import { analytics, approvedIntegrationsFor, approvedServiceAreas, business, cla
 import {
   bookingActionFor,
   createFileShareAuthorization,
+  externalFileRequestActionFor,
   formTransportFor,
   prepareMailto,
   protectedUploadPolicyFor,
@@ -77,6 +79,76 @@ const metaContent = (html, attribute, key) => html.match(new RegExp(`<meta ${att
 const titleContent = (html) => html.match(/<title>([^<]+)<\/title>/)?.[1];
 const canonicalContent = (html) => html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
 const schemaContent = (html) => html.match(/<script id="cg-page-schema" type="application\/ld\+json">([\s\S]*?)<\/script>/)?.[1];
+
+let copiedText = "";
+await copyPlainText("Request details", {
+  navigatorImpl: {
+    clipboard: {
+      writeText: async (value) => { copiedText = value; },
+    },
+  },
+  documentImpl: null,
+});
+assert.equal(copiedText, "Request details", "Clipboard helper changed the prepared request text");
+const fallbackField = {
+  value: "",
+  readOnly: false,
+  style: {},
+  setAttribute: () => {},
+  select: () => {},
+  remove: () => {},
+};
+await copyPlainText("Fallback request details", {
+  navigatorImpl: {},
+  documentImpl: {
+    body: { append: () => {} },
+    createElement: () => fallbackField,
+    execCommand: (command) => command === "copy" && fallbackField.value === "Fallback request details",
+  },
+});
+await copyPlainText("Rejected API fallback", {
+  navigatorImpl: {
+    clipboard: {
+      writeText: async () => { throw new Error("Permission denied"); },
+    },
+  },
+  documentImpl: {
+    body: { append: () => {} },
+    createElement: () => fallbackField,
+    execCommand: (command) => command === "copy" && fallbackField.value === "Rejected API fallback",
+  },
+});
+let throwingFallbackRemoved = false;
+let throwingFallbackFocusRestored = false;
+await assert.rejects(
+  copyPlainText("Throwing fallback", {
+    navigatorImpl: {},
+    documentImpl: {
+      activeElement: {
+        focus: () => { throwingFallbackFocusRestored = true; },
+      },
+      body: { append: () => {} },
+      createElement: () => ({
+        value: "",
+        readOnly: false,
+        style: {},
+        setAttribute: () => {},
+        select: () => {},
+        remove: () => { throwingFallbackRemoved = true; },
+      }),
+      execCommand: () => { throw new Error("Copy command blocked"); },
+    },
+  }),
+  /Copy command blocked/,
+  "Clipboard helper swallowed a legacy copy failure",
+);
+assert.equal(throwingFallbackRemoved, true, "Clipboard helper left its hidden fallback field in the document after failure");
+assert.equal(throwingFallbackFocusRestored, true, "Clipboard helper did not restore focus after a fallback failure");
+await assert.rejects(
+  copyPlainText("", { navigatorImpl: {}, documentImpl: null }),
+  /no request details/i,
+  "Clipboard helper accepted an empty request",
+);
 
 // Yields every object node in a JSON-LD document with a readable path, so
 // structured-data assertions apply to nested nodes rather than only the top level.
@@ -184,6 +256,7 @@ const ownerGatedIntegrationIds = [
   "secureInspectionFormTransport",
   "secureContractorFormTransport",
   "protectedUpload",
+  "contractorFileRequest",
   "analytics",
   "maps",
   "reviews",
@@ -291,6 +364,70 @@ assert.equal(integrationCanRender({
     malwareControls: "Uploaded content is quarantined and scanned before staff access.",
   },
 }, gateTestDate), true, "A fully configured protected-upload broker cannot pass the adapter gate");
+const approvedExternalFileRequestFixture = {
+  status: "approved",
+  enabled: true,
+  capability: "external-file-request",
+  provider: "Dropbox File Requests",
+  allowedSurfaces: ["contractor-estimate"],
+  ownerApprovedAt: "2026-07-22T12:00:00Z",
+  privacyReviewedAt: "2026-07-22T12:00:00Z",
+  securityReviewedAt: "2026-07-22T12:00:00Z",
+  policyApprovedAt: "2026-07-22T12:00:00Z",
+  publicConfig: {
+    requestUrl: "https://www.dropbox.com/request/ExampleRequest_123",
+    privacyUrl: "https://www.dropbox.com/privacy",
+    deliveryMode: "post-confirmed-ui-disclosure",
+    requestLinkType: "reusable-public",
+    publicBundleExposureAcknowledged: true,
+    requestedMaxFiles: 10,
+    requestedMimeTypes: ["image/heic", "image/jpeg", "image/png", "image/webp"],
+    publicLinkPolicy: "The reusable request link appears only after the approved processor confirms an eligible ordinary project request.",
+    retentionPolicy: "Received project photos are retained only for the owner-approved inquiry and business-record period.",
+    deletionPolicy: "The request folder is reviewed and files are deleted under the owner-approved inquiry closure procedure.",
+    abuseControls: "The owner closes or rotates an abused request link and reviews files in the provider before local access.",
+  },
+};
+assert.equal(
+  integrationCanRender(approvedExternalFileRequestFixture, gateTestDate),
+  true,
+  "A fully configured Dropbox File Request cannot pass the adapter gate",
+);
+for (const requestUrl of [
+  "http://www.dropbox.com/request/ExampleRequest_123",
+  "https://dropbox.example/request/ExampleRequest_123",
+  "https://www.dropbox.com/scl/fo/ExampleRequest_123",
+  "https://user:password@www.dropbox.com/request/ExampleRequest_123",
+  "https://www.dropbox.com/request/ExampleRequest_123?source=public",
+]) {
+  assert.equal(
+    integrationCanRender({
+      ...approvedExternalFileRequestFixture,
+      publicConfig: { ...approvedExternalFileRequestFixture.publicConfig, requestUrl },
+    }, gateTestDate),
+    false,
+    `Unsafe Dropbox request URL passed the adapter gate: ${requestUrl}`,
+  );
+}
+assert.equal(
+  integrationCanRender({
+    ...approvedExternalFileRequestFixture,
+    publicConfig: { ...approvedExternalFileRequestFixture.publicConfig, requestedMaxFiles: 11 },
+  }, gateTestDate),
+  false,
+  "Dropbox guidance can request more than ten project photos",
+);
+assert.equal(
+  integrationCanRender({
+    ...approvedExternalFileRequestFixture,
+    publicConfig: {
+      ...approvedExternalFileRequestFixture.publicConfig,
+      publicBundleExposureAcknowledged: false,
+    },
+  }, gateTestDate),
+  false,
+  "Dropbox request URL passed without acknowledging public client-bundle exposure",
+);
 assert.equal(integrationCanRender({
   status: "approved",
   enabled: true,
@@ -423,6 +560,46 @@ try {
 } finally {
   integrations.secureInspectionFormTransport = originalSecureInspectionTransport;
   integrations.protectedUpload = originalProtectedUpload;
+}
+
+assert.equal(
+  externalFileRequestActionFor("contractor-estimate"),
+  null,
+  "A pending Dropbox request or mailto draft exposed the external file-request action",
+);
+const originalSecureContractorTransport = integrations.secureContractorFormTransport;
+const originalContractorFileRequest = integrations.contractorFileRequest;
+try {
+  integrations.secureContractorFormTransport = {
+    ...approvedSecureTransportFixture,
+    allowedSurfaces: ["contractor-estimate"],
+    publicConfig: {
+      ...approvedSecureTransportFixture.publicConfig,
+      formId: "contractor_request",
+    },
+  };
+  integrations.contractorFileRequest = approvedExternalFileRequestFixture;
+  assert.deepEqual(
+    externalFileRequestActionFor("contractor-estimate"),
+    {
+      provider: "Dropbox File Requests",
+      href: approvedExternalFileRequestFixture.publicConfig.requestUrl,
+      privacyUrl: approvedExternalFileRequestFixture.publicConfig.privacyUrl,
+      requestedMaxFiles: 10,
+      requestedMimeTypes: ["image/heic", "image/jpeg", "image/png", "image/webp"],
+      deliveryMode: "post-confirmed-ui-disclosure",
+      requestLinkType: "reusable-public",
+    },
+    "Approved Dropbox follow-up did not resolve through the secure contractor transport",
+  );
+  assert.equal(
+    externalFileRequestActionFor("inspector-contact"),
+    null,
+    "Contractor Dropbox follow-up leaked onto the inspector surface",
+  );
+} finally {
+  integrations.secureContractorFormTransport = originalSecureContractorTransport;
+  integrations.contractorFileRequest = originalContractorFileRequest;
 }
 
 assert.equal(reviewSlots.length, 50, "The review approval registry must contain exactly 50 slots");
@@ -643,12 +820,28 @@ assert.equal(requestCategoryFromSearch("?category=drywall-surface-repair&email=v
 assert.ok(contractorSource.indexOf("Eligibility comes first") < contractorSource.indexOf("Contact and property"), "Estimate flow does not present eligibility before contact and property details");
 assert.match(contractorSource, /manualReviewFields/, "Limited manual eligibility-review fields are missing");
 assert.match(contractorSource, /Nothing has been sent or received/, "Truthful mailto preparation status is missing");
+assert.match(inspectorSource, /Copy request details/, "Inspection prepared-email state lacks a local copy fallback");
+assert.match(contractorSource, /Copy request details|Copy eligibility details/, "Contractor prepared-email states lack a local copy fallback");
+assert.match(allSource, /Request details copied\. Nothing was sent\./, "Copy fallback lacks truthful local-only status");
 assert.match(contractorSource, /id="inspection-eligibility"/, "The shared 12-month-rule anchor target is missing");
 assert.match(contractorSource, /eligibility\.state === "validation-error"/, "The unanswered eligibility path has no visible validation action");
 assert.match(contractorSource, /key=\{categoryKey \|\| "unclassified"\}/, "Category-query changes do not reset the estimate form state");
 assert.match(contractorSource, /ProjectReadinessGuide/, "Contractor Services lacks the project-readiness guide");
 assert.match(contractorSource, /mobile-conversion-rail/, "Contractor site lacks the mobile conversion rail");
 assert.match(contractorSource, /Nothing is uploaded or sent while you use this guide/, "Project-readiness guide lacks local-only transport truth");
+assert.match(contractorSource, /Optional photo plan/, "Contractor readiness guide lacks the optional photo plan");
+assert.match(contractorSource, /Wide context, medium view, close-up, source area/, "Contractor photo plan lacks useful shot guidance");
+assert.match(contractorSource, /people, faces, mail, keys, IDs, payment data, access codes, claim files/, "Contractor photo plan lacks sensitive-content exclusions");
+assert.match(
+  contractorSource,
+  /result\?\.state === "submitted"[\s\S]*data-testid="contractor-file-request-action"/,
+  "Dropbox follow-up is not scoped to the confirmed ordinary-request success state",
+);
+assert.match(
+  contractorSource,
+  /externalFileRequestActionFor\("contractor-estimate"\)/,
+  "Contractor pages do not use the fail-closed external file-request adapter",
+);
 
 for (const site of [inspector, contractor]) {
   await stat(resolve(site, "dist/index.html"));
@@ -1011,6 +1204,8 @@ const assembledContractor = await read(resolve(output, "contracting/index.html")
 const assembledContractorServices = await read(resolve(output, "contracting/services/index.html"));
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
 const assembledPortal = await read(resolve(output, "index.html"));
+const inspectionVcard = await read(resolve(output, "assets/cg-inspection.vcf"));
+const contractorVcard = await read(resolve(output, "assets/cg-contracting.vcf"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
 if (approvedReviews.length) {
   assert.match(assembledInspector, /Published with permission|review-section|review-copy/i, "Approved reviews did not render on the inspector home page");
@@ -1040,6 +1235,8 @@ assert.match(assembledContractorServices, /id="project-readiness-guide"/, "Contr
 assert.match(assembledContractorServices, /id="request-worksheet"/, "Contractor Services lacks the printable request worksheet");
 assert.match(assembledContractorServices, /Private planning tool/, "Contractor Services lacks the local-only planning context");
 assert.match(assembledContractorServices, /Print blank worksheet/, "Contractor Services lacks the worksheet print action");
+assert.match(assembledContractorServices, /Optional photo plan/, "Contractor Services lacks the prerendered photo plan");
+assert.match(assembledContractorServices, /Safer, more useful project photos/, "Contractor Services lacks the safe photo worksheet guidance");
 assert.ok(assembledEstimate.includes("previous 12 months"), "Contractor estimate path lacks the 12-month eligibility boundary");
 assert.match(assembledEstimate, /First, confirm inspection eligibility|Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
 assert.equal(/Full name/.test(assembledEstimate), false, "Contractor estimate prerender collects contact details before eligibility");
@@ -1049,6 +1246,22 @@ assert.match(assembledContractor, /Practical repairs\. <em>Built to last\.<\/em>
 assert.match(assembledPortal, /Which service are/, "Root chooser is missing its single decision question");
 assert.match(assembledPortal, /href="\/inspection\/">Explore Home Inspection/, "Root chooser lacks the inspection destination");
 assert.match(assembledPortal, /href="\/contracting\/">Explore Contracting Services/, "Root chooser lacks the contracting destination");
+assert.match(assembledInspector, /href="\/assets\/cg-inspection\.vcf"[^>]*download="C-and-G-Home-Inspection\.vcf"/, "Inspector site lacks the service-specific contact download");
+assert.match(assembledContractor, /href="\/assets\/cg-contracting\.vcf"[^>]*download="C-and-G-Contracting\.vcf"/, "Contractor site lacks the service-specific contact download");
+for (const [label, vcard, service, publicUrl] of [
+  ["inspection", inspectionVcard, business.inspection, `${expectedOrigin}/inspection/`],
+  ["contracting", contractorVcard, business.contracting, `${expectedOrigin}/contracting/`],
+]) {
+  assert.match(vcard, /^BEGIN:VCARD\r?\nVERSION:4\.0\r?\n/, `${label} contact download is not a version 4 vCard`);
+  assert.ok(vcard.includes(`FN:${service.publicName.replaceAll(",", "\\,").replaceAll(";", "\\;")}`), `${label} vCard has the wrong public name`);
+  assert.ok(vcard.includes(`TEL;TYPE=work,voice;VALUE=uri:${service.phoneHref}`), `${label} vCard has the wrong phone`);
+  assert.ok(vcard.includes(`EMAIL;TYPE=work:${service.email}`), `${label} vCard has the wrong email`);
+  assert.ok(vcard.includes(`URL:${publicUrl}`), `${label} vCard has the wrong service URL`);
+  const vcardLines = vcard.split("\r\n");
+  assert.ok(vcardLines.every((line) => Buffer.byteLength(line, "utf8") <= 75), `${label} vCard has an unfolded line over 75 bytes`);
+  assert.ok(vcardLines.some((line) => line.startsWith(" ")), `${label} vCard does not fold its long note for contact-app compatibility`);
+  assert.match(vcard, /\r?\nEND:VCARD\r?\n$/, `${label} contact download has an invalid terminator`);
+}
 
 const inspectorRequestActionIndex = assembledInspectorContact.indexOf('href="#inspection-request"');
 const inspectorRequestTargetIndex = assembledInspectorContact.indexOf('id="inspection-request"');
@@ -1139,6 +1352,10 @@ if (
   !integrationCanRender(integrations.secureInspectionFormTransport, now)
   && !integrationCanRender(integrations.secureContractorFormTransport, now)
 ) assert.equal(/formspree|typeform|jotform/i.test(publicRouteMarkup), false, "A pending form provider leaked into public output");
+if (!integrationCanRender(integrations.contractorFileRequest, now)) {
+  assert.equal(/dropbox|contractor-file-request-action/i.test(publicRouteMarkup), false, "A pending Dropbox file request leaked into public output");
+  assert.match(publicRouteMarkup, /Do not send photos with the initial request/i, "Pending Dropbox flow lacks truthful non-promissory photo guidance");
+}
 if (!integrationCanRender(integrations.maps, now)) assert.equal(/google\.com\/maps\/embed/i.test(publicRouteMarkup), false, "A pending map provider leaked into public output");
 if (!integrationCanRender(integrations.reviews, now)) assert.equal(/review-widget/i.test(publicRouteMarkup), false, "A pending review provider leaked into public output");
 if (!integrationCanRender(integrations.analytics, now)) assert.equal(/googletagmanager|google-analytics|plausible\.io|cdn\.usefathom/i.test(publicRouteMarkup), false, "A pending analytics provider leaked into public output");

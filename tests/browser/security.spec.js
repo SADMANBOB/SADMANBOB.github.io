@@ -58,7 +58,9 @@ test.describe("strict CSP and Pagefind runtime @smoke", () => {
         expect(summary, `${searchCase.name} search contains a glued phone-to-email boundary`).not.toMatch(/\(\d{3}\)\s*\d{3}-\d{4}[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
       }
       if (searchCase.name === "contractor") {
-        expect(summaries.join(" ")).toContain("Current contact (310) 505-6581 clarencegloss@gmail.com.");
+        expect(summaries.join(" ")).toContain(
+          "Current contact (310) 505-6581 clarencegloss@gmail.com Save contractor contact",
+        );
       }
 
       await searchForm.getByRole("searchbox").fill("payment");

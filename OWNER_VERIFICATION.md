@@ -80,9 +80,21 @@ expiration or recheck date have been recorded.
   should remain or be replaced by an approved HTTPS form processor. The secure
   adapter is present but stays disabled until provider, endpoint, privacy,
   retention, abuse-control, and receipt behavior are approved.
-- Uploads: approve a one-time upload broker, host allowlist, MIME allowlist,
-  file limits, malware controls, retention/deletion, and privacy terms.
-  GitHub Pages never receives private files or stores an upload credential.
+- Dropbox File Requests: create the request in a client-owned Dropbox account
+  with two-factor authentication and a dedicated empty destination folder.
+  Record the public `https://www.dropbox.com/request/...` URL, acknowledge that
+  the reusable link can be used by anyone who has it, and explicitly
+  acknowledge that activation places that URL in the public client bundle.
+  Showing the action after a confirmed form submission is UI sequencing, not
+  access control. Approve the up-to-10 image guidance plus retention, deletion,
+  privacy, and abuse-response procedures. Until the HTTPS form processor is
+  enabled and that public-link risk is accepted, send the request link manually
+  after reviewing the inquiry. Do not place Dropbox credentials in this
+  repository.
+- Protected uploads remain a separate, higher-control option. Enabling that
+  path requires a one-time upload broker, host and MIME allowlists, file limits,
+  malware controls, retention/deletion, and privacy terms. GitHub Pages never
+  receives private files or stores an upload credential.
 - Obtain owner and professional review of the final privacy, retention,
   contract, deposit, warranty, cancellation, and business-name wording where
   applicable.
@@ -93,6 +105,10 @@ expiration or recheck date have been recorded.
   sizes.
 - Confirm the production domain, canonical origin, DNS, and GitHub Pages
   environment.
+- Check that the scheduled `Live site monitor` workflow remains enabled. GitHub
+  automatically disables scheduled workflows in a public repository after 60
+  days without repository activity; re-enable it when needed or add a separate
+  owner-controlled uptime monitor for durable coverage.
 - Verify the `www.cginspection.net` property in an owner-controlled Google
   Search Console account, submit
   `https://www.cginspection.net/sitemap.xml`, and monitor indexing and security

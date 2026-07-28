@@ -70,6 +70,38 @@ const hydratePortalTemplate = (template) => template
   .replaceAll("{{LICENSE_URL}}", business.contracting.license.officialLookupUrl.replaceAll("&", "&amp;"))
   .replaceAll("{{SEPARATION_NOTICE}}", separationPolicy.notice.replaceAll("&", "&amp;"));
 
+const escapeVcardText = (value) => String(value)
+  .replaceAll("\\", "\\\\")
+  .replaceAll("\n", "\\n")
+  .replaceAll(",", "\\,")
+  .replaceAll(";", "\\;");
+const foldVcardLine = (line) => {
+  const folded = [];
+  let current = "";
+  for (const character of line) {
+    if (Buffer.byteLength(current + character, "utf8") > 75) {
+      folded.push(current);
+      current = ` ${character}`;
+    } else {
+      current += character;
+    }
+  }
+  folded.push(current);
+  return folded.join("\r\n");
+};
+const vcardFor = ({ name, phoneHref, email, url, note }) => [
+  "BEGIN:VCARD",
+  "VERSION:4.0",
+  `FN:${escapeVcardText(name)}`,
+  `ORG:${escapeVcardText(name)}`,
+  `TEL;TYPE=work,voice;VALUE=uri:${phoneHref}`,
+  `EMAIL;TYPE=work:${email}`,
+  `URL:${url}`,
+  `NOTE:${escapeVcardText(note)}`,
+  "END:VCARD",
+  "",
+].map(foldVcardLine).join("\r\n");
+
 // macOS sidecars must never reach the deployed artifact, so every copy into _site is filtered.
 const copyWithoutLocalArtifacts = (from, to) =>
   cp(from, to, { recursive: true, filter: (source) => !isLocalFilesystemArtifact(source) });
@@ -79,6 +111,20 @@ await mkdir(output, { recursive: true });
 await copyWithoutLocalArtifacts(inspectorDist, output);
 await mkdir(resolve(output, "assets"), { recursive: true });
 await copyFile(legacyRedirectScript, resolve(output, "assets/legacy-redirect.js"));
+await writeFile(resolve(output, "assets/cg-inspection.vcf"), vcardFor({
+  name: business.inspection.publicName,
+  phoneHref: business.inspection.phoneHref,
+  email: business.inspection.email,
+  url: `${siteOrigin}/inspection/`,
+  note: `${business.inspection.positioning} Home inspection and residential contracting are separate services.`,
+}));
+await writeFile(resolve(output, "assets/cg-contracting.vcf"), vcardFor({
+  name: business.contracting.publicName,
+  phoneHref: business.contracting.phoneHref,
+  email: business.contracting.email,
+  url: `${siteOrigin}/contracting/`,
+  note: `${business.contracting.positioning} Contractor of record: ${business.contracting.contractorOfRecord}, CSLB #${business.contracting.license.number}.`,
+}));
 
 await mkdir(resolve(output, "contracting"), { recursive: true });
 await copyWithoutLocalArtifacts(contractorDist, resolve(output, "contracting"));

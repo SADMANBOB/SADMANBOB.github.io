@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { copyPlainText } from "../../../shared/clipboard.js";
 import { business, evaluateContractorEligibility, separationPolicy } from "../../../shared/siteData.js";
 import {
   HONEYPOT_FIELD,
@@ -8,6 +9,7 @@ import {
 import { OWNER_REVIEW_STAGING_VISIBLE, preferredEmails } from "../../../shared/ownerReview.js";
 import {
   createFileShareAuthorization,
+  externalFileRequestActionFor,
   formTransportFor,
   prepareMailto,
   protectedUploadPolicyFor,
@@ -141,6 +143,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   const surface = "contractor-estimate";
   const transport = formTransportFor(surface);
   const uploadPolicy = protectedUploadPolicyFor(surface);
+  const externalFileRequest = externalFileRequestActionFor(surface);
   const secureTransport = Boolean(transport && transport.provider !== "mailto");
   const [values, setValues] = useState(() => ({
     ...initialValues,
@@ -148,6 +151,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   }));
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
+  const [copyStatus, setCopyStatus] = useState("");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [uploadConsent, setUploadConsent] = useState(false);
@@ -192,6 +196,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       return next;
     });
     setResult(null);
+    setCopyStatus("");
   };
 
   const setEligibility = (event) => {
@@ -202,6 +207,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     setUploadConsent(false);
     setUploadedFiles([]);
     setUploadError("");
+    setCopyStatus("");
     if (nextValue === "yes") {
       setResult({ state: "eligibility-blocked" });
       focusSummary();
@@ -267,12 +273,15 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       }
       if (blockAutomatedSubmission()) return;
       if (!secureTransport) {
+        const subject = "C&G inspection eligibility review";
+        const body = buildEligibilityBody(values);
         const href = prepareMailto({
           recipient: business.contracting.email,
-          subject: "C&G inspection eligibility review",
-          body: buildEligibilityBody(values),
+          subject,
+          body,
         });
-        setResult({ state: "manual-review", href });
+        setResult({ state: "manual-review", href, copyText: `${subject}\n\n${body}` });
+        setCopyStatus("");
         focusSummary();
         return;
       }
@@ -320,12 +329,14 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     if (blockAutomatedSubmission()) return;
     const subject = `C&G project request — ${categoryLabel(values.category)}`;
     if (!secureTransport) {
+      const body = buildProjectBody(values);
       const href = prepareMailto({
         recipient: business.contracting.email,
         subject,
-        body: buildProjectBody(values),
+        body,
       });
-      setResult({ state: "eligible", href });
+      setResult({ state: "eligible", href, copyText: `${subject}\n\n${body}` });
+      setCopyStatus("");
       focusSummary();
       return;
     }
@@ -384,6 +395,15 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
     if (!confirmed) setUploadedFiles([]);
   };
 
+  const handleCopyPreparedRequest = async () => {
+    try {
+      await copyPlainText(result?.copyText);
+      setCopyStatus("Request details copied. Nothing was sent.");
+    } catch {
+      setCopyStatus("Copy is unavailable in this browser. The email draft is still ready.");
+    }
+  };
+
   return (
     <form className="estimate-form" noValidate onSubmit={handleSubmit}>
       {/* Hidden from sight and from assistive technology. Any value here came
@@ -391,8 +411,8 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
       <div className="form-honeypot" aria-hidden="true"><input {...honeypotFieldProps} id="contractor-contact-reference" /></div>
       <p className="form-required-note"><span className="field-required" aria-hidden="true">*</span> Required field. Phone is required only when phone follow-up is selected.</p>
       {Object.keys(errors).length ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>Please review these fields.</strong><ul>{Object.entries(errors).map(([field, message]) => <li key={field}><a href={`#${field}`}>{message}</a></li>)}</ul></div> : null}
-      {result?.state === "eligible" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>Ready to send your project details.</strong><p>Open your email app to send the draft. We’ll review the property, project scope, location, and eligibility before confirming the next step. Nothing has been sent yet.</p><a className="button button-graphite" href={result.href}>Open your email app</a></div> : null}
-      {result?.state === "submitted" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>The approved processor received your project request.</strong><p>This is not acceptance, an estimate, a contract, or a schedule reservation.{result.receipt ? ` Receipt: ${result.receipt}.` : ""}</p></div> : null}
+      {result?.state === "eligible" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>Ready to send your project details.</strong><p>Open your email app to send the draft. We’ll review the property, project scope, location, and eligibility before confirming the next step. Nothing has been sent yet.</p><a className="button button-graphite" href={result.href}>Open your email app</a><button className="button button-outline-dark" type="button" onClick={handleCopyPreparedRequest}>Copy request details</button><p aria-live="polite" data-testid="contractor-copy-status">{copyStatus}</p></div> : null}
+      {result?.state === "submitted" ? <div className="form-status" ref={summaryRef} tabIndex="-1" role="status"><strong>The approved processor received your project request.</strong><p>This is not acceptance, an estimate, a contract, or a schedule reservation.{result.receipt ? ` Receipt: ${result.receipt}.` : ""}</p>{externalFileRequest ? <div className="file-request-followup" data-testid="contractor-file-request-action"><strong>Optional: add project photos.</strong><p>Use the same name and email from this request. Choose up to {externalFileRequest.requestedMaxFiles} relevant project photos only—no IDs, payment information, claim files, alarm or lockbox codes, or unredacted inspection reports.</p><a className="button button-outline-dark" href={externalFileRequest.href} target="_blank" rel="noreferrer">Open the separate photo request</a><small>This opens a reusable {externalFileRequest.provider} link in a new tab. Anyone who has that link can use it. Dropbox’s <a href={externalFileRequest.privacyUrl} target="_blank" rel="noreferrer">privacy policy</a> applies to the separate photo transfer.</small></div> : null}</div> : null}
       {result?.state === "submission-error" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert"><strong>The request could not be submitted.</strong><p>No project or appointment was created. Your answers are still filled in, so you can try again. You can also call {business.contracting.phoneDisplay} or email {business.contracting.email}.</p><button type="button" className="button button-outline-dark" onClick={() => { setResult(null); focusStep(); }} data-testid="contractor-retry">Try again</button></div> : null}
 
       {result?.state === "spam-blocked" ? <div className="error-summary" ref={summaryRef} tabIndex="-1" role="alert" data-testid="contractor-spam-blocked-state"><strong>This request could not be sent.</strong><p>No project or appointment was created. Please call {business.contracting.phoneDisplay} or email {business.contracting.email} and it will be handled the same way.</p></div> : null}
@@ -410,7 +430,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
 
         {eligibility.state === "manual-review" ? <section className="manual-review-track" aria-labelledby="manual-review-title">
           <div className="estimate-step-intro"><span>Limited path</span><h3 id="manual-review-title">Ask C&amp;G to confirm eligibility.</h3><p>Only contact and property-identification details are requested. This does not begin an estimate or repair-sales process.</p></div>
-          {result?.state === "manual-review" ? <div className="form-status form-status-manual" ref={summaryRef} tabIndex="-1" role="status"><strong>Your eligibility-review email is ready.</strong><p>Nothing has been sent or received. Opening the link prepares a draft asking C&amp;G to confirm eligibility only.</p><a className="button button-graphite" href={result.href}>Prepare eligibility review email</a></div> : null}
+          {result?.state === "manual-review" ? <div className="form-status form-status-manual" ref={summaryRef} tabIndex="-1" role="status"><strong>Your eligibility-review email is ready.</strong><p>Nothing has been sent or received. Opening the link prepares a draft asking C&amp;G to confirm eligibility only.</p><a className="button button-graphite" href={result.href}>Prepare eligibility review email</a><button className="button button-outline-dark" type="button" onClick={handleCopyPreparedRequest}>Copy eligibility details</button><p aria-live="polite" data-testid="contractor-copy-status">{copyStatus}</p></div> : null}
           {result?.state === "manual-submitted" ? <div className="form-status form-status-manual" ref={summaryRef} tabIndex="-1" role="status"><strong>The approved processor received the eligibility question.</strong><p>This is only a request to confirm the 12-month boundary—not an estimate, work request, contract, or schedule reservation.{result.receipt ? ` Receipt: ${result.receipt}.` : ""}</p></div> : null}
           <fieldset><legend>Contact for eligibility review</legend><div className="form-row"><label htmlFor="fullName"><FieldLabel>Full name</FieldLabel><input id="fullName" autoComplete="name" {...inputProps("fullName")} /><FieldError errors={errors} name="fullName" /></label><label htmlFor="email"><FieldLabel>Email</FieldLabel><input id="email" type="email" autoComplete="email" {...inputProps("email")} /><FieldError errors={errors} name="email" /></label></div><div className="form-row"><label htmlFor="phone"><FieldLabel required={fieldIsRequired("phone", values)} optionalText="optional unless phone follow-up is selected" live>Phone</FieldLabel><input id="phone" type="tel" autoComplete="tel" {...inputProps("phone")} /><FieldError errors={errors} name="phone" /></label><label htmlFor="contactMethod"><FieldLabel>Preferred contact method</FieldLabel><select id="contactMethod" {...inputProps("contactMethod")}><option value="">Select one</option><option>Email</option><option>Phone</option></select><FieldError errors={errors} name="contactMethod" /></label></div><label htmlFor="address"><FieldLabel>Full property address</FieldLabel><input id="address" autoComplete="street-address" {...inputProps("address")} /><FieldError errors={errors} name="address" /></label><label className="check-label"><input {...checkProps("authority")} /><span>I am the owner or authorized agent for this property.<RequiredMark /></span></label><FieldError errors={errors} name="authority" /><label className="check-label"><input {...checkProps("contactConsent")} /><span>I consent to contact about this eligibility question.<RequiredMark /></span></label><FieldError errors={errors} name="contactConsent" /><label className="check-label"><input {...checkProps("noPromise")} /><span>I understand this is not an estimate, work request, contract, or schedule reservation.<RequiredMark /></span></label><FieldError errors={errors} name="noPromise" /></fieldset>
           <div className="form-submit-row"><button className="button button-copper" type="submit" disabled={submitting}>{secureTransport ? (submitting ? "Sending securely…" : "Send eligibility question securely") : "Review eligibility email"}</button><p>{secureTransport ? `Submission uses the owner-approved ${transport.provider} processor.` : "Nothing is uploaded or sent when you select this button."}</p></div>
@@ -433,7 +453,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
 
       {step === 3 ? <section className="estimate-step" aria-labelledby="project-step-heading">
         <div className="estimate-step-intro"><span>Step 03</span><h3 id="project-step-heading" ref={stepHeadingRef} tabIndex="-1">Describe the condition and desired result.</h3><p>Useful context helps identify source conditions, trade boundaries, access, materials, permits, and information still missing.</p></div>
-        <fieldset><legend>Project</legend><div className="selected-category-line"><span>Starting category</span><strong>{categoryLabel(values.category)}</strong><button type="button" onClick={() => moveToStep(1, [])}>Change</button></div><label htmlFor="description"><FieldLabel>Plain-language description of the issue and desired result</FieldLabel><textarea id="description" rows="5" {...inputProps("description")} /><FieldError errors={errors} name="description" /></label><div className="form-row"><label htmlFor="affectedAreas"><FieldLabel>Areas or rooms affected</FieldLabel><input id="affectedAreas" {...inputProps("affectedAreas")} /><FieldError errors={errors} name="affectedAreas" /></label><label htmlFor="firstNoticed"><FieldLabel required={false}>When first noticed, if relevant</FieldLabel><input id="firstNoticed" {...inputProps("firstNoticed")} /></label></div><div className="form-row"><label htmlFor="sourceStatus"><FieldLabel>Is the source condition active or resolved?</FieldLabel><select id="sourceStatus" {...inputProps("sourceStatus")}><option value="">Select one</option><option>Active</option><option>Resolved</option><option>Unknown</option><option>Not applicable</option></select><FieldError errors={errors} name="sourceStatus" /></label><label htmlFor="timing"><FieldLabel>Desired timing and any true deadline</FieldLabel><input id="timing" {...inputProps("timing")} /><FieldError errors={errors} name="timing" /></label></div><p className="form-help">{uploadPolicy ? "An approved protected-upload option appears during review. Do not share alarm codes, financial documents, government IDs, payment cards, claim files, or unredacted inspection reports." : "Photos are not accepted through this basic form. Wait for a reply with an approved sharing path. Do not email alarm codes, financial documents, government IDs, payment cards, claim files, or unredacted inspection reports."}</p></fieldset>
+        <fieldset><legend>Project</legend><div className="selected-category-line"><span>Starting category</span><strong>{categoryLabel(values.category)}</strong><button type="button" onClick={() => moveToStep(1, [])}>Change</button></div><label htmlFor="description"><FieldLabel>Plain-language description of the issue and desired result</FieldLabel><textarea id="description" rows="5" {...inputProps("description")} /><FieldError errors={errors} name="description" /></label><div className="form-row"><label htmlFor="affectedAreas"><FieldLabel>Areas or rooms affected</FieldLabel><input id="affectedAreas" {...inputProps("affectedAreas")} /><FieldError errors={errors} name="affectedAreas" /></label><label htmlFor="firstNoticed"><FieldLabel required={false}>When first noticed, if relevant</FieldLabel><input id="firstNoticed" {...inputProps("firstNoticed")} /></label></div><div className="form-row"><label htmlFor="sourceStatus"><FieldLabel>Is the source condition active or resolved?</FieldLabel><select id="sourceStatus" {...inputProps("sourceStatus")}><option value="">Select one</option><option>Active</option><option>Resolved</option><option>Unknown</option><option>Not applicable</option></select><FieldError errors={errors} name="sourceStatus" /></label><label htmlFor="timing"><FieldLabel>Desired timing and any true deadline</FieldLabel><input id="timing" {...inputProps("timing")} /><FieldError errors={errors} name="timing" /></label></div><p className="form-help">{uploadPolicy ? "An approved protected-upload option appears during review. Do not share alarm codes, financial documents, government IDs, payment cards, claim files, or unredacted inspection reports." : "Photos are not accepted through this basic form. Do not send photos with the initial request. If C&G asks for them later, follow the separate sharing instructions provided. Do not email alarm codes, financial documents, government IDs, payment cards, claim files, or unredacted inspection reports."}</p></fieldset>
         <fieldset><legend>Scope context</legend><label htmlFor="independentReport"><FieldLabel required={false}>Do you have a report from an independent inspector that you are authorized to share?</FieldLabel><select id="independentReport" {...inputProps("independentReport")}><option value="">Select one if applicable</option><option>Yes</option><option>No</option><option>Not sure</option><option>Not applicable</option></select></label><label htmlFor="hazards"><FieldLabel>Known water, fire, structural, electrical, gas, pest, or hazardous-material concern</FieldLabel><select id="hazards" {...inputProps("hazards")}><option value="">Select one</option><option>None known</option><option>Yes — describe above</option><option>Not sure</option></select><FieldError errors={errors} name="hazards" /></label><div className="form-row"><label htmlFor="permitStatus"><FieldLabel>Permit or plan status</FieldLabel><select id="permitStatus" {...inputProps("permitStatus")}><option value="">Select one</option><option>Unknown</option><option>Not started</option><option>In process</option><option>Available</option></select><FieldError errors={errors} name="permitStatus" /></label><label htmlFor="designDocuments"><FieldLabel>Design or engineering documents</FieldLabel><select id="designDocuments" {...inputProps("designDocuments")}><option value="">Select one</option><option>Yes</option><option>No</option><option>Not applicable</option></select><FieldError errors={errors} name="designDocuments" /></label></div><div className="form-row"><label htmlFor="materialPreference"><FieldLabel>Material preference</FieldLabel><select id="materialPreference" {...inputProps("materialPreference")}><option value="">Select one</option><option>Match existing</option><option>Owner selected</option><option>Needs guidance</option><option>Unknown</option></select><FieldError errors={errors} name="materialPreference" /></label><label htmlFor="ownerMaterials"><FieldLabel>Owner-supplied materials</FieldLabel><select id="ownerMaterials" {...inputProps("ownerMaterials")}><option value="">Select one</option><option>Yes</option><option>No</option><option>Unknown</option></select><FieldError errors={errors} name="ownerMaterials" /></label></div><label htmlFor="priorRepairs"><FieldLabel required={false}>Prior repair attempts</FieldLabel><textarea id="priorRepairs" rows="3" {...inputProps("priorRepairs")} /></label><label htmlFor="otherParties"><FieldLabel required={false}>Other contractors or active claims involved</FieldLabel><textarea id="otherParties" rows="3" {...inputProps("otherParties")} /></label></fieldset>
         <div className="form-navigation"><button className="button button-outline-dark" type="button" onClick={() => moveToStep(2, [])}>Back</button><button className="button button-copper" type="button" onClick={() => moveToStep(4, projectStepFields)}>Continue to review</button></div>
       </section> : null}

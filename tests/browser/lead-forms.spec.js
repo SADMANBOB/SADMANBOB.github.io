@@ -84,6 +84,18 @@ const openContractorContactStep = async (page) => {
   await expect(page.getByRole("heading", { name: "Contact and property.", exact: true })).toBeVisible();
 };
 
+const captureClipboardWrites = async (page) => {
+  await page.evaluate(() => {
+    window.__cgCopiedText = "";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async (value) => { window.__cgCopiedText = value; },
+      },
+    });
+  });
+};
+
 test.describe("inspection lead form @smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/contact/");
@@ -157,6 +169,13 @@ test.describe("inspection lead form @smoke", () => {
     await expect(prepared).toContainText(/Nothing has been sent/i);
     // It must never claim an inspection is booked.
     await expect(prepared).not.toContainText(/booked|confirmed appointment|scheduled/i);
+    await captureClipboardWrites(page);
+    await page.getByRole("button", { name: "Copy request details", exact: true }).click();
+    await expect(page.getByTestId("inspection-copy-status")).toContainText(/copied.*Nothing was sent/i);
+    const copied = await page.evaluate(() => window.__cgCopiedText);
+    expect(copied).toContain("Inspection request");
+    expect(copied).toContain("Jordan Rivera");
+    expect(copied).toContain("1200 Example Street");
   });
 
   test("the whole form is reachable and submittable by keyboard", async ({ page }) => {
@@ -287,5 +306,66 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(spamBlocked).toContainText(/could not be sent/i);
     await expect(spamBlocked).not.toContainText(/honeypot|inspection report|12 months/i);
     await expect(page.getByTestId("contractor-eligibility-blocked-state")).toHaveCount(0);
+  });
+
+  test("an eligibility-review draft can be copied without sending data", async ({ page }) => {
+    await page.locator('select[name="eligibility"]').selectOption("unsure");
+    await page.locator('input[name="fullName"]').fill("Jordan Rivera");
+    await page.locator('input[name="email"]').fill("jordan@example.com");
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await page.locator('input[name="address"]').fill("1200 Example Street, Compton, CA 90220");
+    for (const field of ["authority", "contactConsent", "noPromise"]) {
+      await page.locator(`input[name="${field}"]`).check();
+    }
+    await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
+    await page.getByRole("button", { name: "Review eligibility email", exact: true }).click();
+    await expect(page.getByText("Your eligibility-review email is ready.")).toBeVisible();
+    await captureClipboardWrites(page);
+    await page.getByRole("button", { name: "Copy eligibility details", exact: true }).click();
+    await expect(page.getByTestId("contractor-copy-status")).toContainText(/copied.*Nothing was sent/i);
+    const copied = await page.evaluate(() => window.__cgCopiedText);
+    expect(copied).toContain("C&G inspection eligibility review");
+    expect(copied).toContain("Jordan Rivera");
+    expect(copied).toContain("Not sure");
+  });
+
+  test("an eligible ordinary project request can be copied without sending data", async ({ page }) => {
+    await openContractorContactStep(page);
+    await page.locator('input[name="fullName"]').fill("Jordan Rivera");
+    await page.locator('input[name="email"]').fill("jordan@example.com");
+    await page.locator('select[name="contactMethod"]').selectOption("Email");
+    await page.locator('input[name="address"]').fill("1200 Example Street, Compton, CA 90220");
+    await page.locator('select[name="propertyType"]').selectOption({ index: 1 });
+    await page.locator('select[name="occupancy"]').selectOption({ index: 1 });
+    await page.locator('input[name="authority"]').check();
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
+
+    await page.locator('textarea[name="description"]').fill("The kitchen sink leaks during use and needs a source review and durable repair.");
+    await page.locator('input[name="affectedAreas"]').fill("Kitchen sink cabinet");
+    await page.locator('select[name="sourceStatus"]').selectOption("Active");
+    await page.locator('input[name="timing"]').fill("Within two weeks");
+    await page.locator('select[name="hazards"]').selectOption("None known");
+    await page.locator('select[name="permitStatus"]').selectOption("Unknown");
+    await page.locator('select[name="designDocuments"]').selectOption("Not applicable");
+    await page.locator('select[name="materialPreference"]').selectOption("Needs guidance");
+    await page.locator('select[name="ownerMaterials"]').selectOption("No");
+    await page.getByRole("button", { name: "Continue to review", exact: true }).click();
+
+    for (const field of ["accurate", "contactConsent", "noPromise"]) {
+      await page.locator(`input[name="${field}"]`).check();
+    }
+    await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
+    await page.getByRole("button", { name: "Review and prepare email", exact: true }).click();
+    await expect(page.getByText("Ready to send your project details.")).toBeVisible();
+    await captureClipboardWrites(page);
+    await page.getByRole("button", { name: "Copy request details", exact: true }).click();
+    await expect(page.getByTestId("contractor-copy-status")).toContainText(/copied.*Nothing was sent/i);
+    const copied = await page.evaluate(() => window.__cgCopiedText);
+    expect(copied).toContain("RESIDENTIAL PROJECT REQUEST");
+    expect(copied).toContain("Jordan Rivera");
+    expect(copied).toContain("1200 Example Street");
+    expect(copied).toContain("Category: Interior repair and finish work");
+    expect(copied).toContain("The kitchen sink leaks during use");
+    await expect(page.getByTestId("contractor-file-request-action")).toHaveCount(0);
   });
 });

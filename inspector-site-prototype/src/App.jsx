@@ -867,7 +867,7 @@ function ContactPage({ route, onNavigate }) {
               <p className="eyebrow eyebrow-dark">Before you start</p>
               <h2 id="contact-preflight-title">A few details help the conversation.</h2>
               <p>{serviceAreaQualification} Share what you know so we can review scope, travel, and timing.</p>
-              <div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a></div>
+              <div className="contact-direct"><a href={business.inspection.phoneHref}><Phone size={18} aria-hidden="true" /> {business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a><a href="/assets/cg-inspection.vcf" download="C-and-G-Home-Inspection.vcf">Save inspection contact</a></div>
               <div className="existing-report-contact" id="existing-report-question">
                 <p>Already have a C&amp;G inspection report?</p>
                 <h3>Ask a report question without starting a new inspection request.</h3>
@@ -934,7 +934,7 @@ function SiteFooter({ onNavigate }) {
       <div className="container footer-grid">
         <div><BrandMark onNavigate={onNavigate} /><p>Clear, construction-informed home inspection guidance. {serviceAreaShort}</p></div>
         <div className="footer-links"><span className="footer-label">Explore</span>{inspectorNavigation.slice(1, 6).map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}{inspectorFooterRoutes.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={onNavigate}>{route.label}</InternalLink>)}</div>
-        <div className="footer-links"><span className="footer-label">Contact</span><a href={business.inspection.phoneHref}>{business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a><a href={propertyServicesUrl}>Choose a C&amp;G property service</a><a href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Separate contracting service</a></div>
+        <div className="footer-links"><span className="footer-label">Contact</span><a href={business.inspection.phoneHref}>{business.inspection.phoneDisplay}</a><a href={`mailto:${business.inspection.email}`}>{business.inspection.email}</a><a href="/assets/cg-inspection.vcf" download="C-and-G-Home-Inspection.vcf">Save inspection contact</a><a href={propertyServicesUrl}>Choose a C&amp;G property service</a><a href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Separate contracting service</a></div>
       </div>
       <div className="container footer-disclosures"><p>{separationPolicy.notice}</p><p className="footer-editorial-note">Editorial images on this site are illustrative and do not depict employees, customers, or completed C&amp;G client projects.</p></div>
       <div className="container footer-bottom"><span>© 2026 C&amp;G Certified Home Inspector</span><span>Independent inspection guidance</span></div>

@@ -624,6 +624,19 @@ export const integrations = {
     securityReviewedAt: null,
     ownerGate: "approved upload broker, one-time upload contract, file allowlist, size limits, retention/deletion policy, malware controls, and privacy review",
   },
+  contractorFileRequest: {
+    status: "pending",
+    enabled: false,
+    capability: "external-file-request",
+    provider: null,
+    publicConfig: null,
+    allowedSurfaces: [],
+    ownerApprovedAt: null,
+    privacyReviewedAt: null,
+    securityReviewedAt: null,
+    policyApprovedAt: null,
+    ownerGate: "client-owned Dropbox File Request URL, confirmed HTTPS form receipt, public-bundle exposure acknowledgement, reusable-link disclosure, image guidance, retention/deletion procedure, abuse handling, and privacy review",
+  },
   analytics: {
     status: "pending",
     enabled: false,
@@ -668,6 +681,13 @@ const approvedHttpsUrl = (value) => {
 
 const FORM_SURFACES = Object.freeze(["inspector-contact", "contractor-estimate"]);
 const BOOKING_SURFACES = Object.freeze(["inspector"]);
+const FILE_REQUEST_SURFACES = Object.freeze(["contractor-estimate"]);
+const EXTERNAL_PHOTO_TYPES = Object.freeze([
+  "image/heic",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 const safeApprovalText = (value, min = 20, max = 1_000) =>
   typeof value === "string"
   && value === value.trim()
@@ -752,6 +772,46 @@ export function integrationCanRender(integration, onDate = new Date()) {
       && validApprovalTimestamp(integration.ownerApprovedAt, onDate)
       && validApprovalTimestamp(integration.privacyReviewedAt, onDate)
       && validApprovalTimestamp(integration.securityReviewedAt, onDate);
+  }
+  if (integration.capability === "external-file-request") {
+    let requestUrl;
+    let privacyUrl;
+    try {
+      requestUrl = new URL(integration.publicConfig?.requestUrl);
+      privacyUrl = new URL(integration.publicConfig?.privacyUrl);
+    } catch {
+      return false;
+    }
+    return integration.provider === "Dropbox File Requests"
+      && approvedHttpsUrl(integration.publicConfig?.requestUrl)
+      && requestUrl.hostname === "www.dropbox.com"
+      && /^\/request\/[a-z0-9_-]{6,160}\/?$/i.test(requestUrl.pathname)
+      && !requestUrl.search
+      && !requestUrl.hash
+      && approvedHttpsUrl(integration.publicConfig?.privacyUrl)
+      && privacyUrl.hostname === "www.dropbox.com"
+      && privacyUrl.pathname.replace(/\/+$/, "") === "/privacy"
+      && !privacyUrl.search
+      && !privacyUrl.hash
+      && integration.publicConfig?.deliveryMode === "post-confirmed-ui-disclosure"
+      && integration.publicConfig?.requestLinkType === "reusable-public"
+      && integration.publicConfig?.publicBundleExposureAcknowledged === true
+      && Number.isInteger(integration.publicConfig?.requestedMaxFiles)
+      && integration.publicConfig.requestedMaxFiles > 0
+      && integration.publicConfig.requestedMaxFiles <= 10
+      && Array.isArray(integration.publicConfig?.requestedMimeTypes)
+      && integration.publicConfig.requestedMimeTypes.length > 0
+      && new Set(integration.publicConfig.requestedMimeTypes).size === integration.publicConfig.requestedMimeTypes.length
+      && integration.publicConfig.requestedMimeTypes.every((type) => EXTERNAL_PHOTO_TYPES.includes(type))
+      && safeApprovalText(integration.publicConfig?.publicLinkPolicy)
+      && safeApprovalText(integration.publicConfig?.retentionPolicy)
+      && safeApprovalText(integration.publicConfig?.deletionPolicy)
+      && safeApprovalText(integration.publicConfig?.abuseControls)
+      && hasApprovedSurfaces(integration.allowedSurfaces, FILE_REQUEST_SURFACES)
+      && validApprovalTimestamp(integration.ownerApprovedAt, onDate)
+      && validApprovalTimestamp(integration.privacyReviewedAt, onDate)
+      && validApprovalTimestamp(integration.securityReviewedAt, onDate)
+      && validApprovalTimestamp(integration.policyApprovedAt, onDate);
   }
   return false;
 }
