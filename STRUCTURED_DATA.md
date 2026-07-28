@@ -92,11 +92,12 @@ unconditionally.
 
 ## Placement
 
-The inspection business node is emitted on the site root and on each county
-service-area page, which are the local-intent entry points. The contracting node
-is emitted on the contractor home route. Every copy shares one `@id`, and the
-verifier asserts that two definitions of the same `@id` are identical, so the
-pages can never describe the same entity in contradictory ways.
+The inspection business node is emitted on `/inspection/` and on each county
+service-area page, which are the local-intent entry points. The root chooser
+remains service-neutral. The contracting node is emitted on the contractor home
+route. Every copy shares one `@id`, and the verifier asserts that two definitions
+of the same `@id` are identical, so the pages can never describe the same entity
+in contradictory ways.
 
 ## Open owner decision
 

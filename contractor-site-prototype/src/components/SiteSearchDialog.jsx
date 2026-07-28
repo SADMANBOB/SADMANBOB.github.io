@@ -128,7 +128,7 @@ export function SiteSearchDialog({ open, onClose }) {
         </div>
         <aside className="search-recovery" aria-labelledby="contractor-search-recovery-title">
           <div><strong id="contractor-search-recovery-title">Looking for condition-focused inspection guidance?</strong><p>{business.inspection.publicName} explains visible and accessible systems, reports, preparation, and inspection limitations.</p></div>
-          <a href="/">Visit the home inspection site <ArrowRight size={14} aria-hidden="true" /></a>
+          <a href="/inspection/">Visit the home inspection site <ArrowRight size={14} aria-hidden="true" /></a>
           <small>{separationPolicy.notice}</small>
         </aside>
         <footer className="search-dialog-footer"><span>Private, on-site search</span><p>Your search stays in this browser and is not sent to an analytics or advertising provider.</p></footer>

@@ -18,7 +18,7 @@ Serve the assembled site:
 OWNER_REVIEW_STAGING=1 VITE_OWNER_REVIEW_STAGING=1 npm run build && cd _site && python3 -m http.server 4177
 ```
 
-Then open http://127.0.0.1:4177/
+Then open http://127.0.0.1:4177/inspection/
 
 ### Produce a production-safe build
 
@@ -32,7 +32,7 @@ npm run build
 ### Confirm staging content is absent from production output
 
 1. Build with staging unset.
-2. Confirm `_site/index.html` and `_site/contracting/index.html` omit `owner-review-banner`, `provisional-label`, legacy feedback copy, preferred domain emails, and the sample-report route.
+2. Confirm `_site/inspection/index.html` and `_site/contracting/index.html` omit `owner-review-banner`, `provisional-label`, legacy feedback copy, preferred domain emails, and the sample-report route.
 3. Confirm `_site/sitemap.xml` does not list `/sample-report/`.
 4. Run `npm run verify` and expect the production isolation asserts to pass.
 

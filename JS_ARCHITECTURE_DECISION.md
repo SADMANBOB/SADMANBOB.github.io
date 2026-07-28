@@ -51,8 +51,9 @@ JavaScript is **not** the current bottleneck:
   gate is set at 250 ms.
 - Main-thread work is not flagged on any route.
 - The constraint on every route is Largest Contentful Paint (2.3–3.2 s), driven
-  by render-blocking CSS and font delivery. `/property-services/` — a page with
-  **no JavaScript at all** — was the worst performer in the baseline at 0.79.
+  by render-blocking CSS and font delivery. The service chooser — measured at
+  `/property-services/` in that baseline and now mounted at `/` — has **no
+  JavaScript at all** and was the worst performer in the baseline at 0.79.
 
 Cutting JavaScript would therefore not move the metric that is actually
 limiting these pages. That is why no architectural change was made in this pass.

@@ -21,9 +21,29 @@ test.describe("cross-browser production-route smoke @smoke", () => {
 });
 
 test.describe("responsive navigation and contact recovery @smoke", () => {
+  test("root chooser sends each service choice to the correct home", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openStablePage(page, { name: "chooser", path: "/" });
+
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Which service are you looking for?");
+
+    const inspectionChoice = page.getByRole("link", { name: "Explore Home Inspection", exact: true });
+    await expect(inspectionChoice).toHaveAttribute("href", "/inspection/");
+    await inspectionChoice.click();
+    await expect(page).toHaveURL(/\/inspection\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Know what you’re buying.");
+
+    await page.goto("/");
+    const contractingChoice = page.getByRole("link", { name: "Explore Contracting Services", exact: true });
+    await expect(contractingChoice).toHaveAttribute("href", "/contracting/");
+    await contractingChoice.click();
+    await expect(page).toHaveURL(/\/contracting\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Practical repairs. Built to last.");
+  });
+
   test("inspection navigation collapses at 840px before links can wrap", async ({ page }) => {
     await page.setViewportSize({ width: 840, height: 900 });
-    await openStablePage(page, { name: "inspector-home", path: "/" });
+    await openStablePage(page, { name: "inspector-home", path: "/inspection/" });
 
     const menuButton = page.locator("button.menu-toggle");
     const navigation = page.getByRole("navigation", { name: "Main navigation", exact: true });

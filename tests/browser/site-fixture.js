@@ -12,7 +12,7 @@ export const responsiveViewports = Object.freeze([
 ]);
 
 export const representativeRoutes = Object.freeze([
-  { name: "inspector-home", path: "/" },
+  { name: "inspector-home", path: "/inspection/" },
   { name: "inspector-services", path: "/services/" },
   { name: "inspector-faq", path: "/faq/" },
   { name: "inspector-contact", path: "/contact/" },
@@ -21,19 +21,21 @@ export const representativeRoutes = Object.freeze([
 ]);
 
 const routeName = (surface, path) => {
-  const slug = path === "/" ? "home" : path.replace(/^\/+|\/+$/g, "").replaceAll("/", "-");
+  const slug = path === "/" || (surface === "inspector" && path === "/inspection/")
+    ? "home"
+    : path.replace(/^\/+|\/+$/g, "").replaceAll("/", "-");
   return `${surface}-${slug}`;
 };
 
 export const enabledRoutes = Object.freeze([
+  Object.freeze({
+    name: "chooser",
+    path: "/",
+  }),
   ...enabledInspectorRoutes.map((route) => Object.freeze({
     name: routeName("inspector", route.path),
     path: route.path,
   })),
-  Object.freeze({
-    name: "property-services",
-    path: "/property-services/",
-  }),
   ...enabledContractorRoutes.map((route) => Object.freeze({
     name: routeName("contractor", route.path),
     path: `/contracting${route.path}`,

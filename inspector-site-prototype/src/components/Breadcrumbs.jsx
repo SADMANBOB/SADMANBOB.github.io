@@ -1,6 +1,6 @@
 export function Breadcrumbs({ items, linkFor, onNavigate }) {
   if (!items?.length) return null;
-  const crumbs = [{ label: "Home", path: "/" }, ...items];
+  const crumbs = [{ label: "Home", path: "/inspection/" }, ...items];
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <ol>

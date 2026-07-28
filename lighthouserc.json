@@ -4,11 +4,11 @@
       "staticDistDir": "./_site",
       "url": [
         "http://localhost/",
+        "http://localhost/inspection/",
         "http://localhost/services/",
         "http://localhost/contact/",
         "http://localhost/areas/los-angeles-county/",
         "http://localhost/areas/riverside-county/",
-        "http://localhost/property-services/",
         "http://localhost/contracting/",
         "http://localhost/contracting/services/",
         "http://localhost/contracting/estimate/"

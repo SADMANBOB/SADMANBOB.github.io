@@ -7,7 +7,7 @@
     "productionSafeBuild": "npm run build",
     "confirmAbsentFromProduction": [
       "Run npm run build with staging unset (default).",
-      "Confirm _site/index.html and _site/contracting/index.html omit owner-review-banner, provisional-label, legacy feedback, preferred domain emails, and sample-report.",
+      "Confirm _site/inspection/index.html and _site/contracting/index.html omit owner-review-banner, provisional-label, legacy feedback, preferred domain emails, and sample-report.",
       "Confirm _site/sitemap.xml omits /sample-report/.",
       "Run npm run verify (production-safe) and expect OWNER_REVIEW_STAGING_VISIBLE=false isolation asserts to pass."
     ],

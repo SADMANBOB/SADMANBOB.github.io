@@ -29,7 +29,7 @@ const sampleReportForRoute = approvedSampleReport || sampleReportPlaceholder;
 const coreRoutes = [
   {
     key: "home",
-    path: "/",
+    path: "/inspection/",
     label: "Home",
     title: "C&G Certified Home Inspector | Los Angeles & Riverside Counties",
     description:

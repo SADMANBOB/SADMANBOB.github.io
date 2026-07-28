@@ -135,6 +135,7 @@ const staticChecks = async () => {
     const expectedNoindex =
       relative.endsWith("404.html")
       || relative.startsWith("inspections/")
+      || relative === "property-services/index.html"
       || relative === "sample-report/index.html";
     const isCrawlable = !robots.split(/\s*,\s*/).includes("noindex");
     const ids = new Map();

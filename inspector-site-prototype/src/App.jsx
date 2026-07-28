@@ -77,7 +77,7 @@ import {
 import { readingMinutes, resourceBySlug, resourceGroups } from "./content/resources.js";
 
 const contractorUrl = "/contracting/";
-const propertyServicesUrl = "/property-services/";
+const propertyServicesUrl = "/";
 const appBase = import.meta.env.BASE_URL;
 const PUBLIC_CLIENT_BUNDLE =
   typeof __CG_PUBLIC_CLIENT_BUNDLE__ !== "undefined"
@@ -146,7 +146,7 @@ function EditorialPicture({ id, sizes, loading, fetchPriority }) {
 
 function BrandMark({ onNavigate }) {
   return (
-    <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.inspection.publicName} home`}>
+    <InternalLink className="brand" href="/inspection/" onNavigate={onNavigate} aria-label={`${business.inspection.publicName} home`}>
       <span className="brand-mark-wrap"><img src={assetUrl("assets/optimized/cg-logo-mark-162.png")} alt="" className="brand-mark" width="162" height="216" /></span>
       <span className="brand-copy"><strong>C&amp;G Certified</strong><span>Home Inspector</span></span>
     </InternalLink>
@@ -158,7 +158,7 @@ function ServiceSwitcher({ onNavigate }) {
     <div className="service-switcher" aria-label="C&G property services">
       <div className="container service-switcher-inner">
         <span className="service-switcher-label">Choose a service</span>
-        <InternalLink className="service-switcher-link is-current" href="/" onNavigate={onNavigate} aria-current="true"><House size={14} aria-hidden="true" /> Home Inspection</InternalLink>
+        <InternalLink className="service-switcher-link is-current" href="/inspection/" onNavigate={onNavigate} aria-current="true"><House size={14} aria-hidden="true" /> Home Inspection</InternalLink>
         <a className="service-switcher-link" href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Contracting <span>Separate service</span></a>
         <InternalLink className="service-switcher-policy" href="/ethics/" onNavigate={onNavigate}>12-month separation policy</InternalLink>
       </div>
@@ -925,7 +925,7 @@ function PrivacyPage({ route, onNavigate }) {
 }
 
 function NotFoundPage({ route, onNavigate }) {
-  return <><PageHero route={route} onNavigate={onNavigate} eyebrow="Page not found" title="Let’s get you back to clear answers." actions={<InternalLink className="button button-gold" href="/" onNavigate={onNavigate}>Return to Home <ArrowRight size={17} aria-hidden="true" /></InternalLink>}><p className="page-hero-lede">That page is not available. The inspection, resources, ethics, and contact paths are still here.</p></PageHero><BookingCallout onNavigate={onNavigate} /></>;
+  return <><PageHero route={route} onNavigate={onNavigate} eyebrow="Page not found" title="Let’s get you back to clear answers." actions={<InternalLink className="button button-gold" href="/inspection/" onNavigate={onNavigate}>Return to Inspection Home <ArrowRight size={17} aria-hidden="true" /></InternalLink>}><p className="page-hero-lede">That page is not available. The inspection, resources, ethics, and contact paths are still here.</p></PageHero><BookingCallout onNavigate={onNavigate} /></>;
 }
 
 function SiteFooter({ onNavigate }) {

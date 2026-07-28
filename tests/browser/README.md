@@ -1,7 +1,7 @@
 # Browser QA
 
 The browser suite discovers every enabled inspection and contracting route,
-adds the property-services chooser, and checks the complete route set in
+adds the root service chooser, and checks the complete route set in
 Chromium, Firefox, and WebKit. When an approved registry record enables a new
 area, report, or case-study route, that route enters the smoke suite
 automatically.

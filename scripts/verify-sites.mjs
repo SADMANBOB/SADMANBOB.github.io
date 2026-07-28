@@ -658,7 +658,7 @@ for (const site of [inspector, contractor]) {
 const routeRecords = [
   ...enabledInspectorRoutes.map((route) => ({ route, publicPath: route.path, outputFile: routeFile(route.path), site: "inspector" })),
   ...enabledContractorRoutes.map((route) => ({ route, publicPath: contractorPublicPath(route.path), outputFile: contractorOutputFile(route.path), site: "contractor" })),
-  { route: { key: "property-services", title: "Choose a C&G Service", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/property-services/", outputFile: "property-services/index.html", site: "portal" },
+  { route: { key: "chooser", title: "Choose a C&G Service", description: "Choose C&G home inspection or residential contracting services." }, publicPath: "/", outputFile: "index.html", site: "portal" },
 ];
 
 const titles = new Map();
@@ -753,7 +753,7 @@ for (const record of routeRecords) {
     const expectedCount = record.site === "inspector" ? inspectorFaqItems.length : contractorFaqs.length;
     assert.equal(faq?.mainEntity?.length, expectedCount, `${record.outputFile} FAQ schema does not match visible answers`);
   }
-  if (record.route.path !== "/" && record.site !== "portal") {
+  if (record.route.key !== "home" && record.site !== "portal") {
     assert.ok(graph.some((entry) => entry["@type"] === "BreadcrumbList"), `${record.outputFile} lacks breadcrumb JSON-LD`);
     assert.match(html, /aria-label="Breadcrumb"/, `${record.outputFile} lacks a visible breadcrumb`);
   }
@@ -762,8 +762,8 @@ for (const record of routeRecords) {
 const rootSitemap = sitemapLocations(await read(resolve(output, "sitemap.xml")));
 const contractorSitemap = sitemapLocations(await read(resolve(output, "contracting/sitemap.xml")));
 const expectedRootSitemap = [
+  `${expectedOrigin}/`,
   ...enabledInspectorRoutes.filter((route) => route.sitemap !== false).map((route) => `${expectedOrigin}${route.path}`),
-  `${expectedOrigin}/property-services/`,
 ];
 const expectedContractorSitemap = enabledContractorRoutes
   .filter((route) => route.sitemap !== false)
@@ -841,7 +841,7 @@ for (const record of routeRecords.filter((item) => item.site === "inspector")) {
 }
 for (const record of routeRecords.filter((item) => item.site === "contractor")) {
   const html = await read(resolve(output, record.outputFile));
-  assert.match(html, /href="\/"/, `${record.outputFile} lacks the reciprocal home-inspection link`);
+  assert.match(html, /href="\/inspection\/"/, `${record.outputFile} lacks the reciprocal home-inspection link`);
   assert.match(html, /Separate service · 12-month rule/, `${record.outputFile} lacks cross-service separation context`);
   assert.match(html, /data-pagefind-body="true"/, `${record.outputFile} lacks the contractor search body boundary`);
 }
@@ -868,7 +868,7 @@ assert.equal(metaContent(rootNotFoundHtml, "property", "og:url"), `${expectedOri
 assert.match(rootNotFoundHtml, /Page not found · Choose a C&amp;G service/, "404.html lacks service-neutral identity");
 assert.match(rootNotFoundHtml, /C&amp;G service chooser/, "404.html lacks the approved chooser identity");
 assert.doesNotMatch(rootNotFoundHtml, /C&amp;G Property Services/i, "404.html invents an umbrella C&G business name");
-assert.match(rootNotFoundHtml, /href="\/">Go to Home Inspection/, "404.html lacks the inspection choice");
+assert.match(rootNotFoundHtml, /href="\/inspection\/">Go to Home Inspection/, "404.html lacks the inspection choice");
 assert.match(rootNotFoundHtml, /href="\/contracting\/">Go to Contracting Services/, "404.html lacks the contractor choice");
 assert.match(rootNotFoundHtml, /href="\/property-services\/styles\.css"/, "404.html must use the shared service-chooser stylesheet");
 assert.doesNotMatch(rootNotFoundHtml, /\{\{[A-Z_]+\}\}/, "404.html contains an unresolved portal template token");
@@ -936,13 +936,14 @@ for (const { outputFile, schema } of schemaDocuments) {
   }
 }
 
-const inspectorHomeSchema = schemaDocuments.find((entry) => entry.publicPath === "/").schema["@graph"];
-const inspectionBusiness = inspectorHomeSchema.find((node) => node["@id"] === `${expectedOrigin}/#business`);
+const inspectorHomeSchema = schemaDocuments.find((entry) => entry.publicPath === "/inspection/").schema["@graph"];
+const inspectionBusiness = inspectorHomeSchema.find((node) => node["@id"] === `${expectedOrigin}/inspection/#business`);
 assert.ok(inspectionBusiness, "The inspector home page does not publish a local-business node");
 assert.equal(inspectionBusiness["@type"], "ProfessionalService", "The inspection business node has the wrong schema type");
 assert.equal(inspectionBusiness.name, business.inspection.publicName, "The inspection business node has the wrong name");
 assert.equal(inspectionBusiness.telephone, business.inspection.phoneE164, "The inspection business node has the wrong phone");
 assert.equal(inspectionBusiness.email, business.inspection.email, "The inspection business node has the wrong email");
+assert.equal(inspectionBusiness.url, `${expectedOrigin}/inspection/`, "The inspection business node has the wrong public URL");
 assert.deepEqual(
   inspectionBusiness.areaServed.map((area) => area.name),
   approvedServiceAreas("Metadata").map((area) => area.label),
@@ -955,7 +956,7 @@ for (const area of approvedServiceAreas("Metadata")) {
   const areaDocument = schemaDocuments.find((entry) => entry.publicPath === `/areas/${area.id}/`);
   assert.ok(areaDocument, `Missing structured data for the ${area.label} page`);
   assert.ok(
-    areaDocument.schema["@graph"].some((node) => node["@id"] === `${expectedOrigin}/#business`),
+    areaDocument.schema["@graph"].some((node) => node["@id"] === `${expectedOrigin}/inspection/#business`),
     `${area.label} does not publish the local-business node`,
   );
 }
@@ -990,19 +991,26 @@ for (const route of legacyInspectorRoutes) {
   assert.doesNotMatch(html, /<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?location\.replace/i, `Legacy /inspections/${route} redirect contains executable inline code`);
   assert.match(html, /noindex,follow/, `Legacy /inspections/${route} redirect must remain noindex,follow`);
 }
+const legacyChooserHtml = await read(resolve(output, "property-services/index.html"));
+assert.equal(canonicalContent(legacyChooserHtml), `${expectedOrigin}/`, "Legacy /property-services/ has the wrong canonical URL");
+assert.match(legacyChooserHtml, /<meta name="robots" content="noindex,follow"/, "Legacy /property-services/ must remain noindex,follow");
+assert.match(legacyChooserHtml, /data-redirect-target="\/"/, "Legacy /property-services/ does not target the site home");
+assert.match(legacyChooserHtml, /src="\/assets\/legacy-redirect\.js"/, "Legacy /property-services/ is not functional");
+assert.doesNotMatch(legacyChooserHtml, /<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?location\.replace/i, "Legacy /property-services/ contains executable inline code");
+assert.equal(rootSitemap.includes(`${expectedOrigin}/property-services/`), false, "Legacy /property-services/ leaked into the sitemap");
 const legacyRedirectSource = await read(resolve(output, "assets/legacy-redirect.js"));
 assert.match(legacyRedirectSource, /location\.replace/, "The external legacy redirect helper does not navigate");
 assert.match(legacyRedirectSource, /location\.search/, "The external legacy redirect helper drops the query string");
 assert.match(legacyRedirectSource, /location\.hash/, "The external legacy redirect helper drops the fragment");
 
-const assembledInspector = await read(resolve(output, "index.html"));
+const assembledInspector = await read(resolve(output, "inspection/index.html"));
 const assembledInspectorServices = await read(resolve(output, "services/index.html"));
 const assembledInspectorAbout = await read(resolve(output, "about/index.html"));
 const assembledInspectorContact = await read(resolve(output, "contact/index.html"));
 const assembledContractor = await read(resolve(output, "contracting/index.html"));
 const assembledContractorServices = await read(resolve(output, "contracting/services/index.html"));
 const assembledEstimate = await read(resolve(output, "contracting/estimate/index.html"));
-const assembledPortal = await read(resolve(output, "property-services/index.html"));
+const assembledPortal = await read(resolve(output, "index.html"));
 for (const [label, html] of [["inspector", assembledInspector], ["contractor", assembledContractor], ["chooser", assembledPortal]]) assert.ok(html.includes(separationPolicy.notice.replaceAll("&", "&amp;")), `${label} lacks the canonical separation notice`);
 if (approvedReviews.length) {
   assert.match(assembledInspector, /Published with permission|review-section|review-copy/i, "Approved reviews did not render on the inspector home page");
@@ -1036,9 +1044,11 @@ assert.ok(assembledEstimate.includes("previous 12 months"), "Contractor estimate
 assert.match(assembledEstimate, /First, confirm inspection eligibility|Eligibility comes first/, "Contractor estimate does not prerender the eligibility-first entry step");
 assert.equal(/Full name/.test(assembledEstimate), false, "Contractor estimate prerender collects contact details before eligibility");
 assert.match(assembledEstimate, /Nothing is uploaded or sent while you use this guide/, "Contractor estimate lacks first-step transport truth");
-assert.match(assembledInspector, /Know what you’re/, "Inspector is not mounted at the site root");
+assert.match(assembledInspector, /Know what you’re/, "Inspector is not mounted at /inspection/");
 assert.match(assembledContractor, /Practical repairs\. <em>Built to last\.<\/em>/, "Contractor is not mounted at /contracting/");
-assert.match(assembledPortal, /Which service are/, "Property-services chooser is missing its single decision question");
+assert.match(assembledPortal, /Which service are/, "Root chooser is missing its single decision question");
+assert.match(assembledPortal, /href="\/inspection\/">Explore Home Inspection/, "Root chooser lacks the inspection destination");
+assert.match(assembledPortal, /href="\/contracting\/">Explore Contracting Services/, "Root chooser lacks the contracting destination");
 
 const inspectorRequestActionIndex = assembledInspectorContact.indexOf('href="#inspection-request"');
 const inspectorRequestTargetIndex = assembledInspectorContact.indexOf('id="inspection-request"');
@@ -1244,7 +1254,7 @@ for (const iconFile of ["favicon.ico", "apple-touch-icon.png", "assets/optimized
 }
 const headerLogoBytes = (await stat(resolve(output, "assets/optimized/cg-logo-mark-162.png"))).size;
 assert.ok(headerLogoBytes < 40_000, `The globally loaded header logo must stay small (${headerLogoBytes} bytes)`);
-for (const entryPoint of ["index.html", "contracting/index.html", "property-services/index.html"]) {
+for (const entryPoint of ["index.html", "inspection/index.html", "contracting/index.html"]) {
   const entryHtml = await read(resolve(output, entryPoint));
   assert.match(entryHtml, /<link rel="icon" href="\/favicon\.ico"/, `${entryPoint} does not reference the root favicon`);
   assert.match(entryHtml, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"/, `${entryPoint} does not reference the apple touch icon`);
