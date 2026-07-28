@@ -48,7 +48,12 @@ const checks = [
   {
     path: "/cg-live-monitor-route-that-does-not-exist/",
     status: 404,
-    includes: ["Which C&amp;G service can help?", "Home Inspection", "Contracting Services"],
+    includes: [
+      "Page not found · Choose a C&amp;G service",
+      "That page isn’t here.",
+      "Go to Home Inspection",
+      "Go to Contracting Services",
+    ],
   },
 ];
 
