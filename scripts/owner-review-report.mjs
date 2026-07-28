@@ -42,7 +42,7 @@ const report = {
     productionSafeBuild: "npm run build",
     confirmAbsentFromProduction: [
       "Run npm run build with staging unset (default).",
-      "Confirm _site/index.html and _site/contracting/index.html omit owner-review-banner, provisional-label, legacy feedback, preferred domain emails, and sample-report.",
+      "Confirm _site/inspection/index.html and _site/contracting/index.html omit owner-review-banner, provisional-label, legacy feedback, preferred domain emails, and sample-report.",
       "Confirm _site/sitemap.xml omits /sample-report/.",
       "Run npm run verify (production-safe) and expect OWNER_REVIEW_STAGING_VISIBLE=false isolation asserts to pass.",
     ],
@@ -146,7 +146,7 @@ Serve the assembled site:
 ${report.stagingIsolation.localReviewCommand}
 \`\`\`
 
-Then open http://127.0.0.1:4177/
+Then open http://127.0.0.1:4177/inspection/
 
 ### Produce a production-safe build
 
@@ -160,7 +160,7 @@ npm run build
 ### Confirm staging content is absent from production output
 
 1. Build with staging unset.
-2. Confirm \`_site/index.html\` and \`_site/contracting/index.html\` omit \`owner-review-banner\`, \`provisional-label\`, legacy feedback copy, preferred domain emails, and the sample-report route.
+2. Confirm \`_site/inspection/index.html\` and \`_site/contracting/index.html\` omit \`owner-review-banner\`, \`provisional-label\`, legacy feedback copy, preferred domain emails, and the sample-report route.
 3. Confirm \`_site/sitemap.xml\` does not list \`/sample-report/\`.
 4. Run \`npm run verify\` and expect the production isolation asserts to pass.
 

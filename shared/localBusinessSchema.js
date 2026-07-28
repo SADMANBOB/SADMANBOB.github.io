@@ -44,12 +44,12 @@ export function approvedAreaServed() {
  * Claiming a construction subtype would also blur the inspection/contracting
  * separation the site is built around.
  */
-export function inspectionBusinessNode({ origin, id, description }) {
+export function inspectionBusinessNode({ origin, id, url = `${origin}/`, description }) {
   return {
     "@type": "ProfessionalService",
     "@id": id,
     name: business.inspection.publicName,
-    url: `${origin}/`,
+    url,
     telephone: business.inspection.phoneE164,
     email: business.inspection.email,
     image: `${origin}/assets/cg-logo-mark.png`,

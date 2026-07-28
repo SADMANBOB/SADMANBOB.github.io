@@ -20,7 +20,7 @@ const contractorRoutes = enabledContractorRoutes
   .filter((route) => route.sitemap !== false)
   .map((route) => `/contracting${route.path}`);
 const legacyInspectorRoutes = [
-  ["", "/"],
+  ["", "/inspection/"],
   ["services", "/services/"],
   ["about", "/about/"],
   ["areas", "/areas/"],
@@ -35,7 +35,11 @@ ${routes.map((route) => `  <url><loc>${siteOrigin}${route}</loc></url>`).join("\
 </urlset>
 `;
 
-const redirectPage = (target) => {
+const redirectPage = (target, {
+  title = "Page moved | C&amp;G",
+  message = "This page has moved.",
+  linkLabel = "Continue to C&amp;G",
+} = {}) => {
   const absoluteTarget = `${siteOrigin}${target}`;
   return `<!doctype html>
 <html lang="en">
@@ -45,10 +49,10 @@ const redirectPage = (target) => {
     <meta name="robots" content="noindex,follow" />
     <meta http-equiv="refresh" content="0; url=${target}" />
     <link rel="canonical" href="${absoluteTarget}" />
-    <title>Inspection page moved | C&amp;G</title>
+    <title>${title}</title>
   </head>
   <body data-redirect-target="${target}">
-    <p>This inspection page has moved. <a href="${target}">Continue to C&amp;G Certified Home Inspector</a>.</p>
+    <p>${message} <a href="${target}">${linkLabel}</a>.</p>
     <script src="/assets/legacy-redirect.js"></script>
   </body>
 </html>
@@ -82,7 +86,12 @@ await copyWithoutLocalArtifacts(contractorDist, resolve(output, "contracting"));
 await mkdir(resolve(output, "property-services"), { recursive: true });
 const portalHtml = hydratePortalTemplate(await readFile(resolve(portal, "index.html"), "utf8"));
 const rootNotFoundHtml = hydratePortalTemplate(await readFile(resolve(portal, "404.html"), "utf8"));
-await writeFile(resolve(output, "property-services/index.html"), portalHtml);
+await writeFile(resolve(output, "index.html"), portalHtml);
+await writeFile(resolve(output, "property-services/index.html"), redirectPage("/", {
+  title: "Service chooser moved | C&amp;G",
+  message: "The C&amp;G service chooser is now the site home.",
+  linkLabel: "Choose a service",
+}));
 // GitHub Pages serves this root document for missing paths on either service,
 // so it must not imply that a missing contractor route belongs to inspection.
 await writeFile(resolve(output, "404.html"), rootNotFoundHtml);
@@ -91,13 +100,17 @@ await copyFile(resolve(portal, "styles.css"), resolve(output, "property-services
 for (const [legacyRoute, target] of legacyInspectorRoutes) {
   const directory = resolve(output, "inspections", legacyRoute);
   await mkdir(directory, { recursive: true });
-  await writeFile(resolve(directory, "index.html"), redirectPage(target));
+  await writeFile(resolve(directory, "index.html"), redirectPage(target, {
+    title: "Inspection page moved | C&amp;G",
+    message: "This inspection page has moved.",
+    linkLabel: "Continue to C&amp;G Certified Home Inspector",
+  }));
 }
 
 // Robots directives are only honoured at the origin root, so a single authoritative
 // /robots.txt advertises both sitemaps. A nested /contracting/robots.txt is never read
 // by a crawler and is therefore not emitted.
 await writeFile(resolve(output, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${siteOrigin}/sitemap.xml\nSitemap: ${siteOrigin}/contracting/sitemap.xml\n`);
-await writeFile(resolve(output, "sitemap.xml"), sitemap([...inspectorRoutes, "/property-services/"]));
+await writeFile(resolve(output, "sitemap.xml"), sitemap(["/", ...inspectorRoutes]));
 await writeFile(resolve(output, "contracting/sitemap.xml"), sitemap(contractorRoutes));
 await writeFile(resolve(output, ".nojekyll"), "");

@@ -4,7 +4,7 @@ import { LOOPBACK_CONTENT_SECURITY_POLICY } from "./loopback-security.js";
 const searchCases = [
   {
     name: "inspector",
-    path: "/",
+    path: "/inspection/",
     openLabel: "Search inspection guidance",
     query: "images",
     status: /Showing \d+ inspection results?\./,
@@ -92,5 +92,22 @@ test.describe("strict CSP and Pagefind runtime @smoke", () => {
       LOOPBACK_CONTENT_SECURITY_POLICY,
     );
     expect(runtimeErrors, "Legacy redirect emitted CSP or runtime errors").toEqual([]);
+  });
+
+  test("legacy chooser redirect preserves query and fragment under CSP", async ({ page }) => {
+    const runtimeErrors = [];
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") runtimeErrors.push(message.text());
+    });
+
+    await page.goto("/property-services/?source=legacy#services", { waitUntil: "load" });
+    await expect(page).toHaveURL(/\/\?source=legacy#services$/);
+    await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+      "content",
+      LOOPBACK_CONTENT_SECURITY_POLICY,
+    );
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Which service are you looking for?");
+    expect(runtimeErrors, "Legacy chooser redirect emitted CSP or runtime errors").toEqual([]);
   });
 });
