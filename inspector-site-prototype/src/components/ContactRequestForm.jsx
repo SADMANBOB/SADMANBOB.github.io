@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { copyPlainText } from "../../../shared/clipboard.js";
 import { business } from "../../../shared/siteData.js";
 import {
   HONEYPOT_FIELD,
@@ -37,6 +38,7 @@ export function ContactRequestForm() {
   const secureTransport = Boolean(transport && transport.provider !== "mailto");
   const [errors, setErrors] = useState({});
   const [preparedEmail, setPreparedEmail] = useState(null);
+  const [copyStatus, setCopyStatus] = useState("");
   const [preferredContact, setPreferredContact] = useState("email");
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -137,7 +139,11 @@ export function ContactRequestForm() {
     ].join("\n");
     if (!secureTransport) {
       setSubmissionResult(null);
-      setPreparedEmail(prepareMailto({ recipient: business.inspection.email, subject, body }));
+      setPreparedEmail({
+        href: prepareMailto({ recipient: business.inspection.email, subject, body }),
+        copyText: `${subject}\n\n${body}`,
+      });
+      setCopyStatus("");
       window.requestAnimationFrame(() => preparedStateRef.current?.focus());
       return;
     }
@@ -166,6 +172,15 @@ export function ContactRequestForm() {
     window.requestAnimationFrame(() => submitButtonRef.current?.focus());
   };
 
+  const handleCopyPreparedRequest = async () => {
+    try {
+      await copyPlainText(preparedEmail?.copyText);
+      setCopyStatus("Request details copied. Nothing was sent.");
+    } catch {
+      setCopyStatus("Copy is unavailable in this browser. The email draft is still ready.");
+    }
+  };
+
   const errorFor = (name) => errors[name] ? <span className="field-error" id={`inspection-${name}-error`}>{errors[name]}</span> : null;
   const fieldState = (name) => {
     const required = requiredFields.includes(name) || (name === "phone" && preferredContact === "phone");
@@ -180,6 +195,7 @@ export function ContactRequestForm() {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setPreparedEmail(null);
+    setCopyStatus("");
     setSubmissionResult(null);
     if (name === "preferredContact") setPreferredContact(value);
     if (!name) return;
@@ -369,7 +385,9 @@ export function ContactRequestForm() {
         <div className="form-prepared-state" ref={preparedStateRef} tabIndex="-1" role="status" aria-labelledby="inspection-prepared-title" data-testid="inspection-prepared-state">
           <h3 id="inspection-prepared-title">Ready to send your inspection request.</h3>
           <p>Open your email app to send the draft. We’ll review the property, timing, and inspection type, then follow up about availability. Nothing has been sent yet.</p>
-          <a className="button button-dark" href={preparedEmail}>Open your email app</a>
+          <a className="button button-dark" href={preparedEmail.href}>Open your email app</a>
+          <button className="button button-outline" type="button" onClick={handleCopyPreparedRequest}>Copy request details</button>
+          <p aria-live="polite" data-testid="inspection-copy-status">{copyStatus}</p>
         </div>
       ) : null}
 

@@ -44,6 +44,12 @@ const readinessItems = [
     prompt: "I can explain timing, materials, permits, design, trade, or hazard concerns I already know.",
     worksheet: "Real deadline, owner-supplied items, permits, plans, hazards, or other trades",
   },
+  {
+    id: "photos",
+    title: "Optional photo plan",
+    prompt: "I can choose up to 10 useful phone photos without including people or sensitive information.",
+    worksheet: "Wide context, medium view, close-up, source area, and optional scale reference",
+  },
 ];
 
 function readinessMessage(completed) {
@@ -145,8 +151,8 @@ export function ProjectReadinessGuide({ estimateHref }) {
               ))}
             </ol>
             <footer>
-              <strong>Before sending</strong>
-              <p>Do not include payment data, government IDs, access codes, claim files, or an unredacted inspection report. Wait for an approved path before sharing photographs.</p>
+              <strong>Safer, more useful project photos</strong>
+              <p>Use good light and stay in a safe position. Start with one wide context view, then a medium view and close-up of the visible condition. Add the likely source area and a common-object scale reference only when useful. Keep people, faces, mail, keys, IDs, payment data, access codes, claim files, and full inspection reports out of the frame. Do not send photos with the initial request. If C&amp;G asks for them later, follow the separate sharing instructions provided.</p>
             </footer>
           </article>
         </div>

@@ -74,6 +74,26 @@ export function protectedUploadPolicyFor(surface) {
   });
 }
 
+export function externalFileRequestActionFor(surface) {
+  const transport = formTransportFor(surface);
+  const integration = integrations.contractorFileRequest;
+  if (
+    !transport
+    || transport.provider === "mailto"
+    || !integrationCanRender(integration)
+    || !integration.allowedSurfaces.includes(surface)
+  ) return null;
+  return Object.freeze({
+    provider: integration.provider,
+    href: integration.publicConfig.requestUrl,
+    privacyUrl: integration.publicConfig.privacyUrl,
+    requestedMaxFiles: integration.publicConfig.requestedMaxFiles,
+    requestedMimeTypes: Object.freeze([...integration.publicConfig.requestedMimeTypes]),
+    deliveryMode: integration.publicConfig.deliveryMode,
+    requestLinkType: integration.publicConfig.requestLinkType,
+  });
+}
+
 export function prepareMailto({ recipient, subject, body }) {
   if (typeof recipient !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
     throw new Error("The approved recipient address is invalid.");

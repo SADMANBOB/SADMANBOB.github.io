@@ -25,7 +25,8 @@
     "test:browsers": "playwright test --config=./playwright.config.mjs",
     "test:browsers:smoke": "playwright test --config=./playwright.config.mjs --grep @smoke",
     "test:visual": "playwright test --config=./playwright.config.mjs --grep @visual",
-    "test:visual:update": "playwright test --config=./playwright.config.mjs --grep @visual --update-snapshots"
+    "test:visual:update": "playwright test --config=./playwright.config.mjs --grep @visual --update-snapshots",
+    "monitor:live": "node scripts/monitor-live-site.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

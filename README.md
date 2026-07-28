@@ -19,6 +19,7 @@ cd contractor-site-prototype && npm install && npm run dev
 SITE_ORIGIN=https://www.cginspection.net npm run build
 SITE_ORIGIN=https://www.cginspection.net npm run verify
 SITE_ORIGIN=https://www.cginspection.net npm run quality
+npm run monitor:live
 ```
 
 Pushing `main` deploys the portal and both sites to GitHub Pages.
@@ -35,6 +36,16 @@ strict CSP to every assembled HTML file after Pagefind is generated.
 code as release gates. See [`SECURITY_DECISION.md`](SECURITY_DECISION.md) for
 the deployed threat boundary, CSP rationale and limitations, dependency-audit
 decision, and remaining owner actions.
+
+`npm run monitor:live` checks the deployed chooser, both services, both
+lead-form entry pages, both downloadable contact cards, canonicals,
+staging-content absence, and the neutral root 404. GitHub runs the same
+read-only check every six hours and on demand while the scheduled workflow is
+active. [GitHub automatically
+disables schedules in a public repository after 60 days without repository
+activity](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule),
+so the owner must re-enable it or use an external uptime service if the
+repository will be quiet that long.
 
 ## Temporary editorial photography
 
