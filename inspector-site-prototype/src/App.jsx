@@ -960,10 +960,12 @@ function MobileQuickActions({ onNavigate, currentRoute }) {
 export function App({ initialPath = null }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => normalizeRoutePath(initialPath || (typeof window !== "undefined" ? window.location.pathname : "/")));
   const route = findInspectorRoute(currentPath) || inspectorNotFoundRoute;
 
   useEffect(() => {
+    setRuntimeReady(true);
     const handlePopState = () => {
       setCurrentPath(normalizeRoutePath(window.location.pathname));
       setMobileMenuOpen(false);
@@ -1007,7 +1009,7 @@ export function App({ initialPath = null }) {
 
   const canonicalUrl = route.path ? `${siteOrigin}${route.path}` : `${siteOrigin}/404.html`;
   return (
-    <div className="site-shell">
+    <div className="site-shell" data-runtime-ready={runtimeReady ? "true" : "false"}>
       <Seo route={route} canonicalUrl={canonicalUrl} siteOrigin={siteOrigin} />
       <a className="skip-link" href="#page-content">Skip to content</a>
       <ServiceSwitcher onNavigate={onNavigate} />

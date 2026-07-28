@@ -280,8 +280,10 @@ export function App({ initialPath }) {
   const [path, setPath] = useState(initial);
   const [search, setSearch] = useState(() => typeof window === "undefined" ? "" : window.location.search);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const route = findContractorRoute(path);
   useEffect(() => {
+    setRuntimeReady(true);
     const pop = () => {
       setPath(normalizePath(window.location.pathname));
       setSearch(window.location.search);
@@ -330,7 +332,7 @@ export function App({ initialPath }) {
   else if (route.projectCase) page = <ProjectCase route={route} onNavigate={navigate} />;
   else if (route.serviceArea) page = <ServiceArea route={route} onNavigate={navigate} />;
   else page = <NotFound onNavigate={navigate} />;
-  return <div className="site-shell"><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><MobileQuickActions currentRoute={route} onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
+  return <div className="site-shell" data-runtime-ready={runtimeReady ? "true" : "false"}><Seo route={route.key === "notFound" ? contractorNotFoundRoute : route} origin={contractorOrigin} /><a className="skip-link" href="#main-content">Skip to content</a><Header currentRoute={route} onNavigate={navigate} onOpenSearch={() => setSearchOpen(true)} /><main id="main-content" tabIndex="-1" data-pagefind-body>{page}</main><Footer onNavigate={navigate} /><MobileQuickActions currentRoute={route} onNavigate={navigate} /><SiteSearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} /></div>;
 }
 
 export { enabledContractorRoutes };
