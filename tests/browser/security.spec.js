@@ -37,6 +37,7 @@ test.describe("strict CSP and Pagefind runtime @smoke", () => {
 
       const response = await page.goto(searchCase.path, { waitUntil: "load" });
       expect(response?.ok(), `${searchCase.path} did not load`).toBe(true);
+      await expect(page.locator(".site-shell")).toHaveAttribute("data-runtime-ready", "true");
       await expect(page.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
         "content",
         LOOPBACK_CONTENT_SECURITY_POLICY,

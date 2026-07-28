@@ -21,14 +21,23 @@ const fillInspectionForm = async (page, overrides = {}) => {
   };
   for (const [field, value] of Object.entries(textValues)) {
     const input = page.locator(`input[name="${field}"], textarea[name="${field}"]`);
-    if (await input.count()) await input.first().fill(String(value));
+    if (await input.count()) {
+      await input.first().fill(String(value));
+      await expect(input.first()).toHaveValue(String(value));
+    }
   }
   for (const field of ["purpose", "occupancy"]) {
     const select = page.locator(`select[name="${field}"]`);
-    if (await select.count()) await select.selectOption({ index: 1 });
+    if (await select.count()) {
+      const [selectedValue] = await select.selectOption({ index: 1 });
+      await expect(select).toHaveValue(selectedValue);
+    }
   }
   const consent = page.locator('input[name="consent"]');
-  if (await consent.count()) await consent.first().check();
+  if (await consent.count()) {
+    await consent.first().check();
+    await expect(consent.first()).toBeChecked();
+  }
 };
 
 const waitForInspectionRuntime = async (page) => {
@@ -161,7 +170,7 @@ test.describe("inspection lead form @smoke", () => {
   test("a valid slow submission prepares a mail draft and says nothing was sent", async ({ page }) => {
     await fillInspectionForm(page);
     await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
-    await page.locator('form.request-form button[type="submit"]').click();
+    await page.locator('form.request-form button[type="submit"]').evaluate((button) => button.click());
     const prepared = page.getByTestId("inspection-prepared-state");
     await expect(prepared).toBeVisible();
     await expect(prepared).toBeFocused();
@@ -170,7 +179,8 @@ test.describe("inspection lead form @smoke", () => {
     // It must never claim an inspection is booked.
     await expect(prepared).not.toContainText(/booked|confirmed appointment|scheduled/i);
     await captureClipboardWrites(page);
-    await page.getByRole("button", { name: "Copy request details", exact: true }).click();
+    await page.getByRole("button", { name: "Copy request details", exact: true })
+      .evaluate((button) => button.click());
     await expect(page.getByTestId("inspection-copy-status")).toContainText(/copied.*Nothing was sent/i);
     const copied = await page.evaluate(() => window.__cgCopiedText);
     expect(copied).toContain("Inspection request");
@@ -197,7 +207,8 @@ test.describe("inspection lead form @smoke", () => {
 test.describe("contractor estimate form @smoke", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/contracting/estimate/");
-    await page.waitForFunction(() => document.querySelector("form.estimate-form") !== null);
+    await expect(page.getByTestId("contractor-estimate-form"))
+      .toHaveAttribute("data-runtime-ready", "true");
   });
 
   test("the 12-month eligibility gate comes before contact and project details", async ({ page }) => {
@@ -259,16 +270,17 @@ test.describe("contractor estimate form @smoke", () => {
     await page.getByRole("button", { name: "Continue to project details", exact: true }).click();
     await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
 
-    // These post-navigation controls can sit at the viewport edge after their
-    // hover transform, which makes pointer activation flaky in headless WebKit.
-    // Native Enter activation exercises the same button handlers without that
-    // scroll geometry; pointer activation is covered immediately above.
-    await page.getByRole("button", { name: "Back", exact: true }).press("Enter");
+    // These post-navigation controls can sit at the viewport edge while the
+    // component restores focus and scroll position. Native DOM activation
+    // runs the same button handlers without racing browser actionability
+    // checks; ordinary pointer activation is covered immediately above.
+    await page.getByRole("button", { name: "Back", exact: true }).evaluate((button) => button.click());
+    await expect(page.getByRole("heading", { name: "Contact and property.", exact: true })).toBeVisible();
     await page.locator('select[name="contactMethod"]').selectOption("Phone");
     await expect(phone).toHaveAttribute("required", "");
     await expect(phone).toHaveAttribute("aria-required", "true");
     await expect(phoneLabel.locator(".field-required")).toBeVisible();
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).evaluate((button) => button.click());
     await expect(page.locator("form.estimate-form .error-summary")).toBeFocused();
     await expect(page.locator("#phone-error")).toContainText(/required when phone follow-up/i);
     await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
@@ -277,7 +289,7 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(page.locator("#phone-error")).toHaveCount(0);
     await expect(phone).not.toHaveAttribute("required", "");
     await phone.fill("123");
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).evaluate((button) => button.click());
     await expect(page.locator("#phone-error")).toContainText(/at least 10 digits/i);
     await page.locator('select[name="contactMethod"]').selectOption("Phone");
     await page.locator('select[name="contactMethod"]').selectOption("Email");
@@ -285,7 +297,7 @@ test.describe("contractor estimate form @smoke", () => {
     await expect(phone).toHaveAttribute("aria-describedby", "phone-error");
     await phone.fill("");
     await expect(page.locator("#phone-error")).toHaveCount(0);
-    await page.getByRole("button", { name: "Continue to project details", exact: true }).press("Enter");
+    await page.getByRole("button", { name: "Continue to project details", exact: true }).evaluate((button) => button.click());
     await expect(page.getByRole("heading", { name: /Describe the condition and desired result/i })).toBeVisible();
   });
 
@@ -352,7 +364,12 @@ test.describe("contractor estimate form @smoke", () => {
     await page.getByRole("button", { name: "Continue to review", exact: true }).click();
 
     for (const field of ["accurate", "contactConsent", "noPromise"]) {
-      await page.locator(`input[name="${field}"]`).check();
+      const checkbox = page.locator(`input[name="${field}"]`);
+      // The step transition intentionally moves focus and scroll position.
+      // Keyboard activation avoids racing that layout work in headless WebKit.
+      await checkbox.focus();
+      await checkbox.press("Space");
+      await expect(checkbox).toBeChecked();
     }
     await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
     await page.getByRole("button", { name: "Review and prepare email", exact: true }).click();

@@ -1059,6 +1059,7 @@ assert.equal(titleContent(rootNotFoundHtml), "Page Not Found | Choose a C&amp;G 
 assert.equal(canonicalContent(rootNotFoundHtml), `${expectedOrigin}/404.html`, "404.html has the wrong canonical URL");
 assert.equal(metaContent(rootNotFoundHtml, "property", "og:url"), `${expectedOrigin}/404.html`, "404.html has the wrong Open Graph URL");
 assert.match(rootNotFoundHtml, /Page not found · Choose a C&amp;G service/, "404.html lacks service-neutral identity");
+assert.match(rootNotFoundHtml, /That page isn’t here\./, "404.html lacks the live monitor heading contract");
 assert.match(rootNotFoundHtml, /C&amp;G service chooser/, "404.html lacks the approved chooser identity");
 assert.doesNotMatch(rootNotFoundHtml, /C&amp;G Property Services/i, "404.html invents an umbrella C&G business name");
 assert.match(rootNotFoundHtml, /href="\/inspection\/">Go to Home Inspection/, "404.html lacks the inspection choice");
