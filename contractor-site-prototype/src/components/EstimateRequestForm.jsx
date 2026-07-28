@@ -152,6 +152,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   const [errors, setErrors] = useState({});
   const [result, setResult] = useState(null);
   const [copyStatus, setCopyStatus] = useState("");
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [uploadConsent, setUploadConsent] = useState(false);
@@ -164,7 +165,10 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   const formLoadedAtRef = useRef(Date.now());
   const inFlightRef = useRef(false);
 
-  useEffect(() => { formLoadedAtRef.current = Date.now(); }, []);
+  useEffect(() => {
+    formLoadedAtRef.current = Date.now();
+    setRuntimeReady(true);
+  }, []);
 
   const eligibility = evaluateContractorEligibility(values.eligibility);
   const currentService = contractorServiceById.get(values.category);
@@ -405,7 +409,7 @@ export function EstimateRequestForm({ initialCategoryKey = "" }) {
   };
 
   return (
-    <form className="estimate-form" noValidate onSubmit={handleSubmit}>
+    <form className="estimate-form" noValidate onSubmit={handleSubmit} data-testid="contractor-estimate-form" data-runtime-ready={runtimeReady ? "true" : "false"}>
       {/* Hidden from sight and from assistive technology. Any value here came
           from an automated agent filling every input on the page. */}
       <div className="form-honeypot" aria-hidden="true"><input {...honeypotFieldProps} id="contractor-contact-reference" /></div>
