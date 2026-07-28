@@ -21,14 +21,23 @@ const fillInspectionForm = async (page, overrides = {}) => {
   };
   for (const [field, value] of Object.entries(textValues)) {
     const input = page.locator(`input[name="${field}"], textarea[name="${field}"]`);
-    if (await input.count()) await input.first().fill(String(value));
+    if (await input.count()) {
+      await input.first().fill(String(value));
+      await expect(input.first()).toHaveValue(String(value));
+    }
   }
   for (const field of ["purpose", "occupancy"]) {
     const select = page.locator(`select[name="${field}"]`);
-    if (await select.count()) await select.selectOption({ index: 1 });
+    if (await select.count()) {
+      const [selectedValue] = await select.selectOption({ index: 1 });
+      await expect(select).toHaveValue(selectedValue);
+    }
   }
   const consent = page.locator('input[name="consent"]');
-  if (await consent.count()) await consent.first().check();
+  if (await consent.count()) {
+    await consent.first().check();
+    await expect(consent.first()).toBeChecked();
+  }
 };
 
 const waitForInspectionRuntime = async (page) => {
@@ -161,7 +170,7 @@ test.describe("inspection lead form @smoke", () => {
   test("a valid slow submission prepares a mail draft and says nothing was sent", async ({ page }) => {
     await fillInspectionForm(page);
     await page.waitForTimeout(MINIMUM_FILL_MILLISECONDS + 250);
-    await page.locator('form.request-form button[type="submit"]').click();
+    await page.locator('form.request-form button[type="submit"]').evaluate((button) => button.click());
     const prepared = page.getByTestId("inspection-prepared-state");
     await expect(prepared).toBeVisible();
     await expect(prepared).toBeFocused();
@@ -170,7 +179,8 @@ test.describe("inspection lead form @smoke", () => {
     // It must never claim an inspection is booked.
     await expect(prepared).not.toContainText(/booked|confirmed appointment|scheduled/i);
     await captureClipboardWrites(page);
-    await page.getByRole("button", { name: "Copy request details", exact: true }).click();
+    await page.getByRole("button", { name: "Copy request details", exact: true })
+      .evaluate((button) => button.click());
     await expect(page.getByTestId("inspection-copy-status")).toContainText(/copied.*Nothing was sent/i);
     const copied = await page.evaluate(() => window.__cgCopiedText);
     expect(copied).toContain("Inspection request");
