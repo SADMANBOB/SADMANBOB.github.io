@@ -1035,7 +1035,7 @@ for (const record of routeRecords.filter((item) => item.site === "inspector")) {
 for (const record of routeRecords.filter((item) => item.site === "contractor")) {
   const html = await read(resolve(output, record.outputFile));
   assert.match(html, /href="\/inspection\/"/, `${record.outputFile} lacks the reciprocal home-inspection link`);
-  assert.match(html, /Separate service · 12-month rule/, `${record.outputFile} lacks cross-service separation context`);
+  assert.match(html, /12-month separation policy/, `${record.outputFile} lacks cross-service separation context`);
   assert.match(html, /data-pagefind-body="true"/, `${record.outputFile} lacks the contractor search body boundary`);
 }
 for (const route of [...disabledInspectorRoutes, ...disabledContractorRoutes]) {

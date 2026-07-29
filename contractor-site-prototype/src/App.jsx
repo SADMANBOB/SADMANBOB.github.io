@@ -37,6 +37,7 @@ import { contractorFooterRoutes, contractorNavigation, contractorNotFoundRoute, 
 import { contractorServices, requestCategoryFromSearch } from "./content/services.js";
 
 const appBase = import.meta.env.BASE_URL;
+const assetUrl = (path) => `${appBase}${path.replace(/^\//, "")}`;
 const origin = (import.meta.env.VITE_SITE_ORIGIN || "https://www.cginspection.net").replace(/\/+$/, "");
 const contractorOrigin = `${origin}/contracting`;
 const contractorFormTransport = formTransportFor("contractor-estimate");
@@ -83,7 +84,7 @@ function PublishedWorkPicture({ editorialId, surface, sizes, loading, fetchPrior
 }
 
 function Brand({ onNavigate }) {
-  return <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.contracting.publicName} home`}><span className="brand-monogram" aria-hidden="true">C&amp;G</span><span className="brand-name">Contracting Services</span></InternalLink>;
+  return <InternalLink className="brand" href="/" onNavigate={onNavigate} aria-label={`${business.contracting.publicName} home`}><span className="brand-mark-wrap"><img src={assetUrl("assets/cg-contracting-logo-mark.png")} alt="" className="brand-mark" width="300" height="400" /></span><span className="brand-copy"><strong>C&amp;G</strong><span>Contracting Services</span></span></InternalLink>;
 }
 
 function Header({ currentRoute, onNavigate, onOpenSearch }) {
@@ -97,8 +98,16 @@ function Header({ currentRoute, onNavigate, onOpenSearch }) {
     return () => document.removeEventListener("keydown", close);
   }, [open]);
   return <>
+    <div className="service-switcher" aria-label="C&G property services">
+      <div className="container service-switcher-inner">
+        <span className="service-switcher-label">Choose a service</span>
+        <a className="service-switcher-link" href="/inspection/"><House size={14} aria-hidden="true" /> Home Inspection</a>
+        <InternalLink className="service-switcher-link is-current" href="/" onNavigate={onNavigate} aria-current="true"><Wrench size={14} aria-hidden="true" /> Contracting</InternalLink>
+        <InternalLink className="service-switcher-policy" href="/estimate/#inspection-eligibility" onNavigate={onNavigate}>12-month separation policy</InternalLink>
+      </div>
+    </div>
     <header className="site-header"><div className="container header-inner"><Brand onNavigate={onNavigate} /><nav ref={navRef} id="contractor-navigation" className={`site-nav ${open ? "is-open" : ""}`} aria-label="Main navigation">{contractorNavigation.map((route) => <InternalLink key={route.path} href={route.path} onNavigate={(event, href) => { onNavigate(event, href); setOpen(false); }} className={currentRoute.key === route.key ? "is-active" : ""} aria-current={currentRoute.key === route.key ? "page" : undefined}>{route.label}</InternalLink>)}<a className="mobile-call" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" /> Call {business.contracting.phoneDisplay}</a></nav><div className="header-actions"><a className="header-phone" href={business.contracting.phoneHref}><Phone size={15} aria-hidden="true" />{business.contracting.phoneDisplay}</a><button className="header-search" type="button" onClick={onOpenSearch} aria-label="Search contractor guidance"><Search size={18} aria-hidden="true" /><span>Search</span></button><InternalLink className="button button-small button-copper" href="/estimate/" onNavigate={onNavigate}>Request Estimate</InternalLink><button ref={buttonRef} type="button" className="menu-toggle" aria-expanded={open} aria-controls="contractor-navigation" aria-label={open ? "Close navigation" : "Open navigation"} onClick={() => setOpen((value) => !value)}>{open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button></div></div></header>
-    <div className="license-line"><div className="container license-line-inner"><nav className="contractor-service-switcher" aria-label="C&G property services"><span>Choose a service</span><a href="/inspection/"><House size={13} aria-hidden="true" /> Home Inspection</a><InternalLink className="is-current" href="/" onNavigate={onNavigate} aria-current="true"><Wrench size={13} aria-hidden="true" /> Residential Contracting</InternalLink><InternalLink className="service-rule-link" href="/estimate/#inspection-eligibility" onNavigate={onNavigate}>Separate service · 12-month rule</InternalLink></nav><div className="license-record"><span>Contractor of record: {business.contracting.contractorOfRecord} · CSLB #{business.contracting.license.number} · {business.contracting.license.classification}</span><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">Official verification <ExternalLink size={11} aria-hidden="true" /></a></div></div></div>
+    <div className="license-line"><div className="container license-line-inner"><div className="license-record"><span>Contractor of record: {business.contracting.contractorOfRecord} · CSLB #{business.contracting.license.number} · {business.contracting.license.classification}</span><a href={business.contracting.license.officialLookupUrl} rel="noreferrer" target="_blank">Official verification <ExternalLink size={11} aria-hidden="true" /></a></div></div></div>
   </>;
 }
 
