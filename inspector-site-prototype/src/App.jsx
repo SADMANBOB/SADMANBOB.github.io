@@ -159,7 +159,7 @@ function ServiceSwitcher({ onNavigate }) {
       <div className="container service-switcher-inner">
         <span className="service-switcher-label">Choose a service</span>
         <InternalLink className="service-switcher-link is-current" href="/inspection/" onNavigate={onNavigate} aria-current="true"><House size={14} aria-hidden="true" /> Home Inspection</InternalLink>
-        <a className="service-switcher-link" href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Contracting <span>Separate service</span></a>
+        <a className="service-switcher-link" href={contractorUrl}><Hammer size={14} aria-hidden="true" /> Contracting</a>
         <InternalLink className="service-switcher-policy" href="/ethics/" onNavigate={onNavigate}>12-month separation policy</InternalLink>
       </div>
     </div>
